@@ -135,10 +135,13 @@ stars above stand in), measured comp averages.
 ### About the combat odds
 
 Both warbands are read out of the log before the fight animates and a Monte Carlo
-simulation gives win / tie / loss. Across 231 real logged fights it called the
-winning side about **77%** of the time. It is over-confident at the extremes and
-it does not know per-card triggers yet, which is why it is labelled BETA on
-screen. If either board could not be fully recovered it shows no number at all.
+simulation gives win / tie / loss. Across 251 real logged fights it called the
+winning side about **82%** of the time. It knows the vanilla rules, deathrattle
+summons and the highest-impact per-card triggers, but plenty of cards are still
+unscripted, so when one is on the board the odds are deliberately widened. It
+never shows 0% or 100%. That, and the long tail still missing, is why it is
+labelled BETA on screen. If either board could not be fully recovered it shows
+no number at all.
 
 If you want the mature version, run HDT's free Bob's Buddy alongside. Both tools
 read the same log and coexist happily.

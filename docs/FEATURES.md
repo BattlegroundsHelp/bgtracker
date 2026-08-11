@@ -375,16 +375,21 @@ the screen. A Monte Carlo simulator then replays the fight thousands of times.
 
 **What BETA means here, honestly.**
 
-* Across 231 real logged fights it called the winning side about **77%** of the
-  time, with a mean absolute calibration error around 18 percentage points. It
-  is **over confident at the extremes**.
+* Across 251 real logged fights it called the winning side about **82%** of the
+  time, with a mean absolute error around 17 percentage points and a Brier
+  score of 0.101.
 * It implements the vanilla combat rules (attack order, taunt, stealth, divine
   shield, poisonous and venomous, windfury, reborn, deathrattle ordering, the
   seven minion cap, hero damage as the tier sum) plus deathrattle token summons
-  and cleave derived automatically from the current card pool. It does **not**
-  know per card triggers and auras yet, and that is the honest catch: a
-  simulator is an encyclopedia of card interactions that needs re verifying
-  every patch, forever.
+  and cleave derived automatically from the current card pool, plus
+  hand written scripts for the cards that were measurably costing the most
+  accuracy: Rally on attack triggers, deathrattle buffs, Reborn watchers,
+  rule changing auras and the trigger style Dark Gifts.
+* The long tail of cards is still **unscripted**, and that is the honest catch:
+  a simulator is an encyclopedia of card interactions that needs re verifying
+  every patch, forever. Rather than hide that, the sim counts how many
+  unscripted combat effects are on the two boards and **widens its odds**
+  accordingly, so it never prints a 0% or a 100% it cannot back.
 * **No number is ever shown for a board it could not fully recover.** If any
   minion lacks a card id, or a side is empty (rounds 1 and 2 genuinely produce
   this), the window says the boards were not fully readable instead of guessing.
@@ -442,10 +447,10 @@ yourself.
 
 ## What is deliberately NOT here
 
-* **Combat odds are BETA, not Bob's Buddy.** About 77% winner accuracy over 231
-  real logged fights, over confident at the extremes, no per card triggers. It is labelled BETA on screen
-  for exactly that reason. If you want the mature version, run HDT's free Bob's
-  Buddy alongside.
+* **Combat odds are BETA, not Bob's Buddy.** About 82% winner accuracy over 251
+  real logged fights, with the highest impact cards scripted but a long tail
+  that is not. It is labelled BETA on screen for exactly that reason. If you
+  want the mature version, run HDT's free Bob's Buddy alongside.
 * **No per hero written strategy guides or tips.** The most requested feature in
   the r/BobsTavern thread, and it is a content pipeline rather than a data feed:
   the paid sites' tips are hand written content that cannot be reused, so this
@@ -475,7 +480,7 @@ HDT is the incumbent. It is free, it is fine, and it does things this does not.
 
 | | HDT / Tier7 | this |
 |---|---|---|
-| Combat odds (Bob's Buddy) | free, mature | **beta**: log only, clearly flagged, about 77% of fights called correctly. Run Bob's Buddy alongside if you want the mature one |
+| Combat odds (Bob's Buddy) | free, mature | **beta**: log only, clearly flagged, about 82% of fights called correctly over 251 real logged fights. Run Bob's Buddy alongside if you want the mature one |
 | Counters (gold, tier price, buffs, tribes) | free | yes |
 | Minion browser | free | yes, the live pool, no stats needed |
 | MMR session tracker | free | yes, with the memory reader for the rating |

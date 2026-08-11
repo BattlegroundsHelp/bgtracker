@@ -71,9 +71,15 @@ class OddsEngine:
       empty side - rounds 1-2 can genuinely produce one) -> no event ever,
       never a guessed number;
     - a sim exception -> no event;
-    - the label stays BETA: replayed against 225 real logged combats the sim
-      called the winning side 76.9% of the time (vanilla rules plus derived
-      deathrattle summons - no per-card triggers or auras yet).
+    - the label stays BETA: replayed against 251 real logged combats the sim
+      called the winning side 82.5% of the time (MAE 16.9pp, Brier 0.101) -
+      vanilla rules, derived deathrattle summons, and per-card scripts for the
+      cards that measurably cost the most accuracy. The long tail of cards is
+      still unscripted, so engine.simulate() widens its own odds in proportion
+      to how many unscripted combat effects are on the two boards, and never
+      returns a bare 0% or 100%. The numbers pushed here are those widened
+      ones, which is what should be shown; the raw rollout fractions stay on
+      the result as raw_win / raw_tie / raw_loss.
     """
 
     def __init__(self, push, n=3000, threaded=True):

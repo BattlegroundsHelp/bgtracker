@@ -345,7 +345,7 @@ HDT is the incumbent. It is free, it is fine, and it does things this does not.
 
 | | HDT / Tier7 | this |
 |---|---|---|
-| Combat odds (Bob's Buddy) | free, mature | **beta** — log-only, clearly flagged, about 77% of fights called correctly over 231 real logged fights; run Bob's Buddy alongside if you want the mature one |
+| Combat odds (Bob's Buddy) | free, mature | **beta** — log-only, clearly flagged, about 82% of fights called correctly over 251 real logged fights; run Bob's Buddy alongside if you want the mature one |
 | Counters (gold, tier price, buffs, tribes) | free | yes |
 | Minion browser | free | yes — the live pool, no stats needed |
 | MMR session tracker | free | yes, with the memory reader for the rating |
@@ -367,10 +367,12 @@ the tribes at turn zero, and that comes out of memory.
 - **Borderless windowed only.** Exclusive fullscreen can't be drawn over without
   hooking the game.
 - **Combat odds are BETA.** Both warbands come out of the log before the fight
-  animates, and a Monte Carlo sim calls the winning side about 77% of the time,
-  measured across 231 real logged fights, with only the vanilla rules plus
-  derived deathrattle summons — it is over-confident at the extremes and does
-  not know per-card triggers yet. It is
+  animates, and a Monte Carlo sim calls the winning side about 82% of the time,
+  measured across 251 real logged fights, using the vanilla rules, derived
+  deathrattle summons and hand-written scripts for the highest-impact cards
+  (Rally attacks, deathrattle buffs, Reborn watchers, Titus). Plenty of cards
+  are still unscripted, so when the board holds one the sim deliberately
+  **widens** its odds rather than pretending — it never prints 0% or 100%. It is
   labelled BETA on screen for exactly that reason, and it never shows a number
   when either board could not be fully recovered.
 - **No numbers out of the box.** Stats appear only once you configure a

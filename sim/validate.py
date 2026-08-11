@@ -10,7 +10,15 @@ Metrics reported:
 - winner_accuracy_pct: how often argmax(win/tie/loss) == the real outcome.
 - mean_abs_error_pct: mean |p - empirical| where p = win + tie/2 (the
   predicted probability-of-not-losing credit, standard expected score) and
-  empirical is 1.0 win / 0.5 tie / 0.0 loss. This is the calibration miss.
+  empirical is 1.0 win / 0.5 tie / 0.0 loss.
+- brier_score: mean (p - empirical)^2. Read THIS one for calibration, not
+  MAE: absolute error is minimised by predicting 0 or 1, so it actively
+  rewards overconfidence, while the Brier score is a proper scoring rule and
+  punishes a confident miss. A sim that stops claiming false certainty shows
+  a WORSE MAE and a BETTER Brier - that is the correct trade, not a
+  regression.
+- mean_eps / mean_unmodelled: how hard the calibration had to widen the odds,
+  and how many cards per fight carry combat effects the sim does not script.
 - reliability: deciles of predicted p vs the empirical mean in each bucket.
 - confusion: predicted vs actual outcome counts.
 - worst_misses: the K fights with the largest |p - empirical|, with both
@@ -113,6 +121,9 @@ def score_combats(
                     "pred": pred,
                     "actual": actual,
                     "abs_err": round(abs(p - EMPIRICAL[actual]), 4),
+                    "sq_err": round((p - EMPIRICAL[actual]) ** 2, 4),
+                    "eps": r.get("eps", 0.0),
+                    "unmodelled": r.get("unmodelled", 0),
                     "friendly_cards": [m["cardId"] for m in b["friendly"]],
                     "enemy_cards": [m["cardId"] for m in b["enemy"]],
                 }
@@ -159,8 +170,15 @@ def card_tables(
 ) -> tuple[list, list]:
     """(worst_cards from the worst misses, global per-card error table)."""
 
+    # A card counts as scripted only if it has a real EFFECT hook. Bare
+    # bookkeeping flags ("rally", "golden") are set on every Rally card so
+    # watchers like Deathstrider work, and must NOT be read as "modelled" -
+    # otherwise the work queue marks unscripted cards done.
+    flags = {"rally", "golden"}
+
     def has_script(cid: str) -> bool:
-        return cid in registry or engine._strip_golden(cid) in registry
+        e = registry.get(cid) or registry.get(engine._strip_golden(cid))
+        return bool(e) and bool(set(e) - flags)
 
     # cards in the worst misses, ranked by how many misses they sit in
     agg: dict[str, dict] = {}
@@ -220,6 +238,7 @@ def main(argv: list[str]) -> int:
     nn = len(rows)
     correct = sum(1 for r in rows if r["pred"] == r["actual"])
     mae = sum(r["abs_err"] for r in rows) / nn if nn else None
+    brier = sum(r["sq_err"] for r in rows) / nn if nn else None
     worst = sorted(rows, key=lambda r: -r["abs_err"])[: args.worst]
     worst_cards, err_table = card_tables(rows, worst, registry)
 
@@ -239,7 +258,16 @@ def main(argv: list[str]) -> int:
         "winner_accuracy_pct": round(100.0 * correct / nn, 1) if nn else None,
         "predicted_correctly": correct,
         "mean_abs_error_pct": round(100.0 * mae, 1) if mae is not None else None,
+        "brier_score": round(brier, 4) if brier is not None else None,
+        "mean_eps": round(sum(r["eps"] for r in rows) / nn, 3) if nn else None,
+        "mean_unmodelled": (
+            round(sum(r["unmodelled"] for r in rows) / nn, 2) if nn else None
+        ),
         "error_definition": "p = win + tie/2 vs empirical 1.0 us / 0.5 tie / 0.0 them",
+        "metric_note": (
+            "brier_score is the proper score - MAE rewards overconfidence, so "
+            "honest calibration raises MAE while lowering Brier"
+        ),
         "confusion": confusion(rows),
         "reliability": reliability_table(rows),
         "worst_misses": worst,

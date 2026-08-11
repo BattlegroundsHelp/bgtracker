@@ -5,6 +5,28 @@ to catch each one.
 
 ---
 
+## Status, 11 August 2026
+
+Eight of the nine shots and three GIFs were cut from a **screen recording of one full game**
+(`bg help.mp4`, 1892x1000, 30 fps, 13:32) instead of from stills. That solved the capture
+problem outright: a screen recorder photographs the screen, so every overlay window is in
+every frame, and the whole game can be re-scanned afterwards for the moment you want.
+
+**Anonymity method used on every export.** In this recording the account name sits at
+y 924-940 and the wall clock at y 967-985, both at x < 170; the opponent nameplate sits at
+x 5-145, y 55-67. Every asset is a rectangular crop chosen so those two rectangles fall
+outside it. Full-width shots are cropped to **height 918** (drops the name and clock) and
+were taken at moments where the overlay's own SESSION window already covers the nameplate
+band, which was checked pixel by pixel on the exported file. Nothing is blurred.
+
+**One caveat for captions.** The recording was made with **no stats source configured** —
+the minion browser reads "no stats source", the trinket window reads "NO TRINKET STATS
+CONFIGURED", comps read "curated". The one exception is the hero window, which shows
+`Al'Akir 7.00 · 50% pick · 1 games · thin!`, i.e. a single game of the author's own local
+feed. If that shot is posted, say so.
+
+---
+
 ## Read this first: the capture method is the whole problem
 
 **Hearthstone's own screenshot key cannot photograph the overlay.** Nine shots taken on
@@ -54,6 +76,11 @@ that the post would be better with.
 
 ### 1. The hero shot: whole game, windows down both edges
 
+**CAPTURED — `overlay-full-game.png`** (1892x918, 1.77 MB, source t=720s, turn 8).
+Five windows at once: SESSION top left, TAVERN with stars and `roll 32`, COUNTERS with
+`1/10g · T4 · BST 5 · PIR 1 · 2 triples · trinket in 1`, the MINIONS bar, and the comps
+window down the right edge. Cropped to height 918; the nameplate band is covered by SESSION.
+
 *Placeholder: `REDDIT_POST.md` line 21.*
 
 **Moment:** mid-recruit, turn 6 or later, right after the shop rolls, with the mouse away
@@ -69,6 +96,12 @@ price, tribe counts and triples are all populated rather than dashes).
 rather than as honest.
 
 ### 2. Counters and session, mid run
+
+**PARTIAL — `counters-session-strip.png`** (1892x234, 0.38 MB, source t=720s).
+A top strip carrying SESSION, TAVERN and COUNTERS in one frame. **The session half is
+short of the brief:** this was the first game of the sitting, so SESSION reads "no finished
+games yet this session" instead of listing placements. To fill that properly, record a
+second or third game in one sitting and re-cut this strip.
 
 *Placeholder: line 44.*
 
@@ -86,6 +119,13 @@ so take this in the shop, not during combat.
 
 ### 3. Minion browser, open and filtered
 
+**CAPTURED — `minion-browser-open.png`** (660x800, 0.39 MB, source t=145s).
+`MINIONS · 274 in the pool`, the TIER / TRIBE / TRAIT filter rows, fourteen rows with art,
+tribe chips and tier, the pager reading `1-14 of 29`, and `no stats source` at the foot.
+TAVERN and COUNTERS sit above it in the same crop. **Filtered on tribe only** (BST) with
+TIER left on `all`, so it is one filter short of the brief's "tier 4 + Beast" framing. The
+row count changing from 274 to 29 still proves the filter is real.
+
 *Placeholder: line 46.*
 
 **Moment:** any time, but click the browser bar open first — it sits as a one-line bar until
@@ -97,6 +137,14 @@ and card text plus art on the rows. If art is missing run `python fetch_art.py` 
 session.
 
 ### 4. Hero select with all four badges
+
+**PARTIAL — `hero-select-picks.png`** (1892x830, 1.18 MB, source t=22s).
+All four portraits, the PICK YOUR HERO window bottom left naming every option, SESSION with
+the lobby tribe chips, and the comps window on the right. **Only one badge is drawn**
+(`7.00 best` over Al'Akir) because only one of the four heroes had any data in the local
+feed; the other three read "no data at this MMR". Honest, but it is not the four-badge shot
+the brief asked for. A real stats source, or a fuller `collect.py --local-feed`, would fill
+the other three.
 
 *Placeholder: line 56.*
 
@@ -113,6 +161,12 @@ expect both in this shot — that is by design and shot 2 covers session.
 
 ### 5. Comps window, curated, zero setup
 
+**CAPTURED — `comps-curated.png`** (330x462, 0.12 MB, source t=300s).
+Tight crop on the comps window alone: tribe chips, `YOUR BOARD (6) · beast summons
+(curated) 2/6`, six comp rows every one of them labelled "curated", and the `dragon attack`
+row clicked open showing its eight core minions. No measured percentages, which is exactly
+the zero-setup state the shot is meant to prove.
+
 *Placeholder: line 79.*
 
 **Moment:** early recruit, turns 2 to 4, **with `sources.json` absent or renamed** so the
@@ -128,6 +182,11 @@ numbers and the shot no longer makes the point.
 `sources.json` aside for it.
 
 ### 6. Combat odds with the BETA chip
+
+**CAPTURED — `combat-odds-beta.png`** (1200x580, 0.94 MB, source t=776s).
+`COMBAT · round 8` with `ODDS [BETA] W 37% / T 14% / L 50%`, `3,000 simulated fights`,
+`log-only sim`, over a live 7-versus-4 swing with damage numbers flying. Exactly the
+persuasive split the brief asked for rather than a 99/0/1.
 
 *Placeholder: line 96.*
 
@@ -146,6 +205,12 @@ persuasive; 99 / 0 / 1 against an empty board is not.
 
 ### 7. Tavern window with the shop marked up
 
+**CAPTURED — `tavern-shop-stars.png`** (1250x650, 1.03 MB, source t=720s).
+The TAVERN window listing all six shop minions with star ratings and tier, the top row
+tagged `pirate economy` as comp-feeding, `building beast summons (curated)` in the header,
+`roll 32` at the foot, and the same six minions on the board underneath so the mapping is
+obvious. COUNTERS is in frame too.
+
 *Not yet in the post — worth adding next to the TAVERN bullet.*
 
 **Moment:** recruit phase, right after a roll, tier 4 or 5 so the shop has six slots and the
@@ -157,6 +222,17 @@ so the mapping is obvious. If the local feed is running, the star ratings on the
 belong in this frame too.
 
 ### 8. A pick dialog that is not hero select
+
+**CAPTURED, twice.**
+
+- `trinket-pick.png` (1600x918, 1.53 MB, source t=802s) — the game's Trinket Shop with all
+  four trinkets, the PICK YOUR TRINKET window on the left naming every one of them, and the
+  footer reading `NO TRINKET STATS CONFIGURED · names only - see sources.json`. That footer
+  is the honest version of the post's whole bring-your-own-data argument.
+- `discover-pick-one.png` (1300x700, 1.19 MB, source t=738s) — a Choose One discover with
+  the PICK ONE window listing `3 options`, star ratings, tiers and a `beast summons` comp
+  tag. TAVERN is still up alongside it, which is what proves the routing claim: two
+  different windows, not one panel morphing.
 
 *Not yet in the post.*
 
@@ -172,7 +248,11 @@ tavern ratings do not sit behind the pick. That is correct behaviour, not a miss
 
 ### 9. The whole desktop, once, for the "it does not cover your screen" question
 
-*Not yet in the post. One reply-comment asset.*
+**STILL MISSING as its own asset.** `overlay-full-game.png` covers the argument (every
+window sits in a band outside the play area) but it is the Hearthstone window cropped at
+1892x918, not the desktop with a taskbar and a second monitor. If a reply needs the literal
+"does it cover my screen" answer, reuse shot 1 rather than re-shooting; a true desktop shot
+would need a fresh capture with the taskbar visible, and the taskbar leaks the clock.
 
 **Moment:** any recruit phase, full screen, uncropped except for the nameplates.
 
@@ -181,7 +261,33 @@ whether it blocks the board. One picture ends that thread.
 
 ---
 
-## The GIF
+## The GIFs
+
+**THREE ARE CUT.** The one-loop idea below was split into three shorter loops, because a
+single 18-second turn could not be held under the size ceiling at a readable width, and
+because each of the three carries one argument on its own.
+
+| File | Size | Frames | Source | What it shows |
+|---|---|---|---|---|
+| `tavern-reroll.gif` | 780x335, 2.06 MB | 72 @ 12 fps (6.0 s) | t=727.0-733.0 | TAVERN listing the shop at `roll 32`, the Refresh tooltip, the shop rolling, then the window rebuilding to the new six at `roll 33`. The list follows the shop with no lag. |
+| `combat-odds-appear.gif` | 760x397, 3.87 MB | 90 @ 12 fps (7.5 s) | t=763.5-771.0 | Recruit with TAVERN and COUNTERS up, the Combat banner, TAVERN closing itself, COMBAT opening with `ODDS [BETA] W 37% / T 14% / L 50%` already on screen before the first attack, then the fight. |
+| `trinket-panel-opens.gif` | 800x339, 3.05 MB | 70 @ 10 fps (7.0 s) | t=796.5-803.5 | The fight ending, COMBAT closing on its own, the Recruit banner, TAVERN rebuilding, then the Trinket Shop opening and PICK YOUR TRINKET appearing with `NO TRINKET STATS CONFIGURED`. |
+
+All three were built with a proper `palettegen` / `paletteuse` pass (`stats_mode=diff`,
+`dither=bayer`) rather than a flat conversion, which is what keeps them legible at these
+sizes. Each is well under the 8 MB ceiling, so there is headroom to go wider or longer.
+
+**Anonymity on the GIFs is geometric, not per-frame luck.** None of the three crop
+rectangles intersects the name rectangle (x 0-170, y 918-990) or the nameplate rectangle
+(x 0-340, y 40-80): the reroll and combat loops start at x 385 and x 388, and the trinket
+loop starts at y 120. Frames were also sampled and eyeballed across each loop.
+
+**If the single long loop is still wanted**, the raw material is there: t=763 to t=805 in
+`bg help.mp4` is one uninterrupted fight-to-shop-to-trinket cycle.
+
+---
+
+## The original GIF plan (superseded, kept for the recipe)
 
 **One turn, start to finish.** Roughly 18 to 20 seconds, looping:
 
@@ -224,10 +330,45 @@ it goes anywhere near the post.
 
 ## What is in this folder right now
 
+### Post-ready, overlay visible, anonymised, metadata stripped
+
+Cut from `bg help.mp4` on 11 August. Every one of these was opened and read back after
+export to confirm no account name, no opponent name and no wall clock survived.
+
+| File | Size | Shot | Placeholder it fills |
+|---|---|---|---|
+| `overlay-full-game.png` | 1892x918, 1.77 MB | 1 | REDDIT_POST line 27 |
+| `counters-session-strip.png` | 1892x234, 0.38 MB | 2 (partial) | REDDIT_POST line 50 |
+| `minion-browser-open.png` | 660x800, 0.39 MB | 3 (tribe filter only) | REDDIT_POST line 52 |
+| `hero-select-picks.png` | 1892x830, 1.18 MB | 4 (one badge, not four) | REDDIT_POST line 62 |
+| `comps-curated.png` | 330x462, 0.12 MB | 5 | REDDIT_POST line 85 |
+| `combat-odds-beta.png` | 1200x580, 0.94 MB | 6 | REDDIT_POST line 102 |
+| `tavern-shop-stars.png` | 1250x650, 1.03 MB | 7 | new, next to the TAVERN bullet |
+| `trinket-pick.png` | 1600x918, 1.53 MB | 8 | new, next to the pick-windows bullet |
+| `discover-pick-one.png` | 1300x700, 1.19 MB | 8 | new, spare / reply comment |
+| `tavern-reroll.gif` | 780x335, 2.06 MB | GIF | new |
+| `combat-odds-appear.gif` | 760x397, 3.87 MB | GIF | new, next to the odds section |
+| `trinket-panel-opens.gif` | 800x339, 3.05 MB | GIF | new, spare / reply comment |
+
+A copy of all twelve is also kept outside the repo, in the local upload folder used for the
+post.
+
+### Still open
+
+1. **A second or third game in one sitting**, so SESSION actually lists finished games with
+   placement and hero. That is the only thing shot 2 is missing.
+2. **A stats source or a fatter local feed**, so hero select shows four badges instead of
+   one and the browser rows carry star ratings.
+3. **Tier plus tribe together** in the minion browser (the capture has tribe only).
+4. **A literal whole-desktop shot** if the "does it cover my screen" reply ever needs one.
+
+### Older plates, no overlay in them
+
 `game-tavern-shop.png`, `game-tavern-full-board.png`, `game-combat-boards.png`,
-`game-combat-wide.png` — four anonymised, metadata-free crops of tonight's captures.
+`game-combat-wide.png` — four anonymised, metadata-free crops of the 11 August stills
+session.
 
 **They show no overlay.** They are clean game-context plates and nothing more. They are
 usable as illustration of a moment; they cannot be posted as evidence that the overlay
-works, and they should not be captioned as if they were. Every shot above still needs to be
-taken.
+works, and they should not be captioned as if they were. The twelve files above supersede
+them for every purpose in the post.

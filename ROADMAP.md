@@ -63,11 +63,14 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
 
 - 🔨 **Combat win % (a Bob's Buddy equivalent)** — shipped as BETA and labelled
   BETA on screen. Both warbands come out of Power.log before the fight
-  animates, and a Monte Carlo sim over the vanilla rules plus derived
-  deathrattle summons calls the winning side ~77% of the time across 231 real
-  logged fights (MAE 18pp, over-confident at the extremes). No odds are shown
-  at all unless both boards were fully recovered. What is missing is per-card
-  triggers and auras, and that is the honest catch: a simulator is an
+  animates, and a Monte Carlo sim over the vanilla rules, derived deathrattle
+  summons and per-card scripts for the highest-impact cards calls the winning
+  side ~82% of the time across 251 real logged fights (MAE 17pp, Brier 0.101).
+  Because plenty of cards are still unscripted, the odds are deliberately
+  widened when the board holds one, so a raw 0% or 100% is never printed. No
+  odds are shown at all unless both boards were fully recovered. What is still
+  missing is the long tail of per-card triggers, and that is the honest catch:
+  a simulator is an
   encyclopedia of card interactions that needs re-verifying every patch,
   forever. `sim/validate.py` names the exact cards to script next. If you want
   the mature version, run HDT's free Bob's Buddy alongside — both tools read

@@ -196,6 +196,18 @@ class GameLogParser:
         for t in KEYWORD_TAGS:
             if e.num(t):
                 row[t.lower()] = e.num(t)
+        # DARK GIFTS. A gift whose effect is a stat or keyword change lands on
+        # the minion as ordinary tags, so it is already in the fields above
+        # (verified in a real log: Harpy's Talons wrote plain DIVINE_SHIELD=1
+        # and WINDFURY=1 on the gifted minion). A gift whose effect is a
+        # TRIGGER writes no stat tag at all - only HAS_DARK_GIFT=1 plus
+        # DARK_GIFT_ENTITY pointing at the gift entity, whose CardID the log
+        # does carry. Resolve that reference so the sim can script it.
+        gift = e.num("DARK_GIFT_ENTITY")
+        if gift:
+            g = self.entities.get(gift)
+            if g is not None and g.card_id:
+                row["dark_gift"] = g.card_id
         return row
 
     def _board(self, ctrl: int) -> list[dict]:

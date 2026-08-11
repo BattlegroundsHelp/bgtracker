@@ -2,11 +2,20 @@
 
 Copy and paste source. Everything below the headings is the copy itself.
 
-Six images are marked in the post with `[IMAGE: ...]` placeholders, in this order: the whole
-overlay in a live game, counters plus session, the minion browser, hero select with badges,
-the comps window with no stats source, and the combat window with the BETA odds line. Every
-shot wants the overlay visible, not the bare game. Delete a placeholder if the shot is not
-ready rather than posting the line as text.
+The image slots below now name real files. All of them live in `docs/img/`, cut from a screen
+recording of one full game on 11 August, cropped so no account name, opponent name or wall
+clock is anywhere in frame, and stripped of metadata. `docs/img/SHOTLIST.md` records what each one shows and what is still
+missing.
+
+Two captions carry a caveat you should keep: the session window in
+`counters-session-strip.png` says "no finished games yet this session" because that was the
+first game of the sitting, and hero select shows one badge rather than four because only one
+of the four heroes had any data in the local feed. Both are honest states, not bugs, but do
+not caption them as if they were the full picture.
+
+The whole recording was made with **no stats source configured**, which is why the browser
+reads "no stats source" and the trinket window reads "NO TRINKET STATS CONFIGURED". That is
+the state the post argues for, so it works in your favour.
 
 ## Post
 
@@ -24,8 +33,8 @@ something to say and closing when that moment has passed.
 
 One person builds it, it is a beta, and this post is a call for testers.
 
-[IMAGE: full game screenshot with the overlay running, windows down both edges of the
-Hearthstone window]
+[IMAGE: docs/img/overlay-full-game.png: turn 8, five windows at once: session top left,
+tavern with star ratings, counters, the minions bar, and comps down the right edge]
 
 **Works the moment you run it, no setup and no account**
 
@@ -47,10 +56,20 @@ Hearthstone window]
 - The pick windows (hero, hero power, trinket, discover and Dark Gift) still detect and
   name every option on offer.
 
-[IMAGE: counters window and session window at the edge of the game, mid run]
+[IMAGE: docs/img/tavern-shop-stars.png: the tavern window listing all six shop minions with
+their tier and star rating, the comp-feeding one tagged, and the same six on the board below]
 
-[IMAGE: minion browser open, filtered to one tavern tier and one tribe, card text and art
-visible]
+[IMAGE: docs/img/tavern-reroll.gif: the shop rolls and the tavern window rebuilds with it,
+roll 32 becomes roll 33]
+
+[IMAGE: docs/img/discover-pick-one.png: a discover dialog with the PICK ONE window naming
+all three options while the tavern window is still up beside it]
+
+[IMAGE: docs/img/counters-session-strip.png: counters, tavern and session across the top of
+the game, mid run]
+
+[IMAGE: docs/img/minion-browser-open.png: the minion browser open, 274 in the pool filtered
+down to 29 Beasts, card art and tier on every row]
 
 **Needs a stats source that you supply**
 
@@ -59,8 +78,16 @@ visible]
 - Star ratings per minion in the shop (each minion rated inside its own tavern tier).
 - Measured comp rankings in place of the curated families.
 
-[IMAGE: hero select with the four portraits, badges drawn above them, the PICK YOUR HERO
-window on the left edge]
+[IMAGE: docs/img/hero-select-picks.png: hero select with the four portraits and the PICK
+YOUR HERO window on the left edge. Only one hero carries a score here because the only data
+configured was one game of my own from collect.py; the other three read "no data at this
+MMR", which is what you get with nothing configured]
+
+[IMAGE: docs/img/trinket-pick.png: the trinket shop, with the PICK YOUR TRINKET window
+naming all four and saying plainly that no trinket stats are configured]
+
+[IMAGE: docs/img/trinket-panel-opens.gif: combat closes on its own, the shop comes back,
+the tavern window rebuilds, then the trinket window opens with the offer]
 
 **Why the numbers are bring your own**
 
@@ -82,25 +109,30 @@ before it exists: uploading is opt in and off by default, records are anonymised
 placement, lobby tribes, final board, no names and no battletags), the aggregates are free
 for everyone, and the data is never sold and never paywalled.
 
-[IMAGE: comps window with rows labelled "curated", taken with no stats source configured,
-so it is clear what you get with zero setup]
+[IMAGE: docs/img/comps-curated.png: the comps window with no stats source configured, every
+row labelled "curated", one row opened to show its core minions, no measured numbers
+anywhere]
 
 **Combat odds are BETA, and here is the real number**
 
 Both warbands are readable in the log about a second before the fight animates, so a Monte
-Carlo sim runs there and shows win / tie / loss. Measured against 231 real logged fights it
-calls the winning side about 77% of the time. It is over confident at the extremes (the
-fights it calls near certain are not that certain), and it only knows the vanilla combat
-rules plus deathrattle summons derived from card text, not per card triggers. It is flagged
-BETA on screen, and it shows nothing at all when either board could not be fully recovered
-from the log.
+Carlo sim runs there and shows win / tie / loss. Measured against 251 real logged fights it
+calls the winning side about 82% of the time. It knows the vanilla combat rules, deathrattle
+summons derived from card text, and hand written scripts for the cards that were costing the
+most accuracy (Rally triggers, deathrattle buffs, Reborn watchers, Titus). Plenty of cards
+are still unscripted, so when one is on the board the sim widens its own odds instead of
+pretending, and it never prints a 0% or a 100%. It is flagged BETA on screen, and it shows
+nothing at all when either board could not be fully recovered from the log.
 
 HDT's Bob's Buddy is the mature option for this and it is free. Both read the same log, so
 they coexist with no conflict. Run them side by side and trust Bob's Buddy where the two
 disagree.
 
-[IMAGE: combat window showing the ODDS line with the BETA chip and win / tie / loss
-percentages, with the fight on screen behind it]
+[IMAGE: docs/img/combat-odds-beta.png: the combat window reading ODDS BETA, W 37% / T 14% /
+L 50% over 3,000 simulated fights, with the round 8 fight swinging behind it]
+
+[IMAGE: docs/img/combat-odds-appear.gif: the tavern window closes itself, combat opens, and
+the odds line is already up before the first attack plays]
 
 **What it touches, plainly**
 
@@ -145,9 +177,9 @@ EDIT (11 August): a fair amount has changed since this post.
 - The one big panel is gone. The overlay is now ten small windows, one per thing you might
   want to know, each opening and closing on its own trigger and draggable on its own.
 - Combat odds shipped as a BETA. Both warbands come out of the log before the fight
-  animates and a sim shows win / tie / loss. About 77% winner accuracy over 231 logged
-  fights, over confident at the extremes. Bob's Buddy is still the mature option and runs
-  alongside it fine.
+  animates and a sim shows win / tie / loss. About 82% winner accuracy over 251 logged
+  fights, with the highest impact cards scripted and the rest handled by widening the odds.
+  Bob's Buddy is still the mature option and runs alongside it fine.
 - Three new windows: counters (gold, next tier price, buffs, board tribes, triples, trinket
   countdown), a minion browser for the whole current pool, and a session tracker for the
   sitting.
