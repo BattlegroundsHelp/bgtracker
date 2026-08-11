@@ -2,6 +2,15 @@
 __pycache__/
 *.pyc
 .ruff_cache/
+
+# standalone build output: the PyInstaller work folder, the exe folder, the zip
+# handed to testers, and the generated spec/manifest files. The release build is
+# published on the Releases page, never committed here.
+build/
+dist/
+*.spec
+*.manifest
+*.whl
 .cache/
 data/
 tests/.livetest/

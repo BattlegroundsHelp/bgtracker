@@ -17,10 +17,14 @@ belongs to whoever collected it.
 
 ## 1. What you need
 
+There are two ways to run it. **The download needs no Python at all**, and it is
+the one nearly everyone should take (section 2). Running from source is section
+2b, for developers and for anyone who would rather run code they can read.
+
 | | |
 |---|---|
 | **Windows** | 10 or 11. The overlay is Windows only (it anchors itself to the Hearthstone window). |
-| **Python 3.10 or newer** | From [python.org](https://www.python.org/downloads/windows/). Tick **"Add python.exe to PATH"** during install. |
+| **Python 3.10 or newer** | Only if you run from source (section 2b). From [python.org](https://www.python.org/downloads/windows/), tick **"Add python.exe to PATH"**. The download carries its own copy of Python and does not care what is installed on your machine. |
 | **Hearthstone in BORDERLESS WINDOWED** | Options (gear) → Graphics → window mode. Nothing can draw over exclusive fullscreen without hooking the game, which this deliberately does not do. |
 | **No pip installs** | The core has zero third party packages. `pip install pillow` is optional and only buys you card art (section 5). |
 | **Internet on first run** | It downloads the public card database from HearthstoneJSON once (card names, tiers, the minion pool) and caches it for a day. After that it runs fine offline. |
@@ -32,21 +36,17 @@ game to be restarted. Nothing is injected into the game and nothing is automated
 
 ## 2. Get it and run it, in three steps
 
-**Step 1. Get the files.**
+No Python, no pip, no installer. This is the route for nearly everyone.
 
-Either download the ZIP from
-[github.com/BattlegroundsHelp/bgtracker](https://github.com/BattlegroundsHelp/bgtracker)
-(green **Code** button → **Download ZIP**), or:
+**Step 1. Download and unzip.**
 
-```bash
-git clone https://github.com/BattlegroundsHelp/bgtracker.git
-```
-
-If you downloaded the ZIP, **extract it properly** (right click → Extract All).
-Running it from inside the ZIP preview window will not work. Put the folder
-somewhere you can write to, like `Documents\bgtracker`. Do not put it in
-`C:\Program Files` — the tool writes its saved window positions, its cache and
-your collected games next to itself.
+Grab **`bgtracker-windows.zip`** from the
+[Releases page](https://github.com/BattlegroundsHelp/bgtracker/releases), then
+**right click → Extract All**. Running it from inside the ZIP preview window will
+not work. Put the folder somewhere you can write to, like `Documents\bgtracker`.
+Do not put it in `C:\Program Files`, because the tool writes its cache, your saved
+window positions, your collected games and any card art right beside the exe, in
+that same folder.
 
 **Step 2. Put Hearthstone in borderless windowed.**
 
@@ -54,18 +54,71 @@ In game: Options (gear, top right) → Graphics → set the window mode to
 **Borderless Windowed**. This is the single most common reason someone sees
 nothing at all.
 
-**Step 3. Double-click `bgtracker.bat`.**
+**Step 3. Double-click `bgtracker.exe`.**
 
-That is the whole launch. A minimised console window called **bgtracker** appears
-on your taskbar — that is normal, it is where the tool prints what it is doing.
-Leave it minimised.
+That is the whole launch. A console window called **bgtracker** appears on your
+taskbar; that is normal, it is where the tool prints what it is doing. Leave it
+alone. `bgtracker.bat` starts the same program with that console minimised, if
+you prefer it out of the way.
+
+**About the Windows warning.** These exes are not code-signed, because a signing
+certificate costs money a free tool does not have. On a file you just downloaded,
+Windows SmartScreen may show a blue box titled **"Windows protected your PC"**
+with only a **Don't run** button visible; the way through is **More info**, then
+**Run anyway**. Some antivirus tools are wary of unsigned bundled Python for the
+same reason and may quarantine it. Whether you see any of this depends on your
+Windows version and settings, so treat it as "if it shows up" rather than a
+promise in either direction. If you would rather not trust a binary at all,
+section 2b is the same program, run from source you can read.
 
 You can start it before Hearthstone, after Hearthstone, or in the middle of a
 game. It finds the newest log on its own and follows along when the game rotates
 to a new one.
 
 **To quit:** click the `✕` in the corner of the window titled **bgtracker** (the
-lowest one on the right hand side). Closing the minimised console also works.
+lowest one on the right hand side). Closing the console also works.
+
+The other programs in the folder are the same tools this guide mentions later:
+
+| in this guide | in the download |
+|---|---|
+| `python overlay.py` | `bgtracker.exe`, or `bgtracker.bat` |
+| `python bgtracker.py` | `bgtracker-cli.exe` |
+| `python collect.py` | `collect.exe` |
+| `python fetch_art.py --all` | `fetch-art.exe --all` |
+
+`bgtracker.exe --diag` prints where it reads and writes and every window it
+loaded. Paste that into any bug report.
+
+---
+
+## 2b. Running from source (developers)
+
+Same program, the code you can read. You need Python 3.10 or newer on PATH.
+
+**Step 1. Get the files.**
+
+```bash
+git clone https://github.com/BattlegroundsHelp/bgtracker.git
+```
+
+Or download the source ZIP from
+[github.com/BattlegroundsHelp/bgtracker](https://github.com/BattlegroundsHelp/bgtracker)
+(green **Code** button → **Download ZIP**) and extract it properly (right click →
+Extract All). Same rule about a folder you can write to: it keeps its cache, your
+window positions and your collected games next to itself.
+
+**Step 2.** Borderless windowed, exactly as above.
+
+**Step 3.** Double-click `bgtracker.bat`, or run `python overlay.py`.
+
+A minimised console called **bgtracker** appears on the taskbar; that is where it
+prints what it is doing. Quitting works the same way, the `✕` on the window
+titled **bgtracker**.
+
+The core has no third party dependencies. `pip install pillow` is optional and
+only buys card art (section 5). `python overlay.py --diag` prints the same
+diagnostic as the packaged build.
 
 ---
 
@@ -318,6 +371,7 @@ bgtracker.bat --mmr 10 --time past-seven
 | `--time last-patch\|past-seven\|past-three\|all-time` | How far back the stats go. Default `last-patch`. |
 | `--duo` | Use Duos hero stats (needs a `heroes_duo` source). Only heroes exist for Duos anywhere. |
 | `--demo <path-to-Power.log>` | Replay a finished log through the real windows. Good for testing without playing. |
+| `--diag` | Print where it reads and writes, and every window it loaded, then exit. The first thing to paste in a bug report. |
 
 **Console version (`python bgtracker.py`)** — no overlay, just text. Takes
 `--mmr`, `--time` and `--duo` as above, plus:
@@ -347,7 +401,7 @@ bgtracker.bat --mmr 10 --time past-seven
 |---|---|---|
 | **Nothing appears at all** | Hearthstone is in exclusive fullscreen. | Options → Graphics → **Borderless Windowed**. This is the number one cause. |
 | **Nothing appears, and it is already borderless** | The overlay only draws while Hearthstone is the front window. Or it crashed on launch. | Click on the game. Then restore the minimised **bgtracker** console from the taskbar and read the last lines: `hb ... front=True anchored=True` means it is alive and anchored; `anchored=False` means it cannot see the game window. |
-| **`'python' is not recognized`, or the Microsoft Store opens** | Windows ships a fake `python` that just opens the Store. | Install real Python from python.org with **Add python.exe to PATH** ticked. If the Store still hijacks it: Settings → Apps → Advanced app settings → **App execution aliases** → turn **off** `python.exe` and `python3.exe`. Then relaunch. |
+| **`'python' is not recognized`, or the Microsoft Store opens** | Windows ships a fake `python` that just opens the Store. | Easiest fix: use the download (section 2), which needs no Python. Otherwise install real Python from python.org with **Add python.exe to PATH** ticked; if the Store still hijacks it, Settings → Apps → Advanced app settings → **App execution aliases** → turn **off** `python.exe` and `python3.exe`, then relaunch. |
 | **Windows are in the wrong place, off screen, or stacked on each other** | A saved drag position from a different resolution or monitor. | Quit the overlay, delete `.overlay.json` in the repo folder, start again. Every window returns to its default slot. (This also clears your session history.) |
 | **The overlay covers cards I need to click** | Every window is draggable, individually. | Drag it by its header to somewhere better. It remembers. Note the badge strips drawn *on* the cards are click-through, so clicks reach the game, and they cannot be dragged yet. |
 | **No numbers anywhere: hero picks show names but no placements** | No stats source configured. This is the default state, not a bug. | Section 4. `python collect.py` then `python collect.py --local-feed`, then restart the overlay. |

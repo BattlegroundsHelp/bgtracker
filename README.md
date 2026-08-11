@@ -15,6 +15,10 @@ contributing your games to the community dataset is a strict opt-in.
 > and all card names and images are © Blizzard Entertainment, Inc. This is a
 > free, non-commercial, open-source fan tool.
 
+**Get it:** download
+[`bgtracker-windows.zip`](https://github.com/BattlegroundsHelp/bgtracker/releases),
+unzip, run `bgtracker.exe`. No Python, no install, Windows only.
+
 **New here? Start with [docs/USAGE.md](docs/USAGE.md)** — what you need, the
 three steps to running it, what each window shows on the first run, how to get
 numbers, and what to do when something looks wrong.
@@ -88,7 +92,33 @@ collected stats.
 
 Step by step, for a first run: **[docs/USAGE.md](docs/USAGE.md)**.
 
-Double-click **`bgtracker.bat`**. There is no one big data window: the overlay
+**The download needs no Python.** Grab **`bgtracker-windows.zip`** from the
+[Releases page](https://github.com/BattlegroundsHelp/bgtracker/releases), right
+click → **Extract All**, and double-click **`bgtracker.exe`** in the extracted
+folder. That is the whole install: it carries its own copy of Python, so nothing
+has to be installed on your machine. Keep the folder somewhere you can write to
+(`Documents` is fine, `C:\Program Files` is not) because the tool writes its
+cache, your saved window positions and your collected games next to the exe.
+`bgtracker.bat` starts the same thing with its console minimised.
+
+The exes are not code-signed, since a certificate costs money a free tool does
+not have. On a file you just downloaded, Windows SmartScreen may show a blue
+**"Windows protected your PC"** box where the only obvious button is **Don't
+run**; **More info** then **Run anyway** goes ahead. Whether it appears at all
+depends on your Windows version and settings, and some antivirus tools are wary
+of unsigned bundled Python for the same reason. If you would rather run code you
+can read, the source route is the same program.
+
+**From source (developers).** Python 3.10 or newer, no third party packages for
+the core, then double-click **`bgtracker.bat`** or run `python overlay.py`:
+
+```bash
+git clone https://github.com/BattlegroundsHelp/bgtracker.git
+cd bgtracker
+python overlay.py
+```
+
+There is no one big data window: the overlay
 is **a set of small windows, one per thing you might want to know**, and each
 opens and closes on its own trigger, at the moment it is about the thing in
 front of you.
@@ -133,9 +163,10 @@ plus `--demo <log>` to replay a Power.log through the UI.
 
 Optional, for real card portraits instead of colored dots:
 `pip install pillow`, then `python fetch_art.py --all` once (tiles + crops from
-the HearthstoneJSON CDN into `assets/`; re-run after a new card set).
+the HearthstoneJSON CDN into `assets/`; re-run after a new card set). In the
+download that is `fetch-art.exe --all`, with Pillow already inside.
 
-For the plain console version:
+For the plain console version (`bgtracker-cli.exe` in the download):
 
 ```bash
 python bgtracker.py
