@@ -110,8 +110,16 @@ import time
 import urllib.request
 from pathlib import Path
 
+try:
+    from paths import APP_DIR
+except ImportError:          # run directly: `python sim/engine.py`
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from paths import APP_DIR
+
 CARDS_URL = "https://api.hearthstonejson.com/v1/latest/enUS/cards.json"
-CACHE_DIR = Path(__file__).resolve().parent.parent / ".cache"
+# The script cache is a runtime write, so it belongs beside the exe in a frozen
+# build, not inside PyInstaller's read-only bundle. See paths.py.
+CACHE_DIR = APP_DIR / ".cache"
 SCRIPTS_CACHE = CACHE_DIR / "simscripts.json"
 CACHE_TTL = 86400
 DERIVED_VERSION = 4

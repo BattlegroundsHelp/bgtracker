@@ -31,12 +31,18 @@ import traceback
 from ctypes import wintypes
 from pathlib import Path
 
+from paths import APP_DIR
+
 try:  # crisp text on scaled displays
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
 except Exception:
     pass
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+# The folder the overlay owns: the repo when run from source, the folder
+# holding the exe in a frozen build. Never __file__ - frozen, that resolves
+# inside PyInstaller's private bundle, so saved window positions would be
+# written where the user cannot find them and thrown away by the next update.
+ROOT_DIR = APP_DIR
 ASSETS = ROOT_DIR / "assets"
 POS_FILE = ROOT_DIR / ".overlay.json"
 

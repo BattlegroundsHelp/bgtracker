@@ -28,6 +28,7 @@ late, disappear mid-fight, and leave a COMBAT header sitting over the tavern.
 import argparse
 import queue
 import re
+import sys
 import threading
 import time
 from pathlib import Path
@@ -697,6 +698,58 @@ class App:
         self.manager.root.mainloop()
 
 
+def diag():
+    """Print what this build actually loaded, then exit.
+
+    The failure mode a standalone build has and a source checkout does not is
+    "it starts, and shows nothing": a packer collects overlay.py, misses the
+    window modules, and the registry comes up short with no error anywhere.
+    So print the registry from INSIDE the program - every window class, the
+    module it really came from, and the events it asked for - plus the paths it
+    will read and write. Anyone can run `bgtracker.exe --diag` and paste the
+    output into a bug report.
+    """
+    import tkinter
+
+    from paths import app_dir, bundle_dir, frozen
+    print("bgtracker diag")
+    print(f"  frozen      {frozen()}")
+    print(f"  executable  {sys.executable}")
+    print(f"  app dir     {app_dir()}        (writes: .cache, data, assets, "
+          f".overlay.json, sources.json)")
+    print(f"  bundle dir  {bundle_dir()}     (code)")
+    print(f"  python      {sys.version.split()[0]}   tcl/tk "
+          f"{tkinter.TkVersion}")
+    try:
+        from PIL import Image  # noqa: F401
+        pil = "yes (card art can be drawn)"
+    except Exception as e:
+        pil = f"no ({e}) - the overlay draws colored dots instead"
+    print(f"  pillow      {pil}")
+    print(f"  msync       {'built' if bg.MSYNC_EXE.exists() else 'not built'}"
+          f"  ({bg.MSYNC_EXE})")
+    print(f"  sources     {'configured' if bg.SOURCES_FILE.exists() else 'none'}"
+          f"  ({bg.SOURCES_FILE})")
+
+    print(f"  sim         {sim_boards.__name__} + {sim_engine.__name__} loaded "
+          f"({len(sim_engine.SCRIPTS)} hand-written card scripts)")
+
+    print(f"\nui.WINDOWS registry: {len(ui.WINDOWS)} windows")
+    for cls in ui.WINDOWS:
+        print(f"  {cls.KEY:9} {cls.__name__:18} {cls.__module__:14} "
+              f"{cls.COLUMN:5} y+{cls.DY:<4} {','.join(cls.EVENTS)}")
+
+    mgr = WindowManager(ui.WINDOWS, names_fn=lambda: {})
+    router = Router(mgr.windows)
+    print(f"\nconstructed: {len(mgr.windows)} windows, "
+          f"{len(router.by_event)} distinct events routed")
+    print("  " + " ".join(w.heartbeat() for w in mgr.windows))
+    missing = [c.KEY for c in ui.WINDOWS if c.KEY not in mgr.by_key]
+    print(f"  missing: {missing or 'none'}")
+    mgr.root.destroy()
+    return 0 if not missing and len(mgr.windows) == len(ui.WINDOWS) else 1
+
+
 def main():
     ap = argparse.ArgumentParser(description="Anchored, per-concern Battlegrounds overlay.")
     ap.add_argument("--mmr", default="100", choices=["100", "50", "25", "10", "1"])
@@ -706,7 +759,11 @@ def main():
                     help="Duos hero stats (only heroes exist for Duos; comps, "
                          "trinkets and minions have no Duos feed)")
     ap.add_argument("--demo", help="replay a Power.log through the windows")
+    ap.add_argument("--diag", action="store_true",
+                    help="print the loaded windows and the paths in use, then exit")
     args = ap.parse_args()
+    if args.diag:
+        raise SystemExit(diag())
     App(args.mmr, args.time, Path(args.demo) if args.demo else None,
         duo=args.duo).run()
 

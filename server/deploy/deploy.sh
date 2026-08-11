@@ -19,7 +19,12 @@ DOMAIN="${2:-}"
 [ -n "$TARGET" ] || { echo "usage: deploy.sh root@<IP> [domain]"; exit 2; }
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # the server/ folder
-SSH="ssh -o StrictHostKeyChecking=accept-new $TARGET"
+# SSH_KEY lets you point at a key that is not one of ssh's default names,
+# which is the usual case when the box was created with a named DO key:
+#   SSH_KEY=~/.ssh/mykey bash server/deploy/deploy.sh root@<IP>
+KEYOPT=""
+[ -n "${SSH_KEY:-}" ] && KEYOPT="-i $SSH_KEY"
+SSH="ssh $KEYOPT -o StrictHostKeyChecking=accept-new $TARGET"
 HOSTPART="${TARGET#*@}"
 
 echo "==> 1/6 checking the box is reachable"
@@ -30,13 +35,24 @@ $SSH 'command -v docker >/dev/null 2>&1 || (curl -fsSL https://get.docker.com | 
 $SSH 'docker --version && (docker compose version || true)'
 
 echo "==> 3/6 copying the server"
-$SSH 'mkdir -p /opt/bgtracker'
-# data/ and out/ live on the box and are never overwritten by a deploy
-tar --exclude data --exclude out --exclude '__pycache__' -czf - -C "$HERE/.." server \
-  | $SSH 'tar -xzf - -C /opt/bgtracker'
+# scp, not tar-over-ssh: the pipe form dies under Git Bash on Windows
+# ("cygheap read copy failed"), and this has to work from the machine the
+# author actually uses. data/ and out/ live on the box and are never touched.
+$SSH 'mkdir -p /opt/bgtracker && rm -rf /opt/bgtracker/server.new'
+scp $KEYOPT -o StrictHostKeyChecking=accept-new -q -r "$HERE" "$TARGET:/opt/bgtracker/server.new"
+$SSH 'cd /opt/bgtracker && \
+      if [ -d server/data ]; then mv server/data server.new/data; fi && \
+      if [ -d server/out ]; then mv server/out server.new/out; fi && \
+      if [ -f server/.env ]; then mv server/.env server.new/.env; fi && \
+      rm -rf server && mv server.new server && rm -rf server/__pycache__'
 
 echo "==> 4/6 starting ingest + aggregate"
+# The image runs as uid 10001 (see Dockerfile: USER app), but a bind mount that
+# docker creates is owned by root, so the container cannot open its own SQLite
+# file. Create the dirs and hand them to that uid BEFORE starting, or ingest
+# crash-loops on "unable to open database file".
 $SSH 'cd /opt/bgtracker/server && \
+      mkdir -p data out && chown -R 10001:10001 data out && \
       ([ -f .env ] || echo "BGTRACKER_UPLOAD_TOKEN=" > .env) && \
       docker compose up -d --build && docker compose ps'
 

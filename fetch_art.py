@@ -16,12 +16,14 @@ Run once; it skips anything already on disk, so re-runs only fetch new cards.
 import argparse
 import concurrent.futures as cf
 import urllib.request
-from pathlib import Path
 
 import bgtracker as bg
+from paths import APP_DIR
 
 CDN = "https://art.hearthstonejson.com/v1"
-ASSETS = Path(__file__).parent / "assets"
+# Beside the exe when frozen (see paths.py), so the overlay finds the art this
+# just downloaded and an update does not wipe it.
+ASSETS = APP_DIR / "assets"
 
 
 def one(card_id: str, kind: str) -> str:

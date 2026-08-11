@@ -32,13 +32,18 @@ import time
 import urllib.request
 from pathlib import Path
 
+from paths import APP_DIR
+
 # There is NO built-in stats feed. To see numbers, create sources.json next to
 # this file with any of the keys
 #   heroes, heroes_duo, trinkets, comps, cards
 # each mapping to a URL or a local JSON file you have the right to use
 # ({mmr} and {time} placeholders are filled in). collect.py grows your own
 # dataset from your own games. See README: "Bring your own stats".
-SOURCES_FILE = Path(__file__).parent / "sources.json"
+# APP_DIR rather than __file__: in a frozen build __file__ points inside
+# PyInstaller's private bundle, so this file - and the cache, and the memory
+# reader - would land somewhere the user never sees. See paths.py.
+SOURCES_FILE = APP_DIR / "sources.json"
 
 CARDS_URL = "https://api.hearthstonejson.com/v1/latest/enUS/cards.json"
 
@@ -56,9 +61,9 @@ TRIBE_ID = {11: "UNDEAD", 14: "MURLOC", 15: "DEMON", 17: "MECHANICAL",
 
 # The memory reader that knows the lobby's tribes at hero select, which the log
 # never states. Built from native/msync (clean-room); absent until you build it.
-MSYNC_EXE = Path(__file__).parent / "native" / "msync" / "bin" / "Release" / "net48" / "msync.exe"
+MSYNC_EXE = APP_DIR / "native" / "msync" / "bin" / "Release" / "net48" / "msync.exe"
 
-CACHE_DIR = Path(__file__).parent / ".cache"
+CACHE_DIR = APP_DIR / ".cache"
 CACHE_TTL = 3600  # stats feeds typically rebuild hourly; don't refetch faster
 
 # Below this many games an average placement is noise, not a signal.
@@ -161,7 +166,7 @@ def load_stats(source, key: str, refresh: bool = False):
     if not source.startswith(("http://", "https://")):
         p = Path(source)
         if not p.is_absolute():
-            p = Path(__file__).parent / p
+            p = APP_DIR / p
         return json.loads(p.read_text(encoding="utf-8"))
     CACHE_DIR.mkdir(exist_ok=True)
     path = CACHE_DIR / (key + ".json")

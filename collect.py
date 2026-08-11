@@ -38,8 +38,16 @@ from collections import defaultdict
 from pathlib import Path
 
 import bgtracker as bg
+from paths import APP_DIR, BUNDLE_DIR, frozen
 
-DATA = Path(__file__).parent / "data"
+# How the person reading the output actually runs this program. Telling a
+# standalone-build user to "run python collect.py" is telling them to install
+# the thing the build exists to avoid.
+HOWTO = "collect.exe" if frozen() else "python collect.py"
+
+# Next to the exe when frozen, next to this file from source - never inside
+# PyInstaller's bundle, which the user cannot see and an update replaces.
+DATA = APP_DIR / "data"
 OUT = DATA / "games.jsonl"
 CLIENT_ID_FILE = DATA / "client_id"
 
@@ -412,7 +420,7 @@ def collect():
 
 def stats():
     if not OUT.exists():
-        print("no data yet - run `python collect.py` first")
+        print("no data yet - run `" + HOWTO + "` first")
         return
     recs = [json.loads(l) for l in OUT.read_text(encoding="utf-8").splitlines() if l.strip()]
     print(f"{len(recs)} games recorded")
@@ -452,7 +460,7 @@ def upload(base_url, token=None, batch=300):
     the logs themselves. This is what lets everyone's numbers get better without
     depending on anyone's paid data."""
     if not OUT.exists():
-        print("no data yet - run `python collect.py` first")
+        print("no data yet - run `" + HOWTO + "` first")
         return
     cid = client_id()
     recs = []
@@ -509,13 +517,14 @@ def local_feed():
     with real numbers from your own play, no third party involved. Thin samples
     stay flagged by the client; nothing is invented."""
     if not OUT.exists():
-        print("no data/games.jsonl yet - run `python collect.py` first")
+        print("no data/games.jsonl yet - run `" + HOWTO + "` first")
         return
     import os
     import sys
     feed_dir = DATA / "feed"
     os.environ["BGTRACKER_OUT"] = str(feed_dir)      # before the import: the
-    sys.path.insert(0, str(Path(__file__).parent / "server"))  # module reads env at load
+    # CODE, so BUNDLE_DIR: server/aggregate.py ships inside the frozen build.
+    sys.path.insert(0, str(BUNDLE_DIR / "server"))   # module reads env at load
     import aggregate as agg
     games = []
     with open(OUT, encoding="utf-8") as f:
@@ -542,7 +551,7 @@ def local_feed():
         agg.write(f"cards-{period}", {**agg.card_stats(window), "generatedAt": stamp, "games": len(window)})
         agg.write(f"comps-{period}", {**agg.comp_stats(window), "generatedAt": stamp, "games": len(window)})
         print(f"  {period:11} {len(window):6} of your games -> data/feed/")
-    src = Path(__file__).parent / "sources.json"
+    src = APP_DIR / "sources.json"
     if not src.exists():
         src.write_text(json.dumps({
             "heroes": "data/feed/heroes-{time}.json",
@@ -573,7 +582,7 @@ def main():
         local_feed()
     else:
         collect()
-        print("\ntip: `python collect.py --local-feed` turns these games into your own overlay numbers")
+        print("\ntip: `" + HOWTO + " --local-feed` turns these games into your own overlay numbers")
 
 
 if __name__ == "__main__":
