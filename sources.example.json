@@ -1,0 +1,7 @@
+{
+  "_comment": "Copy to sources.json and point it at YOUR stats host. {time} = all-time | past-seven | past-three | last-patch. A value may be an https URL or a local file path. Delete a line to leave that table with no data (the tool degrades to 'no numbers' rather than failing). See server/README.md to stand up your own feed on a VPS you already run.",
+  "heroes":   "https://stats.example.com/heroes-{time}.json",
+  "trinkets": "https://stats.example.com/trinkets-{time}.json",
+  "cards":    "https://stats.example.com/cards-{time}.json",
+  "comps":    "https://stats.example.com/comps-{time}.json"
+}

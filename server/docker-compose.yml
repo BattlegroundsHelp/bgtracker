@@ -1,0 +1,49 @@
+# bgtracker aggregator - a self-contained tenant for a VPS you already run.
+#
+# It shares nothing with your other project: its own containers, its own port
+# (bound to loopback), its own volumes under server/. Resource caps mean an
+# upload spike can never starve whatever else the box is doing. The host reverse
+# proxy is what exposes it - see server/README.md.
+#
+#   cd server && docker compose up -d --build
+#
+# Optional shared secret so only your clients can upload:
+#   echo "BGTRACKER_UPLOAD_TOKEN=$(openssl rand -hex 16)" > server/.env
+
+services:
+  ingest:
+    build: .
+    command: python ingest.py
+    environment:
+      BGTRACKER_DB: /data/games.db
+      BGTRACKER_BIND: 0.0.0.0            # inside the container; published only to 127.0.0.1 below
+      BGTRACKER_PORT: "8787"
+      BGTRACKER_UPLOAD_TOKEN: ${BGTRACKER_UPLOAD_TOKEN:-}
+      BGTRACKER_RATE: ${BGTRACKER_RATE:-120}
+    ports:
+      - "127.0.0.1:8787:8787"           # loopback only; the host nginx/Caddy proxies to it
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.50
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+
+  aggregate:
+    build: .
+    # Recompute on an interval, then sleep. Cheap: reads the DB, writes /out, idles.
+    command: sh -c "while true; do python aggregate.py; sleep ${AGG_INTERVAL:-3600}; done"
+    environment:
+      BGTRACKER_DB: /data/games.db
+      BGTRACKER_OUT: /out
+      BGTRACKER_PATCH_DATE: ${BGTRACKER_PATCH_DATE:-}
+    volumes:
+      - ./data:/data                     # same store the ingest writes (read-only use)
+      - ./out:/out                       # nginx serves this directory statically
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.50
+    depends_on:
+      - ingest

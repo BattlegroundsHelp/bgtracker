@@ -1,0 +1,25 @@
+# Non-Docker path: systemd unit for the ingest endpoint.
+# Install:  cp deploy/bgtracker-*.{service,timer} /etc/systemd/system/
+#           cp deploy/bgtracker.env.example /etc/bgtracker.env  (then edit)
+#           systemctl enable --now bgtracker-ingest.service bgtracker-aggregate.timer
+[Unit]
+Description=bgtracker ingest endpoint (opt-in game uploads)
+After=network.target
+
+[Service]
+Type=simple
+User=bgtracker
+WorkingDirectory=/opt/bgtracker/server
+EnvironmentFile=/etc/bgtracker.env
+ExecStart=/usr/bin/python3 ingest.py
+Restart=on-failure
+RestartSec=3
+# hardening - the endpoint only needs to write its own data dir
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/bgtracker/server/data
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

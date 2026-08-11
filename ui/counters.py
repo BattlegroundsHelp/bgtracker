@@ -1,0 +1,728 @@
+"""COUNTERS window - the numbers the game keeps about YOU, and nothing else.
+
+One dense strip along the top of the right column: the turn, the gold you have
+left out of the gold you get this turn, gold already promised for next turn,
+your tavern tier and what the next tier costs RIGHT NOW, the stacking tavern
+buffs, and what your board is made of.
+
+Every number here is a counter Hearthstone itself writes into Power.log. None
+of them is derived from a model, a stats feed or a guess, so a blank slot means
+"the log has not said yet" and is drawn as a dash - never as a zero.
+
+THE TAGS, AND THE LINE THAT PROVES EACH ONE
+-------------------------------------------
+All values are taken from the PowerTaskList copy only (the copy that is in sync
+with the screen). GameState writes the same tags seconds early - taking gold or
+tier from it would show next turn's numbers over this turn's shop. Identity
+lines (``PlayerID=n, PlayerName=x``) are read from either copy: they are not a
+lifecycle signal, they are who-am-I.
+
+Written against the local player's PLAYER entity (``Entity=<battletag>``):
+
+  RESOURCES                          the gold this turn gives you
+  RESOURCES_USED                     how much of it you have spent
+  TEMP_RESOURCES                     one-off gold on top (a coin, a trinket)
+  BACON_PLAYER_EXTRA_GOLD_NEXT_TURN  gold already banked for NEXT turn
+  BACON_ELEMENTAL_BUFFATKVALUE       the tavern's elemental buff, attack half
+  BACON_ELEMENTAL_BUFFHEALTHVALUE    ... and its health half
+  BACON_BLOODGEMBUFFATKVALUE         your Blood Gem size, attack half
+  BACON_BLOODGEMBUFFHEALTHVALUE      ... and its health half
+  PLAYER_TECH_LEVEL                  your tavern tier (also written on the hero)
+
+Written against an entity that carries ``player=<your id>``:
+
+  PLAYER_TECH_LEVEL                  on your hero, zone=PLAY
+  BACON_MAX_PLAYER_TECH_LEVEL        the ceiling this lobby allows
+  PLAYER_TRIPLES                     triples earned so far, on your hero
+  COST   on cardId=TB_BaconShopTechUp0N_Button, zone=PLAY
+                                     the LIVE price of the next tavern tier -
+                                     the button is re-created every turn at the
+                                     base price and then discounted by a
+                                     TAG_CHANGE, so last-write-wins is the price
+  BACON_FREE_REFRESH_COUNT           free rerolls, on the Refresh button
+  BACON_TURNS_LEFT_TO_DISCOVER_TRINKET
+                                     on BG30_Trinket_1st / _2nd while zone=PLAY
+
+Written against the game itself:
+
+  TAG_CHANGE Entity=GameEntity tag=TURN
+                                     Hearthstone counts TWO turns per
+                                     Battlegrounds round: the ODD value is your
+                                     recruit phase, the EVEN value after it is
+                                     that round's fight. Measured over one real
+                                     log (7 games): gold was SPENT on an odd
+                                     TURN 415 times and on an even TURN 0 times,
+                                     refilled 58 times on odd and 0 on even, and
+                                     every one of 164 combats started on an even
+                                     TURN. So the turn a player counts is
+                                     (TURN + 1) // 2, and TURN 1 is the first
+                                     shop (3 gold), not hero select - the draft
+                                     happens before TURN is written at all.
+
+NOT included, because no log line proves them: any per-tribe buff counter other
+than elemental and Blood Gem (the tag universe has none), and a per-tribe count
+of your own board - the log cannot give a trustworthy board, so those counts
+come from the ``board`` event, which the reader builds from the memory reader
+during RECRUIT only.
+
+WHERE THE LINES COME FROM
+-------------------------
+If the reader ever pushes a ``counters`` event, this window uses it and stops
+reading anything itself. Until then it tails Power.log on its own daemon
+thread: read-only, bounded backfill, no second copy of any other window's
+logic. The thread is started from ``tick()``, which only ever runs inside the
+live overlay - so the test harnesses (headless, and the render pass that never
+starts the manager poll) never touch the disk.
+
+Lifecycle: open while any counter is known for the current game, closed before
+that and reset by ``game``. It has no combat/tavern trigger of its own on
+purpose - counters are true in both phases, and keying them to a phase is how
+a surface ends up describing a moment that is not on screen. Repainting is
+driven off the manager's own poll, so no extra timer is added and the paint
+always happens on the Tk thread; the feed only ever assigns whole values to
+the state (the same shape as the memory reader's board), so the worst a race
+can do is show one counter a single frame ahead of its neighbour.
+"""
+
+from __future__ import annotations
+
+import re
+import threading
+import time
+from pathlib import Path
+
+import bgtracker as bg
+
+from .base import (ACCENT, AMBER, DIM, F_SUB, GOOD, LINE, PANEL_HI, SOFT,
+                   TRIBE_COLOR, TRIBE_TAG, BaseWindow, rrect)
+
+# The screen-synced copy. Every VALUE below is taken from it and nothing else.
+PTL = "PowerTaskList"
+
+# TAG_CHANGE Entity=<battletag|GameEntity|[bracket]> tag=X value=N
+# The bracket alternative is matched up to its own "player=N]" because entity
+# names legitimately contain brackets ("Bacon_Free_Refresh_Player_Ench [DNT]").
+TAGCHANGE_RE = re.compile(
+    r"TAG_CHANGE Entity=(?P<ent>\[.*?player=\d+\]|\S+) "
+    r"tag=(?P<tag>[A-Z0-9_]+) value=(?P<val>-?\d+)")
+BRACKET_RE = re.compile(
+    r"^\[entityName=(?P<name>.*) id=(?P<id>\d+) zone=(?P<zone>\w+) "
+    r"zonePos=(?P<pos>-?\d+) cardId=(?P<card>[\w_]*) player=(?P<player>\d+)\]$")
+# A FULL_ENTITY / SHOW_ENTITY header followed by indented bare "tag=" lines.
+# This is how a freshly created entity states its opening values - it is what
+# makes the tavern-upgrade price appear the moment the overlay starts mid-game
+# instead of one turn later.
+BLOCK_RE = re.compile(r"(?:FULL_ENTITY|SHOW_ENTITY) - Updating (?P<ent>\[.*?player=\d+\])")
+BARE_TAG_RE = re.compile(r"^D [\d:.]+ \w+\.DebugPrintPower\(\) - +"
+                         r"tag=(?P<tag>[A-Z0-9_]+) value=(?P<val>-?\d+)\s*$")
+# The log states the player-id -> battletag mapping outright. Same shape the
+# reader uses for the extra-gold tag; the battletag is only ever held in memory
+# to match lines, and is never drawn or written anywhere.
+PLAYERNAME_RE = re.compile(r"PlayerID=(\d+), PlayerName=(\S+)")
+PLAYERNAME_BYTES = re.compile(rb"PlayerID=(\d+), PlayerName=(\S+)")
+DRAGBUY = "TB_BaconShop_DragBuy"
+TECHUP_RE = re.compile(r"^TB_BaconShopTechUp0*(\d+)_Button$")
+TRINKET_SLOT = {"BG30_Trinket_1st": "lesser", "BG30_Trinket_2nd": "greater"}
+
+# Tags read off the local player's own entity, by battletag.
+PLAYER_TAGS = {
+    "RESOURCES": "gold_base",
+    "RESOURCES_USED": "gold_used",
+    "TEMP_RESOURCES": "gold_temp",
+    "BACON_PLAYER_EXTRA_GOLD_NEXT_TURN": "extra_next",
+    "PLAYER_TECH_LEVEL": "tier",
+    "BACON_ELEMENTAL_BUFFATKVALUE": "elem_atk",
+    "BACON_ELEMENTAL_BUFFHEALTHVALUE": "elem_hp",
+    "BACON_BLOODGEMBUFFATKVALUE": "gem_atk",
+    "BACON_BLOODGEMBUFFHEALTHVALUE": "gem_hp",
+}
+# Tags read off an entity we own, i.e. one whose bracket says player=<our id>.
+# Each names the zone it is only trusted in: a hero in SETASIDE is a draft
+# option, and a trinket in GRAVEYARD has already been spent.
+OWNED_TAGS = {
+    "PLAYER_TECH_LEVEL": ("tier", "PLAY"),
+    "BACON_MAX_PLAYER_TECH_LEVEL": ("max_tier", "PLAY"),
+    "PLAYER_TRIPLES": ("triples", "PLAY"),
+    "BACON_FREE_REFRESH_COUNT": ("free_rolls", "PLAY"),
+}
+
+_NAME_TRIBES = None
+
+
+def name_tribes() -> dict:
+    """minion name -> its tribes, from the LIVE card pool (cached a day by
+    bgtracker). Offline with no cache this is empty and the tribe chips simply
+    do not appear."""
+    global _NAME_TRIBES
+    if _NAME_TRIBES is None:
+        try:
+            _NAME_TRIBES = {m["name"]: set(m["races"]) for m in bg.bg_pool()}
+        except Exception:
+            _NAME_TRIBES = {}
+    return _NAME_TRIBES
+
+
+def tribe_counts(names) -> tuple:
+    """(tribe -> how many of them you have, how many count as every tribe).
+
+    An "ALL" minion (an Amalgam) is counted on its own instead of being added
+    to all ten - inflating a tribe count would be inventing a number.
+    """
+    tribes, wild = {}, 0
+    lookup = name_tribes()
+    for nm in names or ():
+        rs = lookup.get(nm)
+        if not rs:
+            continue
+        if "ALL" in rs:
+            wild += 1
+            continue
+        for r in rs:
+            if r in TRIBE_COLOR:
+                tribes[r] = tribes.get(r, 0) + 1
+    return tribes, wild
+
+
+class CounterState:
+    """Every counter the log states about you, for ONE game.
+
+    A pure function of the lines fed to it: no clock, no Tk, no threads. That
+    is what lets it be replayed against a real Power.log and checked against
+    the log by hand.
+    """
+
+    def __init__(self):
+        self.reset()
+
+    # -------------------------------------------------------------- lifecycle
+
+    def reset(self):
+        """Forget everything, including who we are."""
+        self.id_names = {}
+        self.new_game()
+
+    def new_game(self):
+        """A fresh game: every counter goes, and so does the player id (it is
+        re-issued each game). The id -> battletag MAP is kept: the log states
+        it once, before the first TURN is ever written, so throwing it away
+        here would leave us unable to name ourselves for the whole game."""
+        self.player = None          # our player id, as the log spells it
+        self.name = None            # our battletag; used to match, never shown
+        self.turn = None            # raw GameEntity TURN (2 per BG round)
+        self.gold_base = None
+        self.gold_used = 0
+        self.gold_temp = 0
+        self.extra_next = 0
+        self.tier = None
+        self.max_tier = None
+        self.triples = 0
+        self.free_rolls = 0
+        self.upgrade = {}           # tavern tier -> what it costs right now
+        self.trinket_in = {}        # "lesser"/"greater" -> turns left
+        self.elem_atk = self.elem_hp = 0
+        self.gem_atk = self.gem_hp = 0
+        self.board = []             # minion names, from the reader's board event
+        self.version = 0
+        self._blk = None
+        self._pending = {}          # writes seen mid-fight, held until recruit
+
+    def _bump(self, field, value):
+        if getattr(self, field) != value:
+            setattr(self, field, value)
+            self.version += 1
+
+    # ------------------------------------------------------------- properties
+
+    @property
+    def bg_turn(self):
+        """The turn a player counts. Hearthstone writes two per round."""
+        if not self.turn:
+            return None
+        return (self.turn + 1) // 2
+
+    @property
+    def in_combat(self):
+        """Even TURN values are the fight that closes the round."""
+        return bool(self.turn and self.turn % 2 == 0)
+
+    @property
+    def gold(self):
+        if self.gold_base is None:
+            return None
+        return max(0, self.gold_base + self.gold_temp - self.gold_used)
+
+    @property
+    def gold_max(self):
+        if self.gold_base is None:
+            return None
+        return self.gold_base + self.gold_temp
+
+    @property
+    def next_tier(self):
+        """The tier the tavern button is currently offering, if any."""
+        if self.tier is None:
+            return None
+        higher = [t for t in self.upgrade if t > self.tier]
+        return min(higher) if higher else None
+
+    @property
+    def next_cost(self):
+        nxt = self.next_tier
+        return self.upgrade.get(nxt) if nxt is not None else None
+
+    @property
+    def at_max_tier(self):
+        return bool(self.tier and self.max_tier and self.tier >= self.max_tier)
+
+    def known(self) -> bool:
+        """Is there anything real to draw? Never true off a blank state."""
+        return bool(self.bg_turn or self.gold_base is not None or self.tier
+                    or self.board or self.extra_next)
+
+    # ------------------------------------------------------------------ input
+
+    def set_board(self, names):
+        self.board = list(names or [])
+        self.version += 1
+
+    def apply(self, payload):
+        """Merge a reader-pushed ``counters`` payload. Unknown keys ignored."""
+        if not isinstance(payload, dict):
+            return
+        for k, v in payload.items():
+            if k in ("version", "_blk") or not hasattr(self, k):
+                continue
+            self._bump(k, v)
+
+    def feed(self, line: str):
+        """One raw Power.log line. Returns True when something changed."""
+        before = self.version
+
+        # Who are we? The mapping is stated in plain text and is not a
+        # lifecycle signal, so either copy may carry it.
+        if "PlayerID=" in line:
+            m = PLAYERNAME_RE.search(line)
+            if m:
+                self.id_names[m.group(1)] = m.group(2)
+                self._resolve()
+
+        if PTL not in line:
+            return self.version != before
+
+        if "FULL_ENTITY" in line or "SHOW_ENTITY" in line:
+            self._entity_line(line)
+            return self.version != before
+
+        m = TAGCHANGE_RE.search(line)
+        if m:
+            self._blk = None
+            self._tag(m.group("ent"), m.group("tag"), int(m.group("val")))
+            return self.version != before
+
+        bare = BARE_TAG_RE.match(line)
+        if bare is not None:
+            if self._blk is not None:
+                self._tag(self._blk, bare.group("tag"), int(bare.group("val")))
+            return self.version != before
+
+        self._blk = None
+        return self.version != before
+
+    # ----------------------------------------------------------------- detail
+
+    def _resolve(self):
+        if self.player is not None and self.name is None:
+            self.name = self.id_names.get(self.player)
+
+    def _entity_line(self, line):
+        """A FULL_ENTITY header: learn who we are, and open a tag block.
+
+        Two independent ways to be named, measured on a real log: the hero
+        draft deals OUR options into zone=HAND and it happens BEFORE the first
+        TURN is written; and a drag-to-buy token is re-created for us in every
+        single recruit phase (seen at TURN=1 and again at TURN=3), so the id is
+        recoverable within one turn even if the overlay starts mid-game.
+
+        A draft naming a DIFFERENT player id is a new game - that is the
+        earliest honest new-game signal there is, earlier than TURN resetting.
+        """
+        e = bg.ENTITY_RE.match(line)
+        if e is not None:
+            card, zone = e["card"], e["zone"]
+            draft = zone == "HAND" and "HERO_" in card
+            if draft and self.player is not None and e["player"] != self.player:
+                self.new_game()
+            if (draft or card == DRAGBUY) and self.player is None:
+                self.player = e["player"]
+                self.version += 1
+                self._resolve()
+        b = BLOCK_RE.search(line)
+        self._blk = b.group("ent") if b else None
+
+    def _tag(self, ent, tag, val):
+        if ent == "GameEntity":
+            if tag == "TURN":
+                if self.turn is not None and val < self.turn:
+                    self.new_game()       # the counter restarted: a new game
+                self._bump("turn", val)
+                if val % 2 and self._pending:
+                    # The shop is back. Everything the fight wrote lands now,
+                    # last-write-wins - and the last write of a fight is always
+                    # your own state restored, so this is the honest value AND
+                    # it keeps the gold the fight banked for you.
+                    for f, v in self._pending.items():
+                        self._bump(f, v)
+                    self._pending.clear()
+            return
+
+        if not ent.startswith("["):
+            if self.name is not None and ent == self.name:
+                field = PLAYER_TAGS.get(tag)
+                if field is None:
+                    return
+                if self.in_combat:
+                    # A fight rewrites your own player entity as it mirrors the
+                    # match: measured inside one fight, our tier went 4 -> 0 ->
+                    # 6 -> 4 and the Blood Gem buff +11/+8 -> +0/+0 -> +11/+8.
+                    # Hold it all until the shop is back rather than show a
+                    # number that belongs to whoever we are fighting.
+                    self._pending[field] = val
+                    return
+                self._bump(field, val)
+            return
+
+        br = BRACKET_RE.match(ent)
+        if br is None or self.player is None or br.group("player") != self.player:
+            return
+        if self.in_combat:
+            # DURING A FIGHT "player=<our id>" stops meaning "ours": the
+            # opponent's hero and trinkets are mirrored into our controller.
+            # Measured inside one real fight, our tier read 3, then 2 (the
+            # opponent's), then 3 again, and the trinket countdown jumped
+            # 3 -> 0 -> 8 -> 2. Nothing here can legitimately change mid-fight,
+            # so the recruit-phase values simply stand - the same freeze the
+            # reader already applies to your board.
+            return
+        card, zone = br.group("card"), br.group("zone")
+
+        owned = OWNED_TAGS.get(tag)
+        if owned is not None and zone == owned[1]:
+            self._bump(owned[0], val)
+            return
+        if tag == "COST" and zone == "PLAY":
+            up = TECHUP_RE.match(card or "")
+            if up is not None:
+                # The button is re-created each turn at the base price and then
+                # discounted, so the newest write is the live price.
+                tier = int(up.group(1))
+                # Every re-creation writes COST=0 and immediately overwrites it
+                # with the real price (measured: id=278 got 0 then 5, then the
+                # next turn's button got 4). A free tavern-up is real, but the
+                # price only ever walks DOWN one per turn, so a genuine 0 can
+                # only arrive from 1 - anything else is that transient.
+                if val == 0 and self.upgrade.get(tier) != 1:
+                    return
+                if self.upgrade.get(tier) != val:
+                    self.upgrade[tier] = val
+                    self.version += 1
+            return
+        if tag == "BACON_TURNS_LEFT_TO_DISCOVER_TRINKET" and zone == "PLAY":
+            slot = TRINKET_SLOT.get(card)
+            if slot is not None and self.trinket_in.get(slot) != val:
+                self.trinket_in[slot] = val
+                self.version += 1
+
+
+class CounterFeed(threading.Thread):
+    """Tails Power.log into a CounterState, read-only, on its own thread.
+
+    Bounded backfill: the tail of the current log is replayed first so that
+    starting the overlay mid-game fills the strip immediately, and the SAME
+    handle then keeps reading - so no line written during the backfill is
+    lost. A rotation (Hearthstone starting a new log) restarts the state.
+
+    How far back it starts is not a guess: a cheap chunked pass finds the LAST
+    ``PlayerID=n, PlayerName=x`` in the file, which the client writes once per
+    game in its opening dump, and the replay starts there - i.e. at the top of
+    the game you are actually in. Two things forced that:
+
+      * the map itself. A fixed 32 MB tail found it in one of three real logs
+        and left the other two with no gold, no tier ceiling and no buffs at
+        all, because nothing on the player entity can be attributed without it.
+      * RESOURCES only fires when it CHANGES, so once your gold caps it is
+        never restated. Joining a capped game mid-way from a fixed tail leaves
+        the maximum-gold number permanently unknown.
+
+    BACKFILL caps the work if that dump is very far back (a marathon session
+    in one log); the scan decodes nothing, so the pass itself is cheap.
+    """
+
+    daemon = True
+    BACKFILL = 128 * 1024 * 1024     # hard cap on how much history to replay
+    POLL = 0.25
+
+    def __init__(self, state: CounterState, path=None, backfill=None, once=False):
+        super().__init__()
+        self.state = state
+        self.path = path
+        self.backfill = self.BACKFILL if backfill is None else backfill
+        self.once = once             # replay to EOF and stop (tests)
+        self.error = None
+        self._stop = False
+
+    def stop(self):
+        self._stop = True
+
+    def run(self):
+        try:
+            self._run()
+        except Exception as e:                    # a dead feed must not shout
+            self.error = str(e)
+
+    CHUNK = 8 << 20
+    OVERLAP = 96                     # a match may straddle two chunks
+
+    def _scan_identity(self, f):
+        """Collect every ``PlayerID=n, PlayerName=x``, newest wins, and return
+        the byte offset of the last one - the top of the current game.
+
+        Chunked bytes search: a chunk with no match is rejected by one
+        substring test, so this reads the file without decoding it.
+        """
+        f.seek(0)
+        tail, pos, last = b"", 0, 0
+        while True:
+            chunk = f.read(self.CHUNK)
+            if not chunk:
+                break
+            buf = tail + chunk
+            if b"PlayerID=" in buf:
+                for m in PLAYERNAME_BYTES.finditer(buf):
+                    self.state.id_names[m.group(1).decode()] = \
+                        m.group(2).decode("utf-8", "ignore")
+                    last = max(last, pos + m.start())
+            keep = buf[-self.OVERLAP:]
+            pos += len(buf) - len(keep)
+            tail = keep
+        return last
+
+    def _run(self):
+        path = self.path or bg.newest_power_log()
+        if path is None:
+            self.error = "no Power.log"
+            return
+        path = Path(path)
+        f = open(path, "rb")
+        try:
+            size = path.stat().st_size
+            if self.backfill and size > self.backfill:
+                # Start at the top of the current game, unless that is further
+                # back than we are willing to read.
+                start = max(self._scan_identity(f), size - self.backfill)
+                f.seek(start)
+                f.readline()                      # drop the half line we landed in
+            last_check = 0.0
+            while not self._stop:
+                pos = f.tell()
+                raw = f.readline()
+                if raw:
+                    if not raw.endswith(b"\n"):
+                        f.seek(pos)               # still being written; wait
+                    else:
+                        # Cheap byte prefilter so most of the log is never
+                        # decoded: tag writes, the id->battletag map, and the
+                        # *_ENTITY headers that name the local player.
+                        if (b"tag=" in raw or b"PlayerID=" in raw
+                                or b"_ENTITY" in raw):
+                            self.state.feed(raw.decode("utf-8", "ignore"))
+                        continue
+                if self.once:
+                    return
+                time.sleep(self.POLL)
+                now = time.monotonic()
+                if now - last_check < 2.0:
+                    continue
+                last_check = now
+                newest = bg.newest_power_log()
+                if newest and newest != path:
+                    f.close()
+                    path = newest
+                    f = open(path, "rb")
+                    self.state.reset()
+        finally:
+            try:
+                f.close()
+            except Exception:
+                pass
+
+
+class CountersWindow(BaseWindow):
+    KEY = "counters"
+    TITLE = "COUNTERS"
+    COLUMN = "right"
+    DY = 8
+    RESERVE = 62
+    MAX_H = 62                      # the band above COMBAT (y+70); never spills
+    WIDTH = 316
+    EVENTS = ("counters", "board", "gold", "game")
+
+    ROW_H = 15
+    GAP = 5
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.state = CounterState()
+        self._feed = None
+        self._external = False      # a reader is pushing 'counters' events
+        self._seen = -1
+
+    # ------------------------------------------------------------- lifecycle
+
+    def reset(self):
+        # new_game(), not reset(): the reader announces a game on the hero
+        # draft, which the log writes AFTER it has stated the id -> battletag
+        # map for that game. Throwing the map away here would leave the strip
+        # unable to recognise its own player for the whole game.
+        self.state.new_game()
+        self._seen = self.state.version
+        self.hide()
+
+    def on_event(self, name, payload):
+        if name == "game":
+            self.reset()
+            return
+        if name == "counters":
+            # A reader took over: stop reading the log ourselves rather than
+            # have two sources disagree about the same number.
+            self._external = True
+            self._stop_feed()
+            self.state.apply(payload)
+        elif name == "board":
+            self.state.set_board((payload or {}).get("names"))
+        elif name == "gold":
+            # The reader's gold event is BACON_PLAYER_EXTRA_GOLD_NEXT_TURN. Our
+            # own feed reads the same tag from the screen-synced copy, so it
+            # wins; this is only the fallback when we are not reading at all.
+            if self._feed is None:
+                self.state.extra_next = payload or 0
+                self.state.version += 1
+        self._sync()
+
+    def tick(self, rect, game_front):
+        # Started here and nowhere else: tick() only runs under the live
+        # manager poll, so no test harness ever opens the log.
+        if (not self.headless and not self._external and self._feed is None
+                and rect is not None):
+            self._start_feed()
+        if self.state.version != self._seen:
+            self._sync()
+        super().tick(rect, game_front)
+
+    def _start_feed(self):
+        try:
+            self._feed = CounterFeed(self.state)
+            self._feed.start()
+        except Exception:
+            self._feed = None
+
+    def _stop_feed(self):
+        if self._feed is not None:
+            try:
+                self._feed.stop()
+            except Exception:
+                pass
+            self._feed = None
+
+    def _sync(self):
+        self._seen = self.state.version
+        if self.state.known():
+            self.show()
+        else:
+            self.hide()
+
+    # --------------------------------------------------------------- drawing
+
+    def _chip(self, c, x, y, text, fill, limit):
+        """One counter pill. Returns the next x, or None when it would not fit
+        - chips are drawn in importance order, so overflow drops the least
+        important instead of clipping."""
+        t = c.create_text(x + 8, y + self.ROW_H // 2 + 1, text=text, anchor="w",
+                          fill=fill, font=F_SUB)
+        x2 = c.bbox(t)[2] + 8
+        if x2 > limit:
+            c.delete(t)
+            return None
+        r = rrect(c, x, y, x2, y + self.ROW_H, 7, fill=PANEL_HI, outline=LINE)
+        c.tag_lower(r, t)
+        return x2 + self.GAP
+
+    def _chips(self):
+        """(text, colour) for every counter that has a value, most useful
+        first. A counter the log has not stated is simply absent - except the
+        three the strip always keeps a slot for, which show a dash."""
+        s = self.state
+        out = []
+
+        gold, gmax = s.gold, s.gold_max
+        out.append((f"{gold}/{gmax}g" if gold is not None else "—g",
+                    AMBER if gold else DIM))
+        out.append((f"T{s.tier}" if s.tier else "T—",
+                    ACCENT if s.tier else DIM))
+        if s.at_max_tier:
+            out.append(("top tier", DIM))
+        elif s.next_cost is not None:
+            afford = gold is not None and gold >= s.next_cost
+            out.append((f"↑T{s.next_tier} {s.next_cost}g", GOOD if afford else SOFT))
+        else:
+            out.append(("↑ —", DIM))
+
+        if s.extra_next:
+            out.append((f"+{s.extra_next}g next", GOOD))
+        if s.elem_atk or s.elem_hp:
+            out.append((f"elem +{s.elem_atk}/+{s.elem_hp}", TRIBE_COLOR["ELEMENTAL"]))
+        if s.gem_atk or s.gem_hp:
+            out.append((f"gem +{s.gem_atk}/+{s.gem_hp}", TRIBE_COLOR["QUILBOAR"]))
+
+        tribes, wild = tribe_counts(s.board)
+        for t, n in sorted(tribes.items(), key=lambda kv: (-kv[1], kv[0]))[:3]:
+            out.append((f"{TRIBE_TAG[t]} {n}", TRIBE_COLOR[t]))
+        if wild:
+            out.append((f"any {wild}", SOFT))
+
+        # From here down are extras: they are the ones that get dropped when
+        # the two rows are full, so the counters the strip promises always fit.
+        if s.free_rolls:
+            out.append((f"{s.free_rolls} free roll" + ("s" if s.free_rolls > 1 else ""),
+                        GOOD))
+        if s.triples:
+            out.append((f"{s.triples} triple" + ("s" if s.triples > 1 else ""), SOFT))
+        nxt_trinket = min((v for v in s.trinket_in.values() if v > 0), default=None)
+        if nxt_trinket:
+            out.append((f"trinket in {nxt_trinket}", SOFT))
+        return out
+
+    def draw(self, c):
+        s = self.state
+        turn = s.bg_turn
+        dot = None if turn is None else (AMBER if s.in_combat else GOOD)
+        y = self.header(c, f"turn {turn}" if turn else "turn —", DIM, dot=dot)
+
+        if not s.known():
+            c.create_text(14, y + 8, text="waiting for a game", anchor="w",
+                          fill=DIM, font=F_SUB)
+            return y + 22
+
+        limit = self.WIDTH - 12
+        x, rows = 12, 1
+        for text, fill in self._chips():
+            nx = self._chip(c, x, y, text, fill, limit)
+            if nx is None:
+                if rows >= 2:
+                    break               # the band is two rows; drop the rest
+                rows += 1
+                x, y = 12, y + self.ROW_H + 2
+                nx = self._chip(c, x, y, text, fill, limit)
+                if nx is None:
+                    break
+            x = nx
+        return y + self.ROW_H + 3

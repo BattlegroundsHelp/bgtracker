@@ -1,0 +1,36 @@
+# runtime output
+__pycache__/
+*.pyc
+.ruff_cache/
+.cache/
+data/
+tests/.livetest/
+.overlay.json
+overlay_out.log
+overlay_err.log
+fetch_art.log
+
+# card art is fetched, not shipped (python fetch_art.py)
+assets/
+
+# the memory reader is a knowing opt-in build (native/msync); the compiled
+# binary is not shipped
+native/msync/bin/
+native/msync/obj/
+
+# the old memory reader is retired; any local leftovers stay out
+vendor/
+launch_out.log
+launch_err.log
+
+# your personal stats configuration - never committed
+sources.json
+
+# aggregator runtime state (server/) - the DB, the generated feed, the secret.
+# server/data is already covered by data/ above; listed here for clarity.
+server/data/
+server/out/
+server/.env
+
+# local notes
+EMAIL_FIRESTONE.md

@@ -1,0 +1,16 @@
+# Non-Docker path: one aggregation pass. Driven by bgtracker-aggregate.timer.
+[Unit]
+Description=bgtracker stats aggregation (one pass)
+After=network.target
+
+[Service]
+Type=oneshot
+User=bgtracker
+WorkingDirectory=/opt/bgtracker/server
+EnvironmentFile=/etc/bgtracker.env
+ExecStart=/usr/bin/python3 aggregate.py
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/bgtracker/server/out
+ProtectHome=true
+PrivateTmp=true

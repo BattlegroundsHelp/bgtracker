@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    msync - a small, single-purpose reader for Hearthstone's Battlegrounds
+    lobby state (tribes, rating, your board) out of the running client's
+    managed memory.
+
+    This is a clean-room reimplementation of the standard Mono/Unity managed-heap
+    walk. Every struct offset below is dictated by the PUBLIC Mono runtime source
+    that Unity ships (Unity-Technologies/mono: metadata-internals.h,
+    class-internals.h, domain-internals.h) and the Microsoft PE format spec. It
+    reads process memory read-only and never writes to or injects into the game.
+
+    Credit: the technique is the one every Unity memory tool uses; the layout
+    facts are Unity's and Mono's, published under their own licenses.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>msync</AssemblyName>
+    <RootNamespace>Bgtracker.Msync</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+</Project>

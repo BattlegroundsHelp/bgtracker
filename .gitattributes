@@ -1,0 +1,5 @@
+# Fixture logs and frozen id lists must survive checkout byte-for-byte on any
+# platform - CI's regression counts depend on parsing exactly these bytes.
+* text=auto
+*.log -text
+*.json -text

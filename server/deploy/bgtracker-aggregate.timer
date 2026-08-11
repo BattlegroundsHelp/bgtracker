@@ -1,0 +1,11 @@
+# Rebuild the stats feed hourly (matches the 15-min client cache comfortably).
+[Unit]
+Description=Run bgtracker aggregation hourly
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

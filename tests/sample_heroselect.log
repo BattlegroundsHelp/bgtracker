@@ -1,0 +1,801 @@
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Kel'Thuzad id=55 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_KelThuzad player=3] CardID=TB_BaconShop_HERO_KelThuzad
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=ZONE value=SETASIDE
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=55
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=FACTION value=NEUTRAL
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CANT_BE_DESTROYED value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=7
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=BACON_IS_KEL_THUZAD value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Bartender Bob id=56 zone=PLAY zonePos=0 cardId=TB_BaconShopBob player=11] CardID=TB_BaconShopBob
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=11
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=HEALTH value=60
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=ZONE value=PLAY
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=56
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=LINKED_ENTITY value=30
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=7
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=HIDE_STATS value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=HIDE_HEALTH value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=3085 value=60
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=BaconShop8PlayerEnchant id=57 zone=PLAY zonePos=0 cardId=TB_BaconShop_8P_PlayerE player=3] CardID=TB_BaconShop_8P_PlayerE
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=ENCHANTMENT
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=ATTACHED value=8
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=ZONE value=PLAY
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=57
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=8
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=1724 value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=SHOW_DISCOVER_FROM_DECK value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=2882 value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=3ofKindCheckPlayerEnchant id=58 zone=PLAY zonePos=0 cardId=TB_BaconShop_3ofKindChecke player=3] CardID=TB_BaconShop_3ofKindChecke
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=ENCHANTMENT
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=ATTACHED value=8
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=ZONE value=PLAY
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=58
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=8
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=STATE value=RUNNING 
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=Player#12345 tag=PLAYSTATE value=PLAYING 
+D 13:29:31.0066452 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=MalhoLuzente tag=PLAYSTATE value=PLAYING 
+D 13:29:31.0066452 PowerTaskList.DebugDump() - Block End=(null)
+D 13:29:31.0066452 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=1
+D 13:29:31.2897782 GameState.DebugPrintPowerList() - Count=70
+D 13:29:31.2897782 GameState.DebugPrintPower() - TAG_CHANGE Entity=GameEntity tag=STEP value=BEGIN_MULLIGAN 
+D 13:29:31.2897782 GameState.DebugPrintPower() - BLOCK_START BlockType=TRIGGER Entity=GameEntity EffectCardId=System.Collections.Generic.List`1[System.String] EffectIndex=0 Target=0 SubOption=-1 TriggerKeyword=TAG_NOT_SET
+D 13:29:31.2897782 GameState.DebugPrintPower() -     FULL_ENTITY - Creating ID=93 CardID=BG36_HERO_105
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ZONE value=HAND
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ENTITY_ID value=93
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ZONE_POSITION value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=NUM_TURNS_IN_HAND value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ARMOR value=12
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CREATOR value=7
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HERO_POWER value=134010
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=3085 value=30
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=4901 value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=4901 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     FULL_ENTITY - Creating ID=94 CardID=TB_BaconShop_HERO_76
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ZONE value=HAND
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ENTITY_ID value=94
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=FACTION value=NEUTRAL
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ZONE_POSITION value=2
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=NUM_TURNS_IN_HAND value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ARMOR value=15
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CREATOR value=7
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HERO_POWER value=64402
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=BACON_COMPANION_ID value=77447
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=3085 value=30
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=3190 value=100
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=3206 value=13
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=4901 value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=4901 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     FULL_ENTITY - Creating ID=95 CardID=TB_BaconShop_HERO_67
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ZONE value=HAND
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ENTITY_ID value=95
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=FACTION value=NEUTRAL
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ZONE_POSITION value=3
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=NUM_TURNS_IN_HAND value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ARMOR value=14
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CREATOR value=7
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HERO_POWER value=62267
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=BACON_COMPANION_ID value=77776
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=2954 value=15
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=3085 value=30
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=3206 value=12
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=4901 value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=4901 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=ARMOR value=15 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     FULL_ENTITY - Creating ID=96 CardID=BG23_HERO_304
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ZONE value=HAND
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ENTITY_ID value=96
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ZONE_POSITION value=4
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=NUM_TURNS_IN_HAND value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=ARMOR value=16
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=CREATOR value=7
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HERO_POWER value=85126
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=BACON_COMPANION_ID value=101458
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=BACON_SUBSET_NAGA value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=3085 value=30
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=3190 value=100
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=3206 value=14
+D 13:29:31.2897782 GameState.DebugPrintPower() -         tag=4901 value=1
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=4901 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=BACON_LOCKED_MULLIGAN_HERO value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=BACON_LOCKED_MULLIGAN_HERO value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=2210 value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=BATTLEGROUNDS_FAVORITE_FINISHER value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=1068 value=6 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=1068 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=ZONE_POSITION value=3 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=ZONE_POSITION value=2 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=ZONE_POSITION value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=ZONE value=SETASIDE 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=4741 value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=LAST_AFFECTED_BY value=7 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=1068 value=3 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=1068 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=ZONE value=HAND 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=ZONE_POSITION value=4 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=2210 value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=BATTLEGROUNDS_FAVORITE_FINISHER value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=1068 value=6 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=1068 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=ZONE_POSITION value=3 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=ZONE_POSITION value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=ZONE value=SETASIDE 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=4741 value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=LAST_AFFECTED_BY value=7 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=1068 value=3 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=1068 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=ZONE value=HAND 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=ZONE_POSITION value=4 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=2210 value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=BATTLEGROUNDS_FAVORITE_FINISHER value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=1068 value=6 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=1068 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=ZONE_POSITION value=3 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=ZONE_POSITION value=2 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=ZONE_POSITION value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=ZONE value=SETASIDE 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=4741 value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=LAST_AFFECTED_BY value=7 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=1068 value=3 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=1068 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=ZONE value=HAND 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=ZONE_POSITION value=4 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=2210 value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=BATTLEGROUNDS_FAVORITE_FINISHER value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=1068 value=6 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=1068 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=95 tag=ZONE_POSITION value=3 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=96 tag=ZONE_POSITION value=2 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=94 tag=ZONE_POSITION value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=ZONE_POSITION value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=ZONE value=SETASIDE 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=4741 value=1 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=LAST_AFFECTED_BY value=7 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=1068 value=3 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=1068 value=0 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=ZONE value=HAND 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=93 tag=ZONE_POSITION value=4 
+D 13:29:31.2897782 GameState.DebugPrintPower() -     TAG_CHANGE Entity=Player#12345 tag=MULLIGAN_STATE value=INPUT 
+D 13:29:31.4701549 GameState.DebugPrintEntityChoices() - id=1 Player=Player#12345 TaskList=7 ChoiceType=MULLIGAN CountMin=1 CountMax=1
+D 13:29:31.4701549 GameState.DebugPrintEntityChoices() -   Source=GameEntity
+D 13:29:31.4701549 GameState.DebugPrintEntityChoices() -   Entities[0]=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3]
+D 13:29:31.4701549 GameState.DebugPrintEntityChoices() -   Entities[1]=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3]
+D 13:29:31.4701549 GameState.DebugPrintEntityChoices() -   Entities[2]=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3]
+D 13:29:31.4701549 GameState.DebugPrintEntityChoices() -   Entities[3]=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3]
+D 13:29:32.1297438 GameState.DebugPrintPowerList() - Count=17
+D 13:29:32.1297438 GameState.DebugPrintPower() - BLOCK_END
+D 13:29:32.1297438 GameState.DebugPrintPower() - FULL_ENTITY - Creating ID=126 CardID=TB_BaconShop_HP_085t
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=CONTROLLER value=11
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=CARDTYPE value=HERO_POWER
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=TAG_SCRIPT_DATA_NUM_1 value=3
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=TAG_SCRIPT_DATA_NUM_2 value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=TRIGGER_VISUAL value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=ZONE value=SETASIDE
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=ENTITY_ID value=126
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=CREATOR value=121
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=AURA value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=REVEALED value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=HIDE_COST value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=CREATOR_DBID value=122960
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=SPAWN_TIME_COUNT value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=2169 value=8
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=BACON_HEROPOWER_BASE_HERO_ID value=64400
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=BACON_TRIGGER_UPBEAT value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=4901 value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=126 tag=4901 value=0 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=126 tag=4741 value=1 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=126 tag=COPIED_FROM_ENTITY_ID value=121 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=126 tag=3669 value=1 
+D 13:29:32.1297438 GameState.DebugPrintPower() - FULL_ENTITY - Creating ID=127 CardID=TB_BaconShop_HERO_75
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=CONTROLLER value=11
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=CARDTYPE value=HERO
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=PLAYER_ID value=8
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=HEALTH value=30
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=ZONE value=SETASIDE
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=ENTITY_ID value=127
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=FACTION value=NEUTRAL
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=RARITY value=FREE
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=ARMOR value=10
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=CREATOR value=99
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=HERO_POWER value=122960
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=REVEALED value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=CREATOR_DBID value=64400
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=PLAYER_LEADERBOARD_PLACE value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=SPAWN_TIME_COUNT value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=USE_LEADERBOARD_AS_SPAWN_ORIGIN value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=HERO_POWER_ENTITY value=126
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=BACON_COMPANION_ID value=77823
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=HAS_ACTIVATE_POWER value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=3085 value=30
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=3190 value=100
+D 13:29:32.1297438 GameState.DebugPrintPower() -     tag=4901 value=1
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=127 tag=4901 value=0 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=127 tag=LINKED_ENTITY value=39 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=127 tag=2210 value=1 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=127 tag=BATTLEGROUNDS_FAVORITE_FINISHER value=1 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=127 tag=4741 value=1 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=127 tag=LAST_AFFECTED_BY value=22 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=127 tag=COPIED_FROM_ENTITY_ID value=99 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=127 tag=3669 value=1 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=127 tag=LINKED_ENTITY value=0 
+D 13:29:32.1297438 GameState.DebugPrintPower() - TAG_CHANGE Entity=127 tag=3025 value=30 
+D 13:29:32.1472118 GameState.DebugPrintPowerList() - Count=1
+D 13:29:32.1472118 GameState.DebugPrintPower() - TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=3026 value=10 
+D 13:29:32.3170236 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=1
+D 13:29:32.3296250 PowerTaskList.DebugDump() - ID=2 ParentID=1 PreviousID=0 TaskCount=0
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() - BLOCK_START BlockType=TRIGGER Entity=GameEntity EffectCardId=System.Collections.Generic.List`1[System.String] EffectIndex=0 Target=0 SubOption=-1 TriggerKeyword=3169
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() - BLOCK_END
+D 13:29:32.3296250 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=2
+D 13:29:32.3296250 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=2
+D 13:29:32.3296250 PowerTaskList.DebugDump() - ID=3 ParentID=0 PreviousID=0 TaskCount=0
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() - BLOCK_START BlockType=TRIGGER Entity=GameEntity EffectCardId=System.Collections.Generic.List`1[System.String] EffectIndex=0 Target=0 SubOption=-1 TriggerKeyword=TAG_NOT_SET
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() - BLOCK_END
+D 13:29:32.3296250 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=3
+D 13:29:32.3296250 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=3
+D 13:29:32.3296250 PowerTaskList.DebugDump() - ID=4 ParentID=0 PreviousID=0 TaskCount=0
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() - BLOCK_START BlockType=TRIGGER Entity=GameEntity EffectCardId=System.Collections.Generic.List`1[System.String] EffectIndex=0 Target=0 SubOption=-1 TriggerKeyword=TAG_NOT_SET
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() - BLOCK_END
+D 13:29:32.3296250 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=4
+D 13:29:32.3296250 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=4
+D 13:29:32.3296250 PowerTaskList.DebugDump() - ID=5 ParentID=0 PreviousID=0 TaskCount=24
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() - BLOCK_START BlockType=TRIGGER Entity=GameEntity EffectCardId=System.Collections.Generic.List`1[System.String] EffectIndex=0 Target=0 SubOption=-1 TriggerKeyword=TAG_NOT_SET
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=Bartender Bob tag=CURRENT_PLAYER value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=Bartender Bob tag=FIRST_PLAYER value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=Player#12345 tag=NUM_TURNS_LEFT value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=Bartender Bob tag=NUM_TURNS_LEFT value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=10 value=70 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=Player#12345 tag=TIMEOUT value=45 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=NEXT_STEP value=BEGIN_MULLIGAN 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=ALLOW_MOVE_MINION value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=ALLOW_MOVE_BACON_SPELL value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=FORCE_NO_CUSTOM_SUMMON_SPELLS value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=FORCE_NO_CUSTOM_LIFETIME_SPELLS value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=USE_FAST_ACTOR_TRANSITION_ANIMATIONS value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=HIGHLIGHT_ATTACKING_MINION_DURING_COMBAT value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=DONT_SUPPRESS_KEYWORD_VO value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=BACON_USE_COIN_BASED_BUDDY_METER value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=3488 value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=4298 value=9 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=4301 value=4 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=BACON_NUM_MAX_REROLL_PER_HERO value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=3475 value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=TUTORIAL_HERO_POWER_TARGET_MINION_ANIM value=20 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=BACON_COMBAT_DAMAGE_CAP value=2 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=BACON_COMBAT_DAMAGE_CAP_ENABLED value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=BACON_MAX_LEADERBOARD_ARMOR value=20 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() - BLOCK_END
+D 13:29:32.3296250 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=5
+D 13:29:32.3296250 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=5
+D 13:29:32.3296250 PowerTaskList.DebugDump() - ID=6 ParentID=0 PreviousID=0 TaskCount=1
+D 13:29:32.3296250 PowerTaskList.DebugDump() - Block Start=(null)
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=STEP value=BEGIN_MULLIGAN 
+D 13:29:32.3296250 PowerTaskList.DebugDump() - Block End=(null)
+D 13:29:32.3296250 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=6
+D 13:29:32.3296250 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=6
+D 13:29:32.3296250 PowerTaskList.DebugDump() - ID=7 ParentID=6 PreviousID=0 TaskCount=68
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() - BLOCK_START BlockType=TRIGGER Entity=GameEntity EffectCardId=System.Collections.Generic.List`1[System.String] EffectIndex=0 Target=0 SubOption=-1 TriggerKeyword=TAG_NOT_SET
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] CardID=BG36_HERO_105
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ZONE value=HAND
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=93
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ZONE_POSITION value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=NUM_TURNS_IN_HAND value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ARMOR value=12
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=7
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HERO_POWER value=134010
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=3085 value=30
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=4901 value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=4901 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] CardID=TB_BaconShop_HERO_76
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ZONE value=HAND
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=94
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=FACTION value=NEUTRAL
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ZONE_POSITION value=2
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=NUM_TURNS_IN_HAND value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ARMOR value=15
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=7
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HERO_POWER value=64402
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=BACON_COMPANION_ID value=77447
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=3085 value=30
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=3190 value=100
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=3206 value=13
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=4901 value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=4901 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] CardID=TB_BaconShop_HERO_67
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ZONE value=HAND
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=95
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=FACTION value=NEUTRAL
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ZONE_POSITION value=3
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=NUM_TURNS_IN_HAND value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ARMOR value=14
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=7
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HERO_POWER value=62267
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=BACON_COMPANION_ID value=77776
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=2954 value=15
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=3085 value=30
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=3206 value=12
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=4901 value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=4901 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=ARMOR value=15 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] CardID=BG23_HERO_304
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=3
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ZONE value=HAND
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=96
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CLASS value=NEUTRAL
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ZONE_POSITION value=4
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=NUM_TURNS_IN_HAND value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=ARMOR value=16
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=7
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HERO_POWER value=85126
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=BACON_COMPANION_ID value=101458
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=BACON_SUBSET_NAGA value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=3085 value=30
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=3190 value=100
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=3206 value=14
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -         tag=4901 value=1
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=4901 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=BACON_LOCKED_MULLIGAN_HERO value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=BACON_LOCKED_MULLIGAN_HERO value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=2210 value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=BATTLEGROUNDS_FAVORITE_FINISHER value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=1068 value=6 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=1068 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=ZONE_POSITION value=3 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=ZONE_POSITION value=2 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=ZONE_POSITION value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=ZONE value=SETASIDE 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=4741 value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=LAST_AFFECTED_BY value=7 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=1068 value=3 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=1068 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=ZONE value=HAND 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=ZONE_POSITION value=4 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=2210 value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=BATTLEGROUNDS_FAVORITE_FINISHER value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=1068 value=6 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=1068 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=ZONE_POSITION value=3 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=ZONE_POSITION value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=ZONE value=SETASIDE 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=4741 value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=LAST_AFFECTED_BY value=7 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=1068 value=3 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=1068 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=ZONE value=HAND 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=ZONE_POSITION value=4 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=2210 value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=BATTLEGROUNDS_FAVORITE_FINISHER value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=1068 value=6 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=1068 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=ZONE_POSITION value=3 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=ZONE_POSITION value=2 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=ZONE_POSITION value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=ZONE value=SETASIDE 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=4741 value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=LAST_AFFECTED_BY value=7 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=1068 value=3 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=1068 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=ZONE value=HAND 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=ZONE_POSITION value=4 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=2210 value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=BATTLEGROUNDS_FAVORITE_FINISHER value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=1068 value=6 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=1068 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Captain Hooktusk id=95 zone=HAND zonePos=3 cardId=TB_BaconShop_HERO_67 player=3] tag=ZONE_POSITION value=3 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3] tag=ZONE_POSITION value=2 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Al'Akir id=94 zone=HAND zonePos=2 cardId=TB_BaconShop_HERO_76 player=3] tag=ZONE_POSITION value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=ZONE_POSITION value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=ZONE value=SETASIDE 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=4741 value=1 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=LAST_AFFECTED_BY value=7 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=1068 value=3 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=1068 value=0 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=ZONE value=HAND 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Nightmare Lord Xavius id=93 zone=HAND zonePos=1 cardId=BG36_HERO_105 player=3] tag=ZONE_POSITION value=4 
+D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=Player#12345 tag=MULLIGAN_STATE value=INPUT 
+D 13:29:32.3296250 PowerTaskList.DebugDump() - Block End=(null)
+D 13:29:32.3296250 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=7
+D 13:29:32.6383135 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=7
+D 13:29:32.6469607 PowerTaskList.DebugDump() - ID=8 ParentID=0 PreviousID=7 TaskCount=0
+D 13:29:32.6469607 PowerTaskList.DebugDump() - Block Start=(null)
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() - BLOCK_END
+D 13:29:32.6469607 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=8
+D 13:29:32.6469607 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=8
+D 13:29:32.6469607 PowerTaskList.DebugDump() - ID=9 ParentID=0 PreviousID=0 TaskCount=16
+D 13:29:32.6469607 PowerTaskList.DebugDump() - Block Start=(null)
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Tavern Lighting id=126 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HP_085t player=11] CardID=TB_BaconShop_HP_085t
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=11
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO_POWER
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=TAG_SCRIPT_DATA_NUM_1 value=3
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=TAG_SCRIPT_DATA_NUM_2 value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=TRIGGER_VISUAL value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=ZONE value=SETASIDE
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=126
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=121
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=AURA value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=REVEALED value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=HIDE_COST value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=CREATOR_DBID value=122960
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=2169 value=8
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=BACON_HEROPOWER_BASE_HERO_ID value=64400
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=BACON_TRIGGER_UPBEAT value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=4901 value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Tavern Lighting id=126 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HP_085t player=11] tag=4901 value=0 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Tavern Lighting id=126 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HP_085t player=11] tag=4741 value=1 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Tavern Lighting id=126 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HP_085t player=11] tag=COPIED_FROM_ENTITY_ID value=121 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Tavern Lighting id=126 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HP_085t player=11] tag=3669 value=1 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] CardID=TB_BaconShop_HERO_75
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=11
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=PLAYER_ID value=8
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=ZONE value=SETASIDE
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=127
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=FACTION value=NEUTRAL
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=ARMOR value=10
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=99
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=HERO_POWER value=122960
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=REVEALED value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=CREATOR_DBID value=64400
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=PLAYER_LEADERBOARD_PLACE value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=USE_LEADERBOARD_AS_SPAWN_ORIGIN value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=HERO_POWER_ENTITY value=126
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=BACON_COMPANION_ID value=77823
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=3085 value=30
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=3190 value=100
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -         tag=4901 value=1
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=4901 value=0 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=LINKED_ENTITY value=39 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=2210 value=1 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=BATTLEGROUNDS_FAVORITE_FINISHER value=1 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=4741 value=1 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=LAST_AFFECTED_BY value=22 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=COPIED_FROM_ENTITY_ID value=99 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=3669 value=1 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=LINKED_ENTITY value=0 
+D 13:29:32.6469607 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=3025 value=30 
+D 13:29:32.6469607 PowerTaskList.DebugDump() - Block End=(null)
+D 13:29:32.6469607 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=9
+D 13:29:32.6658639 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=9
+D 13:29:32.6796602 PowerTaskList.DebugDump() - ID=10 ParentID=0 PreviousID=0 TaskCount=1
+D 13:29:32.6796602 PowerTaskList.DebugDump() - Block Start=(null)
+D 13:29:32.6796602 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Rakanishu id=127 zone=SETASIDE zonePos=0 cardId=TB_BaconShop_HERO_75 player=11] tag=3026 value=10 
+D 13:29:32.6796602 PowerTaskList.DebugDump() - Block End=(null)
+D 13:29:32.6796602 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=10
+D 13:29:32.6796602 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=10
+D 13:29:41.7433725 GameState.DebugPrintPowerList() - Count=17
+D 13:29:41.7433725 GameState.DebugPrintPower() - FULL_ENTITY - Creating ID=139 CardID=BG22_HERO_002p
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=CONTROLLER value=11
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=CARDTYPE value=HERO_POWER
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=TAG_SCRIPT_DATA_NUM_1 value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=TRIGGER_VISUAL value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=ZONE value=SETASIDE
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=ENTITY_ID value=139
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=CREATOR value=136
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=REVEALED value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=HIDE_COST value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=CREATOR_DBID value=80244
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=BACON_HERO_POWER_ACTIVATED value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=1506 value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=START_OF_COMBAT value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=SPAWN_TIME_COUNT value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=1567 value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=2169 value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=BACON_HEROPOWER_BASE_HERO_ID value=80239
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=4901 value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=139 tag=4901 value=0 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=139 tag=LOCK_VISUAL value=1 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=139 tag=4741 value=1 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=139 tag=COPIED_FROM_ENTITY_ID value=136 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=139 tag=3669 value=1 
+D 13:29:41.7433725 GameState.DebugPrintPower() - FULL_ENTITY - Creating ID=140 CardID=BG22_HERO_002
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=CONTROLLER value=11
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=CARDTYPE value=HERO
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=PLAYER_ID value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=HEALTH value=30
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=ZONE value=SETASIDE
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=ENTITY_ID value=140
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=FACTION value=NEUTRAL
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=RARITY value=FREE
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=ARMOR value=10
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=CREATOR value=116
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=HERO_POWER value=80244
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=REVEALED value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=CREATOR_DBID value=80239
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=PLAYER_LEADERBOARD_PLACE value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=SPAWN_TIME_COUNT value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=USE_LEADERBOARD_AS_SPAWN_ORIGIN value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=HERO_POWER_ENTITY value=139
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=BACON_COMPANION_ID value=77884
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=HAS_ACTIVATE_POWER value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=3085 value=30
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=3190 value=100
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=3206 value=8
+D 13:29:41.7433725 GameState.DebugPrintPower() -     tag=4901 value=1
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=140 tag=4901 value=0 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=140 tag=LINKED_ENTITY value=25 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=140 tag=2210 value=1 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=140 tag=BATTLEGROUNDS_FAVORITE_FINISHER value=58 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=140 tag=4741 value=1 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=140 tag=LAST_AFFECTED_BY value=1 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=140 tag=COPIED_FROM_ENTITY_ID value=116 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=140 tag=3669 value=1 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=140 tag=LINKED_ENTITY value=0 
+D 13:29:41.7433725 GameState.DebugPrintPower() - TAG_CHANGE Entity=140 tag=3025 value=30 
+D 13:29:41.7433725 PowerTaskList.DebugDump() - ID=11 ParentID=0 PreviousID=0 TaskCount=17
+D 13:29:41.7433725 PowerTaskList.DebugDump() - Block Start=(null)
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Frostwolf Fervor id=139 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002p player=11] CardID=BG22_HERO_002p
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=11
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO_POWER
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=TAG_SCRIPT_DATA_NUM_1 value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=TRIGGER_VISUAL value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=ZONE value=SETASIDE
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=139
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=136
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=REVEALED value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=HIDE_COST value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=CREATOR_DBID value=80244
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=BACON_HERO_POWER_ACTIVATED value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=1506 value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=START_OF_COMBAT value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=1567 value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=2169 value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=BACON_HEROPOWER_BASE_HERO_ID value=80239
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=4901 value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Frostwolf Fervor id=139 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002p player=11] tag=4901 value=0 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Frostwolf Fervor id=139 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002p player=11] tag=LOCK_VISUAL value=1 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Frostwolf Fervor id=139 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002p player=11] tag=4741 value=1 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Frostwolf Fervor id=139 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002p player=11] tag=COPIED_FROM_ENTITY_ID value=136 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Frostwolf Fervor id=139 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002p player=11] tag=3669 value=1 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] CardID=BG22_HERO_002
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=11
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=PLAYER_ID value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=ZONE value=SETASIDE
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=140
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=FACTION value=NEUTRAL
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=ARMOR value=10
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=116
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=HERO_POWER value=80244
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=REVEALED value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=CREATOR_DBID value=80239
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=PLAYER_LEADERBOARD_PLACE value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=USE_LEADERBOARD_AS_SPAWN_ORIGIN value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=HERO_POWER_ENTITY value=139
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=BACON_COMPANION_ID value=77884
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=3085 value=30
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=3190 value=100
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=3206 value=8
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -         tag=4901 value=1
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=4901 value=0 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=LINKED_ENTITY value=25 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=2210 value=1 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=BATTLEGROUNDS_FAVORITE_FINISHER value=58 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=4741 value=1 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=LAST_AFFECTED_BY value=1 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=COPIED_FROM_ENTITY_ID value=116 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=3669 value=1 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=LINKED_ENTITY value=0 
+D 13:29:41.7433725 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=3025 value=30 
+D 13:29:41.7433725 PowerTaskList.DebugDump() - Block End=(null)
+D 13:29:41.7433725 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=11
+D 13:29:41.7597411 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=11
+D 13:29:41.9051071 GameState.DebugPrintPowerList() - Count=1
+D 13:29:41.9051071 GameState.DebugPrintPower() - TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=3026 value=10 
+D 13:29:41.9051071 PowerTaskList.DebugDump() - ID=12 ParentID=0 PreviousID=0 TaskCount=1
+D 13:29:41.9051071 PowerTaskList.DebugDump() - Block Start=(null)
+D 13:29:41.9051071 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Drek'Thar id=140 zone=SETASIDE zonePos=0 cardId=BG22_HERO_002 player=11] tag=3026 value=10 
+D 13:29:41.9051071 PowerTaskList.DebugDump() - Block End=(null)
+D 13:29:41.9051071 PowerProcessor.PrepareHistoryForCurrentTaskList() - m_currentTaskList=12
+D 13:29:41.9051071 PowerProcessor.EndCurrentTaskList() - m_currentTaskList=12
+D 13:29:42.7379145 GameState.DebugPrintPowerList() - Count=17
+D 13:29:42.7379145 GameState.DebugPrintPower() - FULL_ENTITY - Creating ID=156 CardID=BG30_HERO_304p
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=CONTROLLER value=11
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=CARDTYPE value=HERO_POWER
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=TAG_SCRIPT_DATA_NUM_1 value=4
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=ZONE value=SETASIDE
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=ENTITY_ID value=156
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=CREATOR value=151
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=REVEALED value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=HIDE_COST value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=CREATOR_DBID value=113311
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=SPAWN_TIME_COUNT value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=2169 value=4
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=BACON_HEROPOWER_BASE_HERO_ID value=113310
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=TAG_SCRIPT_DATA_NUM_6 value=3
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=BACON_TRIGGER_UPBEAT value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=3169 value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=BACON_IS_MAGIC_ITEM_DISCOVER value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=4901 value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=156 tag=4901 value=0 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=156 tag=LOCK_VISUAL value=1 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=156 tag=4741 value=1 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=156 tag=COPIED_FROM_ENTITY_ID value=151 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=156 tag=3669 value=1 
+D 13:29:42.7379145 GameState.DebugPrintPower() - FULL_ENTITY - Creating ID=157 CardID=BG30_HERO_304
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=CONTROLLER value=11
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=CARDTYPE value=HERO
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=PLAYER_ID value=4
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=HEALTH value=30
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=ZONE value=SETASIDE
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=ENTITY_ID value=157
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=RARITY value=FREE
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=ARMOR value=12
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=CREATOR value=104
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=HERO_POWER value=113311
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=REVEALED value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=CREATOR_DBID value=113310
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=PLAYER_LEADERBOARD_PLACE value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=SPAWN_TIME_COUNT value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=USE_LEADERBOARD_AS_SPAWN_ORIGIN value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=HERO_POWER_ENTITY value=156
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=BACON_COMPANION_ID value=122323
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=HAS_ACTIVATE_POWER value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=3085 value=30
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=3206 value=10
+D 13:29:42.7379145 GameState.DebugPrintPower() -     tag=4901 value=1
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=157 tag=4901 value=0 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=157 tag=LINKED_ENTITY value=31 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=157 tag=2210 value=35 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=157 tag=BATTLEGROUNDS_FAVORITE_FINISHER value=30 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=157 tag=4741 value=1 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=157 tag=LAST_AFFECTED_BY value=10 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=157 tag=COPIED_FROM_ENTITY_ID value=104 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=157 tag=3669 value=1 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=157 tag=LINKED_ENTITY value=0 
+D 13:29:42.7379145 GameState.DebugPrintPower() - TAG_CHANGE Entity=157 tag=3025 value=30 
+D 13:29:42.7379145 PowerTaskList.DebugDump() - ID=13 ParentID=0 PreviousID=0 TaskCount=17
+D 13:29:42.7379145 PowerTaskList.DebugDump() - Block Start=(null)
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Fantastic Treasure id=156 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304p player=11] CardID=BG30_HERO_304p
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=11
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO_POWER
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=TAG_SCRIPT_DATA_NUM_1 value=4
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=ZONE value=SETASIDE
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=156
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=151
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=REVEALED value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=HIDE_COST value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=CREATOR_DBID value=113311
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=2169 value=4
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=BACON_HEROPOWER_BASE_HERO_ID value=113310
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=TAG_SCRIPT_DATA_NUM_6 value=3
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=BACON_TRIGGER_UPBEAT value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=3169 value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=BACON_IS_MAGIC_ITEM_DISCOVER value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=4901 value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Fantastic Treasure id=156 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304p player=11] tag=4901 value=0 
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Fantastic Treasure id=156 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304p player=11] tag=LOCK_VISUAL value=1 
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Fantastic Treasure id=156 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304p player=11] tag=4741 value=1 
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Fantastic Treasure id=156 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304p player=11] tag=COPIED_FROM_ENTITY_ID value=151 
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Fantastic Treasure id=156 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304p player=11] tag=3669 value=1 
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating [entityName=Marin the Manager id=157 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304 player=11] CardID=BG30_HERO_304
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=CONTROLLER value=11
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=CARDTYPE value=HERO
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=PLAYER_ID value=4
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=HEALTH value=30
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=ZONE value=SETASIDE
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=ENTITY_ID value=157
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=RARITY value=FREE
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=ARMOR value=12
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=CREATOR value=104
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=HERO_POWER value=113311
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=REVEALED value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=CREATOR_DBID value=113310
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=PLAYER_LEADERBOARD_PLACE value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=SUPPRESS_ALL_SUMMON_VO value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=BACON_HERO_CAN_BE_DRAFTED value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=SPAWN_TIME_COUNT value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=USE_LEADERBOARD_AS_SPAWN_ORIGIN value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=HERO_POWER_ENTITY value=156
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=BACON_COMPANION_ID value=122323
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=HAS_ACTIVATE_POWER value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=3085 value=30
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=3206 value=10
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -         tag=4901 value=1
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Marin the Manager id=157 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304 player=11] tag=4901 value=0 
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Marin the Manager id=157 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304 player=11] tag=LINKED_ENTITY value=31 
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Marin the Manager id=157 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304 player=11] tag=2210 value=35 
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Marin the Manager id=157 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304 player=11] tag=BATTLEGROUNDS_FAVORITE_FINISHER value=30 
+D 13:29:42.7379145 PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=[entityName=Marin the Manager id=157 zone=SETASIDE zonePos=0 cardId=BG30_HERO_304 player=11] tag=4741 value=1 

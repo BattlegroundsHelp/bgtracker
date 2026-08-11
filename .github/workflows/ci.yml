@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lint (errors only)
+        run: |
+          python -m pip install ruff
+          python -m ruff check --select E9,F63,F7,F82 .
+      - name: Offline regression (19 hero + 36 trinket offers)
+        run: python tests/test_regression.py
