@@ -61,6 +61,30 @@ taskbar; that is normal, it is where the tool prints what it is doing. Leave it
 alone. `bgtracker.bat` starts the same program with that console minimised, if
 you prefer it out of the way.
 
+### Optional: use a custom Hearthstone Logs directory
+
+Copy `settings.example.json` to `settings.json` in the same folder as
+`bgtracker.exe` (download) or `bgtracker.py` (source), then replace the example
+value with the parent Logs directory:
+
+```json
+{
+  "hearthstone_logs_dir": "D:\\Games\\Hearthstone\\Logs"
+}
+```
+
+This must point to the folder containing the rotating
+`Hearthstone_<timestamp>\Power.log` directories, not directly to one
+`Power.log`. Relative paths are resolved beside `settings.json`; Windows
+environment variables such as `%ProgramFiles(x86)%` and `~` are supported.
+`settings.json` is gitignored and should never be committed or shared with
+personal paths.
+Without `settings.json`, or with an empty `hearthstone_logs_dir`, the historical
+default `C:\Program Files (x86)\Hearthstone\Logs` remains active. A non-existing
+configured path never falls back to that default: the console reports the path,
+and the overlay stays running while waiting for a valid log. Invalid JSON is
+reported as a settings error and should be corrected before restarting.
+
 **About the Windows warning.** These exes are not code-signed, because a signing
 certificate costs money a free tool does not have. On a file you just downloaded,
 Windows SmartScreen may show a blue box titled **"Windows protected your PC"**
@@ -115,6 +139,10 @@ window positions and your collected games next to itself.
 A minimised console called **bgtracker** appears on the taskbar; that is where it
 prints what it is doing. Quitting works the same way, the `✕` on the window
 titled **bgtracker**.
+
+The same optional `settings.json` configuration described in section 2 applies
+to source runs. Keep it beside `bgtracker.py`; do not point
+`hearthstone_logs_dir` at an individual `Power.log`.
 
 The core has no third party dependencies. `pip install pillow` is optional and
 only buys card art (section 5). `python overlay.py --diag` prints the same
@@ -405,6 +433,7 @@ bgtracker.bat --mmr 10 --time past-seven
 | **Windows are in the wrong place, off screen, or stacked on each other** | A saved drag position from a different resolution or monitor. | Quit the overlay, delete `.overlay.json` in the repo folder, start again. Every window returns to its default slot. (This also clears your session history.) |
 | **The overlay covers cards I need to click** | Every window is draggable, individually. | Drag it by its header to somewhere better. It remembers. Note the badge strips drawn *on* the cards are click-through, so clicks reach the game, and they cannot be dragged yet. |
 | **No numbers anywhere: hero picks show names but no placements** | No stats source configured. This is the default state, not a bug. | Section 4. `python collect.py` then `python collect.py --local-feed`, then restart the overlay. |
+| **The log path is wrong, or settings.json is rejected** | A custom Logs directory is missing, points at a file/Power.log, or the JSON is invalid. | Check the console message for the exact path and source. Correct `settings.json` beside the app, use the parent Logs directory, and restart. |
 | **Numbers appear but say "thin"** | Fewer than 30 games behind that row. | Correct behaviour. Read it as no signal. It fills in as you play. |
 | **Tavern stars look blunt, or a minion has none** | With no `cards` source the stars are the curated signal, which only rates comp-core minions and minions of a viable tribe. | Expected. Add a `cards` source (section 4) and every rated minion gets a measured star inside its own tavern tier. |
 | **Odds are not showing in COMBAT** | One of the warbands could not be fully recovered from the log, so nothing is shown rather than a made up number. Or the fight is already over. | Expected. If it never shows on any fight, report it (section 8) with the round number. |

@@ -21,7 +21,7 @@ instead of against belief:
 Usage:
     python tests/test_windows.py [<Power.log> ...]
 
-With no arguments it uses the newest Power.log under the Hearthstone install.
+With no arguments it uses the newest Power.log under the configured Logs directory.
 With no Power.log available at all it SKIPS (exit 0) - a real log is player
 data and is deliberately not in the repository.
 """
@@ -442,7 +442,11 @@ def render_check(sample):
 def main(argv):
     logs = [Path(a) for a in argv[1:]]
     if not logs:
-        newest = bg.newest_power_log()
+        try:
+            newest = bg.newest_power_log()
+        except bg.LogSettingsError as exc:
+            print(f"FAIL: {exc}")
+            return 1
         if not newest:
             print("SKIP: no Power.log on this machine")
             return 0

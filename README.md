@@ -118,6 +118,34 @@ cd bgtracker
 python overlay.py
 ```
 
+### Configure the Hearthstone log directory
+
+The optional local `settings.json` lives next to `bgtracker.py` when running
+from source, or next to the published `bgtracker.exe` in the extracted Windows
+folder. Start with the versioned `settings.example.json`:
+
+```text
+copy settings.example.json settings.json
+```
+
+Then set the directory that contains the rotating
+`Hearthstone_<timestamp>\Power.log` folders, for example:
+
+```json
+{
+  "hearthstone_logs_dir": "D:\\Games\\Hearthstone\\Logs"
+}
+```
+
+The value is the parent **Logs** directory, not a path to one individual
+`Power.log`. Relative paths are resolved beside `settings.json`; Windows
+environment variables such as `%ProgramFiles(x86)%` and `~` are supported.
+`settings.json` is gitignored and must stay local.
+Without `settings.json`, or with an empty value, bgtracker keeps using the
+historical default `C:\Program Files (x86)\Hearthstone\Logs`. A configured path
+is used exclusively: if it is invalid or has no log yet, the console and
+overlay report the exact path and do not silently switch to the default.
+
 There is no one big data window: the overlay
 is **a set of small windows, one per thing you might want to know**, and each
 opens and closes on its own trigger, at the moment it is about the thing in
@@ -237,10 +265,12 @@ instead of ranked on a global average.
 
 ## How it works
 
-**Game side.** Hearthstone writes `Power.log` under
+**Game side.** By default Hearthstone writes `Power.log` under
 `C:\Program Files (x86)\Hearthstone\Logs\Hearthstone_<timestamp>\`, driven by
-`log.config` in `%LOCALAPPDATA%\Blizzard\Hearthstone`. The offered cards show up
-already named:
+`log.config` in `%LOCALAPPDATA%\Blizzard\Hearthstone`. The optional
+`settings.json` override above changes only the parent Logs directory; the
+tracker still discovers the newest session folder and follows rotation. The
+offered cards show up already named:
 
 ```
 FULL_ENTITY - Updating [entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=BG23_HERO_304 player=3]

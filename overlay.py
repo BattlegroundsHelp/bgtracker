@@ -155,6 +155,7 @@ class Reader(threading.Thread):
             self.q.put(("status", f"loading failed: {e}"))
             return
         self.q.put(("status", f"top {self.mmr}% · {self.period}"))
+        self.q.put(("status", bg.log_path_status()))
 
         det = bg.OfferDetector(heroes, trinket_ids, hero_ids, names=bg.card_names())
         choice = bg.ChoiceReader()
@@ -171,6 +172,9 @@ class Reader(threading.Thread):
                     with open(cur, "r", encoding="utf-8", errors="ignore") as bf:
                         for _line in bf:
                             odds.feed(_line)
+            except bg.LogSettingsError as e:
+                self.q.put(("status", f"Hearthstone log settings error: {e}"))
+                return
             except Exception:
                 pass                    # backfill is best-effort
         memory = None
@@ -624,10 +628,21 @@ class Reader(threading.Thread):
             self.q.put(("status", "replay finished"))
             return
 
-        path = bg.newest_power_log()
-        if not path:
-            self.q.put(("status", "no Power.log - is Hearthstone installed?"))
-            return
+        last_waiting_status = None
+        while True:
+            try:
+                path = bg.newest_power_log()
+            except bg.LogSettingsError as e:
+                self.q.put(("status", f"Hearthstone log settings error: {e}"))
+                return
+            if path:
+                break
+            waiting_status = bg.no_power_log_message(waiting=True)
+            if waiting_status != last_waiting_status:
+                self.q.put(("status", waiting_status))
+                last_waiting_status = waiting_status
+            time.sleep(5)
+        self.q.put(("status", bg.log_path_status()))
         for line in bg.follow(path):
             if line is None:
                 emit_hero(det.flush())

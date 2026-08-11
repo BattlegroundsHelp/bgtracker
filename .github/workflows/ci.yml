@@ -18,3 +18,5 @@ jobs:
           python -m ruff check --select E9,F63,F7,F82 .
       - name: Offline regression (19 hero + 36 trinket offers)
         run: python tests/test_regression.py
+      - name: Configured Hearthstone log path regression
+        run: python tests/test_log_config.py

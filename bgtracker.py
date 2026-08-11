@@ -32,6 +32,23 @@ import time
 import urllib.request
 from pathlib import Path
 
+
+SETTINGS_NAME = "settings.json"
+
+
+def application_dir() -> Path:
+    """Return the directory next to the source tree or the published exe.
+
+    PyInstaller one-file builds execute the bundled source from a temporary
+    extraction directory. User configuration belongs next to the executable,
+    so frozen builds must use ``sys.executable`` instead of ``__file__``.
+    """
+    if getattr(sys, "frozen", False):
+        executable = getattr(sys, "executable", "")
+        if executable:
+            return Path(executable).resolve().parent
+    return Path(__file__).resolve().parent
+
 # There is NO built-in stats feed. To see numbers, create sources.json next to
 # this file with any of the keys
 #   heroes, heroes_duo, trinkets, comps, cards
@@ -67,7 +84,138 @@ MIN_SAMPLE = 30
 # A trinket offer always presents exactly four options.
 TRINKET_OPTIONS = 4
 
-HS_LOGS = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Hearthstone" / "Logs"
+DEFAULT_HS_LOGS = Path(
+    os.environ.get("ProgramFiles(x86)") or r"C:\Program Files (x86)"
+) / "Hearthstone" / "Logs"
+SETTINGS_FILE = application_dir() / SETTINGS_NAME
+HS_LOGS = DEFAULT_HS_LOGS
+HS_LOGS_SOURCE = "default"
+HS_LOGS_CONFIG_ERROR = None
+
+_PERCENT_ENV_RE = re.compile(r"%([^%]+)%")
+
+
+class LogSettingsError(ValueError):
+    """A settings.json error that can be shown directly to the user."""
+
+
+def settings_file_path() -> Path:
+    """Return the settings path beside the source tree or the executable."""
+    return application_dir() / SETTINGS_NAME
+
+
+def default_hs_logs_dir() -> Path:
+    """Return Hearthstone's historical default Logs directory."""
+    return DEFAULT_HS_LOGS
+
+
+def _expand_log_path(value: str) -> str:
+    """Expand common Windows and shell-style environment/user markers."""
+    value = os.path.expandvars(value)
+    return _PERCENT_ENV_RE.sub(
+        lambda match: os.environ.get(match.group(1), match.group(0)), value
+    )
+
+
+def load_log_settings(settings_path: str | Path | None = None) -> tuple[Path, str]:
+    """Load the configured Logs directory and identify its source.
+
+    Relative paths are resolved beside the settings file. A missing file or an
+    empty value deliberately selects the historical default; a malformed file
+    raises ``LogSettingsError`` so it cannot silently select another directory.
+    """
+    path = Path(settings_path) if settings_path is not None else settings_file_path()
+    path = path.expanduser()
+    if not path.is_absolute():
+        path = path.resolve()
+    default = default_hs_logs_dir()
+    if not path.exists():
+        return default, "default"
+    try:
+        settings = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise LogSettingsError(
+            f"Invalid JSON in {path} (line {exc.lineno}, column {exc.colno}): "
+            f"{exc.msg}"
+        ) from exc
+    except OSError as exc:
+        raise LogSettingsError(f"Could not read {path}: {exc}") from exc
+    if not isinstance(settings, dict):
+        raise LogSettingsError(f"{path} must contain a JSON object")
+
+    raw_value = settings.get("hearthstone_logs_dir")
+    if raw_value is None:
+        return default, "default"
+    if not isinstance(raw_value, str):
+        raise LogSettingsError(
+            f"{path}: hearthstone_logs_dir must be a string or an empty value"
+        )
+    raw_value = _expand_log_path(raw_value.strip())
+    if not raw_value:
+        return default, "default"
+    log_dir = Path(raw_value).expanduser()
+    if not log_dir.is_absolute():
+        log_dir = path.parent / log_dir
+    return log_dir.resolve(), "settings.json"
+
+
+def configure_log_path(settings_path: str | Path | None = None) -> Path:
+    """Load settings into the legacy ``HS_LOGS`` public value.
+
+    Keeping ``HS_LOGS`` mutable preserves the existing test and helper API,
+    while all production consumers call ``get_hs_logs`` before using it.
+    """
+    global SETTINGS_FILE, HS_LOGS, HS_LOGS_SOURCE, HS_LOGS_CONFIG_ERROR
+    actual_settings = Path(settings_path) if settings_path is not None else settings_file_path()
+    actual_settings = actual_settings.expanduser()
+    if not actual_settings.is_absolute():
+        actual_settings = actual_settings.resolve()
+    SETTINGS_FILE = actual_settings
+    try:
+        HS_LOGS, HS_LOGS_SOURCE = load_log_settings(actual_settings)
+    except LogSettingsError as exc:
+        HS_LOGS = default_hs_logs_dir()
+        HS_LOGS_SOURCE = "settings.json (invalid)"
+        HS_LOGS_CONFIG_ERROR = str(exc)
+    else:
+        HS_LOGS_CONFIG_ERROR = None
+    return HS_LOGS
+
+
+def get_hs_logs() -> Path:
+    """Return the configured Logs directory or raise a clear config error."""
+    if HS_LOGS_CONFIG_ERROR:
+        raise LogSettingsError(HS_LOGS_CONFIG_ERROR)
+    return Path(HS_LOGS)
+
+
+def log_path_status() -> str:
+    """Describe the active Logs directory and whether it came from settings."""
+    if HS_LOGS_CONFIG_ERROR:
+        return f"Hearthstone log settings error: {HS_LOGS_CONFIG_ERROR}"
+    source = "settings.json" if HS_LOGS_SOURCE == "settings.json" else "default"
+    return f"Hearthstone logs: {HS_LOGS} (source: {source})"
+
+
+def no_power_log_message(*, waiting: bool = False) -> str:
+    """Explain which directory was checked without guessing about installation."""
+    if HS_LOGS_CONFIG_ERROR:
+        return log_path_status()
+    logs_dir = Path(HS_LOGS)
+    if not logs_dir.exists():
+        reason = "directory does not exist"
+    elif not logs_dir.is_dir():
+        reason = "configured path is not a directory"
+    else:
+        reason = "no Hearthstone_*/Power.log found"
+    source = "settings.json" if HS_LOGS_SOURCE == "settings.json" else "default"
+    message = f"No Power.log found under {logs_dir} (source: {source}; {reason})."
+    if waiting:
+        message += " The application is still running and waiting for a valid Hearthstone log."
+    return message
+
+
+configure_log_path()
 
 # Lines look like:
 # D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating
@@ -706,9 +854,14 @@ def render_lobby(tracker: LobbyTracker, comps: list, mmr: str, limit: int = 8) -
 # ---------------------------------------------------------------- log reading
 
 def newest_power_log():
-    if not HS_LOGS.exists():
+    logs_dir = get_hs_logs()
+    if not logs_dir.is_dir():
         return None
-    logs = sorted(HS_LOGS.glob("Hearthstone_*/Power.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+    logs = sorted(
+        logs_dir.glob("Hearthstone_*/Power.log"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
     return logs[0] if logs else None
 
 
@@ -976,9 +1129,14 @@ def main():
         return lobby.feed(line) and not args.no_lobby
 
     if args.replay is not None:
-        path = newest_power_log() if args.replay == "__newest__" else Path(args.replay)
+        try:
+            path = newest_power_log() if args.replay == "__newest__" else Path(args.replay)
+        except LogSettingsError as exc:
+            sys.exit(str(exc))
         if not path or not path.exists():
-            sys.exit(f"no Power.log found (looked in {HS_LOGS})")
+            if args.replay == "__newest__":
+                sys.exit(no_power_log_message())
+            sys.exit(f"No Power.log found at {path} (source: --replay path).")
         print(f"  replaying {path}  ({path.stat().st_size / 1e6:.0f} MB)\n")
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
@@ -988,9 +1146,13 @@ def main():
         show(det.flush())
         return
 
-    path = newest_power_log()
+    try:
+        path = newest_power_log()
+    except LogSettingsError as exc:
+        sys.exit(str(exc))
     if not path:
-        sys.exit(f"no Power.log found. Is Hearthstone installed at {HS_LOGS.parent}?")
+        sys.exit(no_power_log_message())
+    print(f"  {log_path_status()}")
     print(f"  watching {path.parent.name}/Power.log")
     print("  waiting for a Battlegrounds game ... (Ctrl+C to stop)")
     try:

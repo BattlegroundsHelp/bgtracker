@@ -381,7 +381,17 @@ def collect():
                 kept[rec["game_id"]] = rec
             except Exception:
                 pass
-    logs = sorted(bg.HS_LOGS.glob("Hearthstone_*/Power.log"))
+    try:
+        logs_dir = bg.get_hs_logs()
+    except bg.LogSettingsError as exc:
+        print(f"error: {exc}")
+        return
+    print(f"{bg.log_path_status()}")
+    if not logs_dir.is_dir():
+        print(bg.no_power_log_message())
+        logs = []
+    else:
+        logs = sorted(logs_dir.glob("Hearthstone_*/Power.log"))
     added = filled = 0
     for path in logs:
         for rec in games_in(path):

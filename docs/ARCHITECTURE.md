@@ -32,6 +32,24 @@ flowchart LR
 | `native/msync/` | Optional C# helper (`msync.exe`): a clean-room reader for lobby tribes, player rating, and your board out of game memory, walking the public Mono/Unity heap layout. `dotnet build native/msync -c Release`; **not** bundled. See its own README. |
 | `tests/` | Offline regression (CI) + live-path test, with a real-day fixture log. |
 
+## Log directory configuration
+
+`bgtracker.py` loads the optional local `settings.json` once at startup. In a
+source run it is beside `bgtracker.py`; in a frozen Windows build it is beside
+`sys.executable` (`bgtracker.exe`), so a PyInstaller temporary extraction
+directory is never used for user configuration. `hearthstone_logs_dir` names
+the parent directory containing `Hearthstone_<timestamp>/Power.log` folders.
+Missing or empty settings select the historical default. A configured path is
+exclusive, and invalid JSON is surfaced as a settings error rather than falling
+back silently.
+
+`newest_power_log()` is the shared discovery point for the console, overlay
+backfill and follower, counters, session tracking, window tests, and the own-data
+collector. The follower and the other live readers continue to re-check that
+same configured directory so rotation into a newer `Hearthstone_<timestamp>`
+folder remains automatic. `sim/validate.py` uses the same source when no path is
+provided explicitly.
+
 ## The parser (bgtracker.py)
 
 `Power.log` is a firehose of entity updates. The parts that matter:

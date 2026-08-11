@@ -27,7 +27,7 @@ Metrics reported:
   misses, flagged with whether a (manual or derived) script already exists.
 
 Usage:
-    python sim/validate.py                       scan all Hearthstone_*/Power.log
+    python sim/validate.py                       scan all configured Hearthstone_*/Power.log
     python sim/validate.py <log|dir> [...]       score specific logs
     options: [--n 1000] [--min-round N] [--seed 1] [--worst 5] [--indent]
 
@@ -41,22 +41,19 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
 SIM_DIR = Path(__file__).resolve().parent
+ROOT = SIM_DIR.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 if str(SIM_DIR) not in sys.path:
     sys.path.insert(0, str(SIM_DIR))
 
+import bgtracker as bg  # noqa: E402
 import boards  # noqa: E402
 import engine  # noqa: E402
-
-HS_LOGS = (
-    Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
-    / "Hearthstone"
-    / "Logs"
-)
 
 EMPIRICAL = {"us": 1.0, "tie": 0.5, "them": 0.0}
 
@@ -64,7 +61,9 @@ EMPIRICAL = {"us": 1.0, "tie": 0.5, "them": 0.0}
 def discover_logs(args_paths: list[str]) -> list[Path]:
     """Explicit files/dirs if given, else every Hearthstone_*/Power.log."""
     if not args_paths:
-        return sorted(HS_LOGS.glob("Hearthstone_*/Power.log"))
+        logs_dir = bg.get_hs_logs()
+        return (sorted(logs_dir.glob("Hearthstone_*/Power.log"))
+                if logs_dir.is_dir() else [])
     out: list[Path] = []
     for a in args_paths:
         p = Path(a)
@@ -225,9 +224,13 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--indent", action="store_true")
     args = ap.parse_args(argv)
 
-    logs = discover_logs(args.paths)
+    try:
+        logs = discover_logs(args.paths)
+    except bg.LogSettingsError as exc:
+        print(json.dumps({"error": str(exc)}))
+        return 1
     if not logs:
-        print(json.dumps({"error": f"no Power.log found (looked in {HS_LOGS})"}))
+        print(json.dumps({"error": bg.no_power_log_message()}))
         return 1
 
     data = engine.load_scripts()

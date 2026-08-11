@@ -1,7 +1,7 @@
 """
 Verifies the LIVE path (follow + rotate), not just replay.
 
-Points bgtracker at a fake Hearthstone Logs dir, starts the follower in a
+Points bgtracker at a fake Hearthstone Logs dir through settings.json, starts the follower in a
 thread, then appends the real hero-select lines from sample_heroselect.log to
 simulate a game happening. Also drops a NEWER session dir mid-run to prove the
 rotation branch works.
@@ -10,6 +10,7 @@ Needs the network once (fetches the card database for recognition, cached a
 day). Stats tables load only if you configured sources.json - the test passes
 either way. For the offline check CI runs, see test_regression.py.
 """
+import json
 import sys
 import threading
 import time
@@ -25,8 +26,11 @@ S1 = TMP / "Hearthstone_2026_01_01_00_00_00"
 S2 = TMP / "Hearthstone_2026_01_01_00_00_01"
 for d in (S1, S2):
     d.mkdir(parents=True, exist_ok=True)
+    (d / "Power.log").unlink(missing_ok=True)
 (S1 / "Power.log").write_text("warmup\n", encoding="utf-8")
-bgtracker.HS_LOGS = TMP
+SETTINGS = TMP / "settings.json"
+SETTINGS.write_text(json.dumps({"hearthstone_logs_dir": "."}), encoding="utf-8")
+bgtracker.configure_log_path(SETTINGS)
 
 heroes = bgtracker.hero_table("100", "last-patch")     # {} unless sources.json is set
 det = bgtracker.OfferDetector(heroes, bgtracker.trinket_universe(),

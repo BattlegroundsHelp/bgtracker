@@ -34,6 +34,7 @@ launch_err.log
 
 # your personal stats configuration - never committed
 sources.json
+settings.json
 
 # aggregator runtime state (server/) - the DB, the generated feed, the secret.
 # server/data is already covered by data/ above; listed here for clarity.
