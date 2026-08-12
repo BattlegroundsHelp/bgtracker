@@ -105,14 +105,19 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
   BETA on screen. Both warbands come out of Power.log before the fight
   animates, and a Monte Carlo sim over the vanilla rules, derived deathrattle
   summons and per-card scripts for the highest-impact cards calls the winning
-  side ~82% of the time across 251 real logged fights (MAE 17pp, Brier 0.101).
+  side ~86% of the time across 343 real logged fights (MAE 14pp, Brier 0.077).
   Because plenty of cards are still unscripted, the odds are deliberately
   widened when the board holds one, so a raw 0% or 100% is never printed. No
   odds are shown at all unless both boards were fully recovered. What is still
   missing is the long tail of per-card triggers, and that is the honest catch:
   a simulator is an
   encyclopedia of card interactions that needs re-verifying every patch,
-  forever. `sim/validate.py` names the exact cards to script next. If you want
+  forever. It is a smaller encyclopedia than it sounds, though, and
+  [`docs/CARD_EFFECTS.md`](docs/CARD_EFFECTS.md) counts it exactly: of 274
+  pool minions only 39 act during combat at all, 33 of them still unscripted,
+  because 141 have already resolved into the stats by the time the boards are
+  captured. Dark Gifts are finished: all 40 are accounted for and none is
+  missing. `sim/validate.py` names the exact cards to script next. If you want
   the mature version, run HDT's free Bob's Buddy alongside — both tools read
   the same log and coexist happily.
 

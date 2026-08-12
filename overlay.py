@@ -72,8 +72,8 @@ class OddsEngine:
       empty side - rounds 1-2 can genuinely produce one) -> no event ever,
       never a guessed number;
     - a sim exception -> no event;
-    - the label stays BETA: replayed against 251 real logged combats the sim
-      called the winning side 82.5% of the time (MAE 16.9pp, Brier 0.101) -
+    - the label stays BETA: replayed against 343 real logged combats the sim
+      called the winning side 86.0% of the time (MAE 14.0pp, Brier 0.077) -
       vanilla rules, derived deathrattle summons, and per-card scripts for the
       cards that measurably cost the most accuracy. The long tail of cards is
       still unscripted, so engine.simulate() widens its own odds in proportion

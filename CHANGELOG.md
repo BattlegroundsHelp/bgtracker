@@ -73,8 +73,65 @@ answered one at a time.
 - The old un-bracketed file names are still written, so an existing
   `sources.json` keeps working untouched.
 
+### Combat odds: six more cards scripted, and what that was actually worth
+
+- Six in-combat effects are now modelled from the cards' own printed text:
+  Fish of N'Zoth gaining a dead friend's deathrattle, Plaguerunner's side-wide
+  Undead attack grant, Forest Rover's Beetle counter for Beetles born during
+  the fight, the Reborn copy inheriting a side-wide grant, golden deathrattle
+  summons read off the golden card instead of guessed by doubling the base
+  token, and hand-written scripts merging with derived ones per hook instead of
+  replacing them (which had been silently dropping Ravaging Scorpid's Beetle).
+- **Measured, and reported as measured: it moved almost nothing.** Replayed
+  over the same 343 real logged fights, winner accuracy went 85.7% to **86.0%**
+  and the Brier score 0.0784 to **0.0771**. That is one extra fight called
+  correctly out of 343: one wrong-to-right, none the other way. 27 fights had
+  their probability move at all. The honest reading is a null result on
+  accuracy and a very small calibration gain.
+- The headline figure changed from 82.5% to 86% for a different reason: the
+  older number was measured over 251 fights, and there are 343 logged now. The
+  same unchanged code scores 85.7% on today's larger sample, so **that jump is
+  the sample, not the scripts**.
+- Where the remaining error sits, since scripting six more cards did not move
+  it: of 48 wrong calls, 13 are fights that really ended in a tie, 31 are
+  outright side flips, 4 called a tie that was decisive. Boards where every
+  card is modelled are called right 91.3% of the time (Brier 0.034); boards
+  holding at least one unscripted card, 82.9% (Brier 0.103). Rounds 5 to 8 are
+  the worst stretch at 80.5%. The long tail is the error, and the tail is
+  long: `docs/CARD_EFFECTS.md`, generated from the live pool, counts the cards
+  that actually act during combat and how many still have no script.
+
+### The card effects catalogue, and Dark Gifts turning out to be finished
+
+- `python tools/catalog.py` writes [`docs/CARD_EFFECTS.md`](docs/CARD_EFFECTS.md)
+  from the live card database, so it is always this patch's pool and never
+  needs hand-editing. It sorts every one of the 274 pool minions by WHEN its
+  text happens, which is the only thing the simulator cares about: **39** act
+  during combat, **141** have already resolved by the time both boards are
+  captured at the first attack, and **94** do nothing in a fight at all. The
+  141 are listed explicitly as do-not-script, because scripting one of them
+  double-counts an effect that is already inside the stats we read. That leaves
+  a work queue of **33** cards, not 274.
+- **Dark Gifts are done, and that was a surprise.** The card database has no
+  Dark Gift marker at all, but the game names each gift as it lands
+  (`DARK_GIFT_ENTITY` pointing at an entity whose card id the log carries), and
+  mining six real logs found 318 applications that were all cards in one id
+  family. So the full list comes out of the database complete: **40 gifts**.
+  Of those, 24 only ever grant stats or keywords, which arrive as ordinary tags
+  on the minion and are already captured; 9 change your cards rather than the
+  fight; 6 fire during combat and were already scripted; and 1 exists only as a
+  leftover enchantment with no card to be offered from, and never appeared once
+  in 318 applications. The remaining gap is **zero**.
+- The gift list is generated with the same command and lands in the same file,
+  so a patch that adds gifts shows them the next time it is run.
+
 ### Fixed
 
+- An earlier version of the gift miner looked for `tag=ATTACHED`, which is a
+  different thing entirely and is written on its own line with no card id on
+  it. It reported "0 distinct" across 1.3 GB of logs and would have gone on
+  reporting zero forever. The signal is `DARK_GIFT_ENTITY`, which
+  `sim/boards.py` had been reading correctly the whole time.
 - The stats cache key ignored which source a table came from, so pointing
   `sources.json` at a different server kept serving the old server's numbers
   for up to an hour, and a failed fetch silently fell back to a feed you were

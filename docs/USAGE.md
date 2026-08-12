@@ -192,8 +192,8 @@ stars above stand in), measured comp averages.
 ### About the combat odds
 
 Both warbands are read out of the log before the fight animates and a Monte Carlo
-simulation gives win / tie / loss. Across 251 real logged fights it called the
-winning side about **82%** of the time. It knows the vanilla rules, deathrattle
+simulation gives win / tie / loss. Across 343 real logged fights it called the
+winning side about **86%** of the time. It knows the vanilla rules, deathrattle
 summons and the highest-impact per-card triggers, but plenty of cards are still
 unscripted, so when one is on the board the odds are deliberately widened. It
 never shows 0% or 100%. That, and the long tail still missing, is why it is
