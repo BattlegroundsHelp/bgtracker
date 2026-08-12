@@ -1,9 +1,8 @@
 # Changelog
 
-## Unreleased
+## v0.3.0-alpha (12 August 2026)
 
-On `main`, not in a release build yet. Nearly all of it was asked for in the
-r/BobsTavern thread.
+Nearly all of it was asked for in the r/BobsTavern thread.
 
 ### Added
 
