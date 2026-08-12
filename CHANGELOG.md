@@ -67,10 +67,10 @@ r/BobsTavern thread.
 
 ### Changed
 
-- **Combat odds: 86% winner accuracy over 343 logged fights** (MAE 14pp, Brier
-  0.077). Read the jump from 82.5% carefully: that number came from 251 fights,
-  and the same unchanged code scores 85.7% on today's 343. The jump is the
-  sample, not the code.
+- **Combat odds: about 86% winner accuracy over 339 logged fights** (MAE 13pp,
+  Brier 0.072, the release's final measure). Read the jump from 82.5% carefully:
+  that number came from 251 fights, and the same unchanged code scores 85.7% on
+  the larger sample. The jump is the sample, not the code.
 - Six more in-combat effects modelled: Fish of N'Zoth, Plaguerunner, Forest
   Rover's Beetle counter, Reborn copies inheriting side-wide grants, goldens
   read off the golden card instead of guessed by doubling, and manual scripts

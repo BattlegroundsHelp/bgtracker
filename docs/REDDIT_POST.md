@@ -231,69 +231,66 @@ Windows install path. A Mac port means a new window layer and a new path lookup.
 source and the parsing half would carry over, but I am not writing that port myself in the
 near term.
 
-## EDIT 5 (DRAFT, NOT POSTED)
+## THE CONSOLIDATED POST (DRAFT, NOT POSTED)
 
-Hold this until v0.3.0 is actually on the Releases page. Duos, MMR brackets, the other
-players window and the hero tips are all on `main` but are NOT in the v0.2.0-alpha zip, so
-posting this before a build ships would point people at a download that does not contain
-the things it announces. One edit, after one release, is also less noisy than two.
+Posting gates, in order, all three before pasting:
+1. The v0.3.0-alpha release is live on the Releases page.
+2. The update manifest is live: fetching http://165.227.41.29/update.json returns the new
+   version (posted before that, the "tells you when a new version is out" line describes a
+   check that silently finds nothing).
+3. Eyeball the thread once so the six u/ names are typed exactly as they render there
+   (case and hyphens matter).
 
-It answers six people in the thread by name, which is the point of it.
+Paste mechanics: this REPLACES the whole post body. The original paragraphs stay verbatim
+at the top (every comment answers them); EDIT 2, 3 and 4 fold into the one section below.
+The live body is 6.1K characters and holds no images (screenshots live in comments), so a
+full replace loses nothing. On new Reddit, switch to the MARKDOWN editor before pasting,
+or edit via old.reddit.com: the rich text editor turns the bullets into literal asterisks.
+One more mechanic worth knowing: editing a post does NOT notify the six people named. If
+the credits should reach them, that takes a comment; the drafted one is at the end.
 
 ---
 
-EDIT 5: v0.3.0, AND THE THREAD'S REQUESTS ARE IN
+I'm so upset about paying 5$/month
 
-Most of this edit is other people's ideas from this thread. Named, because they earned it.
+So I decided to pay my subscription for Claude code 280$ month and build my own
 
-u/Joshs424 said the text was too small at 4K. There is now a settings panel with a UI scale
-you can drag, and the badges over the cards size themselves off the game window, so a 4K
-client gets 4K badges instead of 1080p ones sitting in the right place at half size.
+Comps, synergies, tracker etc. almost everything
 
-u/l337hackzor asked for Duos and for finer MMR filtering than the two bands HSReplay gives
-you. Duos is now its own dataset, not a filter: a Duos lobby is four teams finishing 1st to
-4th and a solo lobby is eight players finishing 1st to 8th, so pooling them would describe
-neither. Nothing falls back to solo numbers. There are five MMR brackets, and a bracket only
-appears once it holds enough games. Until then the tool reads the all players file and says
-so on screen instead of labelling the whole pool top 1%.
+Planning to publish it for FREE (no ads or weird bs) and open-source in case you'd like to help me out
 
-u/Ok-Acanthisitta7190 asked for the last players board, "even if it's only a screenshot". It
-is better than a screenshot. There is a window listing every other player with their hero,
-tier and health, and for anyone you have fought, the board they were last seen holding with
-the round it was seen in and how long ago. A player you have not fought shows no board at
-all, not a guess. This one needs the optional memory reader, because the log genuinely never
-states another player's board while you are shopping.
+Now the million dollar question,
+What feature is a MUST to have in a hs battleground companion?
 
-u/Deep-Sky-3365 and u/Taverntrainer asked for per hero strategy lines. 111 of the 121 heroes
-now carry one at the draft. Every line was written from that hero's own printed hero power
-text, not copied from anyone's guide, and the ten without a line are the ones whose power
-names a reward the card never describes. They live in a plain file in the repo, so anyone can
-fix one with a pull request. The upvote and downvote system for these is still to come.
+Will edit the post with the name/link/github as soon as it's stable and ready
 
-u/Deathoftheages asked about keeping up with patches. It now checks for updates itself and
-tells you when there is one. It never installs anything behind your back.
+EDIT, current as of v0.3.0 (EDIT 2, 3 and 4 are folded into this one section):
 
-Also in this build: a settings panel that opens on start, where the data sharing opt in
-lives (still off by default, still anonymised, still free forever), along with which windows
-you want on screen at all.
+It is out and it keeps growing: https://github.com/BattlegroundsHelp/bgtracker
 
-ON THE COMBAT ODDS, since people asked how accurate it really is
+No account, no paywall, ever. Windows only. No Python needed: grab the zip from Releases, extract, run. Unsigned build, so Windows warns once; the source is public if you want to check first.
 
-86% winner accuracy over 343 of my own logged fights. Be careful reading that against the
-82.5% in the last edit: most of that jump is the sample growing from 251 fights to 343, not
-the code getting better. The same unchanged code scores 85.7% on the bigger sample. Six more
-cards got scripted and that bought exactly one extra correct fight out of 343. Saying so
-because the honest number is more useful than the flattering one.
+On the data question this thread raised: it uses nobody else's data. It builds its own from your games, sharing is opt in and off by default, records are anonymised, and the pooled numbers are free for everyone. The settings panel lists every single field an upload contains.
 
-Something surprising came out of that work. Dark Gifts sound like they should be the hard
-part, and they are not. There are 40 of them. 24 only grant stats or keywords, which are
-already sitting on the minion by the time the board is read, so modelling them again would
-make the sim worse rather than better. 9 change your cards rather than the fight. 6 fire
-during combat and are modelled. 1 cannot be offered any more. The gap is zero.
+WHAT IT DOES
 
-The pool minions are the same story. Of 274 minions only 39 do anything during a fight at
-all. 141 have already finished their work before the boards are read, and 94 do nothing in
-combat. So the remaining work is 33 cards, not 274. That list is generated from the live card
-database and is in the repo, so it stays right when the patch changes.
+* Hero, trinket and discover picks rated on the actual cards (hero power options named), with 5 MMR brackets and time filters. Brackets fill in as the shared pool grows; a thin bracket falls back to all players and says so on screen
+* Tavern minions star-rated, comps filtered to your lobby with core pieces vs add-ons and a computed difficulty
+* Combat odds with damage and lethal: win/tie/loss, how hard the fight hits, and the chance it kills you or them
+* Counters, minion browser, session tracker, and Duos stats kept separate from solo, never pooled
+* If you build the optional memory reader (a separate .NET build, not in the zip): exact lobby tribes at hero select, and the board every opponent was last seen holding
+* A settings panel on start: UI scale (the 4K fix), what to show, updates
 
-Still Windows only. Still free, no ads, no account, no paywall, and your games stay yours.
+Numbers need a feed: one click in the settings panel picks the community pool, your own games, or any source you configure. With none picked everything still runs, names only.
+
+Straight numbers on the odds, since people asked: it calls the winning side about 86% of the time across 339 of my own logged fights, it never claims 0% or 100%, and Bob's Buddy is still the more mature simulator. They read the same log and run side by side fine.
+
+Most of this build is this thread's requests, so credit where due: u/Joshs424 (the 4K text scaling), u/l337hackzor (Duos and finer MMR brackets), u/Ok-Acanthisitta7190 (opponents' last boards), u/Deep-Sky-3365 and u/Taverntrainer (the per hero tips at the draft), u/Deathoftheages (it now tells you when a new version is out, and never installs anything on its own).
+
+Beta testers still wanted. Tell me which window helped and which one lied, that is the whole QA process.
+
+---
+
+### Credit comment (post this AS A COMMENT so the six actually get notified)
+
+v0.3.0 is up, and most of it is this thread's requests: u/Joshs424 the UI now scales, drag it to fit a 4K screen. u/l337hackzor Duos has its own stats and there are 5 MMR brackets. u/Ok-Acanthisitta7190 opponents' last seen boards are in (needs the optional memory reader). u/Deep-Sky-3365 u/Taverntrainer per hero tips at the draft, 111 of 121 heroes. u/Deathoftheages it tells you when a new build is out and never installs anything on its own. Details in the post, zip on the Releases page.
