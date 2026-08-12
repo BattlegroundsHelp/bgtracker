@@ -1,5 +1,89 @@
 # Changelog
 
+## Unreleased
+
+Everything here is on `main` and not in a release build yet. It is the work
+that came out of the r/BobsTavern thread: the things people asked for there,
+answered one at a time.
+
+### OTHER PLAYERS, the eleventh window
+
+- The leaderboard as its own window: every other player in place order, their
+  hero, their tavern tier and their health, and for anyone you have already
+  fought, **the board they were last seen holding** with the round it was seen
+  in and how long ago that was (`seen r7 · 2 rounds ago`). Click a player to
+  open that board.
+- A player you have not fought shows no board at all. Not an empty board, not a
+  guess from their tier: nothing. The hero, tier and health are live every
+  reading; only the board is historical, and only the board carries the stamp.
+- This one is **memory only**. Power.log does not state another player's board
+  while you are shopping, so without the optional memory reader the window
+  never appears and nothing else in the overlay changes.
+- Two things had to be measured rather than assumed. The seat that holds an
+  enemy warband in memory also holds Bob's shop, so an early version reported
+  the tavern as somebody's board; shop minions are now excluded by their
+  drag-buy token. And a warband is whole in memory before a fight animates and
+  again after it, but is being killed off during it, so the reading kept is the
+  fullest one of that fight.
+
+### Hero tips at the draft
+
+- Each hero on offer can carry one line of advice under its name, saying when
+  that hero is the pick. 111 of the 121 heroes have one. The ten without are
+  the ones whose hero power names a reward the card itself never describes, and
+  an empty line beats an invented one.
+- The tips are a plain file, `data/hero_tips.json`, that ships with the tool.
+  Anyone can add or fix one by pull request; that review is the voting
+  mechanism until something better exists. `data/hero_tips.schema.json` is the
+  contract and CI checks every entry against it, including that the hero
+  actually exists.
+- Every seeded line was written from the hero's own printed hero-power text.
+  Nothing was taken from anyone else's guide, because those are that site's
+  paid product.
+- The line is drawn inside the row that was already there, replacing the
+  placement bar, so the draft window is exactly as tall as it was before.
+
+### Duos is its own dataset
+
+- Every mined game is now marked solo or Duos from the log itself, off the
+  `BACON_DUO_TEAM_ID` / `BACON_DUO_TEAMMATE_PLAYER_ID` tags. They agreed with
+  the game's own mode line on 33 of 33 real games. Card ids do not work for
+  this: `BGDUO_` heroes caught only four of six real Duos games.
+- The aggregator writes a parallel Duos feed for heroes, trinkets, cards and
+  comps, and `--duo` reads all four. **Nothing is pooled and there is no
+  fallback to the solo tables**: a Duos lobby is four teams finishing 1st-4th
+  where solo is eight players finishing 1st-8th, so one shared average would
+  describe neither. Measured on real games: one hero read 2.0 pooled and 1.5
+  solo-only.
+- A game mined before this existed is marked neither, and is counted in neither
+  feed rather than assumed to be solo. Re-running the collector fills it in.
+- The upload endpoint used to reject every Duos game outright: its hero pattern
+  had no digits to match in `BGDUO_HERO_223`.
+
+### MMR brackets in the feed
+
+- The aggregator now publishes each bracket the client already asks for
+  (`--mmr 100|50|25|10|1`) as its own set of files, and stamps every file with
+  the bracket it is and the rating cut it used.
+- A bracket is only published once it holds 30 games, so on a young pool most
+  of them do not exist yet. The client then reads the all-players file and
+  **says which bracket the numbers actually came from** — it will not print
+  pooled numbers under a "top 1%" heading. The file's own stamp wins over what
+  was asked for.
+- The old un-bracketed file names are still written, so an existing
+  `sources.json` keeps working untouched.
+
+### Fixed
+
+- The stats cache key ignored which source a table came from, so pointing
+  `sources.json` at a different server kept serving the old server's numbers
+  for up to an hour, and a failed fetch silently fell back to a feed you were
+  no longer using. Found while testing brackets, which is exactly the kind of
+  wrong number this project treats as a bug.
+- `data/` was ignored wholesale, so the hero tips file could never have reached
+  the repository at all. Git does not look inside an excluded directory, so
+  un-ignoring a file under one never fires.
+
 ## v0.2.0-alpha (11 August 2026)
 
 The big one: **you no longer need Python**, the overlay is now a set of small

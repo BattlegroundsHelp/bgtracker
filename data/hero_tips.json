@@ -1,0 +1,928 @@
+{
+  "version": 1,
+  "schema": "hero_tips.schema.json",
+  "note": "Community hero tips. Every line here is original text written from the hero's own printed hero-power, or contributed under the repo licence. Never copy another site's guides. See CONTRIBUTING.md for how to add or improve one.",
+  "tips": {
+    "TB_BaconShop_HERO_16": {
+      "name": "A. F. Kay",
+      "when": "You are happy to skip turns 1 and 2 for two big minions",
+      "bullets": [
+        "Nothing to buy until turn 3, so the first fights go badly",
+        "The payoff is one Tier 3 and one Tier 4 discover"
+      ]
+    },
+    "TB_BaconShop_HERO_76": {
+      "name": "Al'Akir",
+      "when": "Your left-most minion is worth building the fight around",
+      "bullets": [
+        "Only the left-most minion gets it, so positioning IS the power",
+        "Windfury doubles its swings; the shield and taunt keep it alive"
+      ]
+    },
+    "TB_BaconShop_HERO_56": {
+      "name": "Alexstrasza",
+      "when": "Dragons are in and you can climb to Tier 4",
+      "bullets": [
+        "Does nothing at all before Tier 4",
+        "1 gold per Dragon discover once it unlocks"
+      ],
+      "tribes": [
+        "DRAGON"
+      ]
+    },
+    "BG22_HERO_201": {
+      "name": "Ambassador Faelin",
+      "when": "You can give up turn 1 for picks at Tiers 6, 4 and 2",
+      "bullets": [
+        "Skipping the first turn costs you the opening fight",
+        "The Tier 6 pick only lands if you actually reach Tier 6"
+      ]
+    },
+    "TB_BaconShop_HERO_59": {
+      "name": "Aranna Starseeker",
+      "when": "You keep a wide board attacking every combat",
+      "bullets": [
+        "14 friendly attacks is several full fights away",
+        "After that, one free minion every turn"
+      ]
+    },
+    "TB_BaconShop_HERO_45": {
+      "name": "Arch-Villain Rafaam",
+      "when": "You expect to win fights and your minions do the killing",
+      "bullets": [
+        "1 gold, and it pays nothing if you kill nothing",
+        "The copy is plain, so no buffs come with it"
+      ]
+    },
+    "BG31_HERO_802": {
+      "name": "Artanis",
+      "when": "You buy a lot of cards rather than rolling",
+      "bullets": [
+        "The reward lands after 14 purchases, not on a fixed turn",
+        "You choose which of the two you want at the start of the game"
+      ]
+    },
+    "BG32_HERO_002": {
+      "name": "Buttons",
+      "when": "You can hold gold on turn 8 for a trinket you choose",
+      "bullets": [
+        "You pick the Greater Trinket instead of taking what shows up",
+        "You still pay for it, so budget that turn"
+      ]
+    },
+    "TB_BaconShop_HERO_29": {
+      "name": "C'Thun",
+      "when": "You use the power every single turn from turn 1",
+      "bullets": [
+        "Each use adds a repeat, so it is weak early and huge late",
+        "1 gold every turn competes directly with buying"
+      ]
+    },
+    "BG26_HERO_101": {
+      "name": "Cap'n Hoggarr",
+      "when": "Pirates are in the lobby",
+      "bullets": [
+        "Each Pirate you buy hands 1 gold straight back",
+        "Chaining Pirate buys in one turn is the whole plan"
+      ],
+      "tribes": [
+        "PIRATE"
+      ]
+    },
+    "TB_BaconShop_HERO_64": {
+      "name": "Captain Eudora",
+      "when": "You can spare 1 gold a turn for four turns",
+      "bullets": [
+        "Four digs, then a Golden minion - a fixed, known payout",
+        "The gold is spent early, when tempo is tightest"
+      ]
+    },
+    "TB_BaconShop_HERO_67": {
+      "name": "Captain Hooktusk",
+      "when": "You have a weak minion you would rather re-roll",
+      "bullets": [
+        "The discover is one Tier BELOW the minion you remove",
+        "Free to use, so it works on a broke turn"
+      ]
+    },
+    "BG21_HERO_000": {
+      "name": "Cariel Roame",
+      "when": "You want free stats every turn on any board",
+      "bullets": [
+        "0 gold, so it never competes with buying",
+        "The target is random - a smaller board aims it better"
+      ]
+    },
+    "TB_BaconShop_HERO_78": {
+      "name": "Chenvaala",
+      "when": "Elementals are in and you want to climb tiers fast",
+      "bullets": [
+        "Every 3 Elementals PLAYED cuts 3 gold off the next upgrade",
+        "Cheap Elementals count the same as good ones"
+      ],
+      "tribes": [
+        "ELEMENTAL"
+      ]
+    },
+    "BGDUO_HERO_222": {
+      "name": "Cho",
+      "when": "Duos, and you can make three Golden minions",
+      "bullets": [
+        "Both players get the Triple Reward, so each Golden pays twice",
+        "Only three uses - spend them on Goldens you were making anyway"
+      ]
+    },
+    "BG21_HERO_020": {
+      "name": "Cookie the Cook",
+      "when": "You have spare minions of the types you want to draw",
+      "bullets": [
+        "The discover comes from the TYPES you fed it, so feed on purpose",
+        "You lose the three minions you throw in"
+      ]
+    },
+    "TB_BaconShop_HERO_36": {
+      "name": "Dancin' Deryl",
+      "when": "You buy and sell minions constantly",
+      "bullets": [
+        "Every minion you play arrives with a permanent +1/+1 hat",
+        "Selling passes the hat on instead of losing it"
+      ]
+    },
+    "BG20_HERO_103": {
+      "name": "Death Speaker Blackthorn",
+      "when": "Quilboar are in the lobby",
+      "bullets": [
+        "Two charges a turn, 1 gold each, for 4 Blood Gems",
+        "Blood Gems only matter with Quilboar payoffs on board"
+      ],
+      "tribes": [
+        "QUILBOAR"
+      ]
+    },
+    "TB_BaconShop_HERO_52": {
+      "name": "Deathwing",
+      "when": "You want a fast, violent lobby",
+      "bullets": [
+        "The +2 Attack hits ALL minions - the enemy board too",
+        "It stacks every combat, so health matters more than usual"
+      ]
+    },
+    "TB_BaconShop_HERO_43": {
+      "name": "Dinotamer Brann",
+      "when": "You are buying Battlecry minions anyway",
+      "bullets": [
+        "Only Battlecry minions count toward the four",
+        "One free Brann, once per game - then the power is spent"
+      ]
+    },
+    "BG28_HERO_801": {
+      "name": "Doctor Holli'dae",
+      "when": "You can spend 1 gold a turn on a random Tavern spell",
+      "bullets": [
+        "The spell is random, so this is value, not a plan",
+        "A turn you cannot spare the gold is a turn with no power"
+      ]
+    },
+    "BG22_HERO_002": {
+      "name": "Drek'Thar",
+      "when": "You keep a board slot open and one huge attacker",
+      "bullets": [
+        "Nothing happens before turn 7",
+        "No empty slot in combat means no copy at all"
+      ]
+    },
+    "BG25_HERO_105": {
+      "name": "E.T.C., Band Manager",
+      "when": "You have 3 spare gold for an extra minion pick",
+      "bullets": [
+        "Locked until Tier 2",
+        "3 gold is a whole minion, so use it on gold-rich turns"
+      ]
+    },
+    "TB_BaconShop_HERO_01": {
+      "name": "Edwin VanCleef",
+      "when": "You want one minion carrying the whole board",
+      "bullets": [
+        "The buff grows as you buy cards, so buying is part of the power",
+        "1 gold for permanent stats, any minion"
+      ]
+    },
+    "TB_BaconShop_HERO_42": {
+      "name": "Elise Starseeker",
+      "when": "You want a guaranteed pick at your current Tier",
+      "bullets": [
+        "Each use costs 1 more than the last, so it is strongest early",
+        "It discovers at YOUR Tier - upgrade first, then use it"
+      ]
+    },
+    "BG24_HERO_204": {
+      "name": "Enhance-o Mechano",
+      "when": "You refresh the tavern often",
+      "bullets": [
+        "Two tavern minions get a random keyword on every refresh",
+        "The keyword is wasted unless you buy that minion"
+      ]
+    },
+    "BG31_HERO_006": {
+      "name": "Exarch Othaar",
+      "when": "You buy Tavern spells regularly",
+      "bullets": [
+        "One discounted spell at a time, not every spell",
+        "Worth nothing if you never buy spells"
+      ]
+    },
+    "BG31_HERO_003": {
+      "name": "Farseer Nobundo",
+      "when": "You cast strong Tavern spells and want them twice",
+      "bullets": [
+        "It copies the LAST spell you cast, so cast in the right order",
+        "Starts at 3 gold and gets 1 cheaper each turn you wait"
+      ]
+    },
+    "BGDUO_HERO_101": {
+      "name": "Flobbidinous Floop",
+      "when": "Duos, and your teammate is on a higher Tier than you",
+      "bullets": [
+        "The transform lasts the combat only",
+        "Point it at your weakest minion"
+      ]
+    },
+    "BG32_HERO_001": {
+      "name": "Forest Lord Cenarius",
+      "when": "You expect a long game and want to break the gold cap",
+      "bullets": [
+        "3 gold now for 1 extra gold every turn after",
+        "Dying early means it never pays back"
+      ]
+    },
+    "TB_BaconShop_HERO_74": {
+      "name": "Forest Warden Omu",
+      "when": "You plan to upgrade the tavern every turn you can",
+      "bullets": [
+        "Every upgrade refunds 2 gold, so climbing is far cheaper",
+        "A turn with no upgrade is a turn with no power"
+      ]
+    },
+    "TB_BaconShop_HERO_55": {
+      "name": "Fungalmancer Flurgl",
+      "when": "Murlocs are in the lobby",
+      "bullets": [
+        "Selling is the trigger, so buy and sell freely",
+        "The Murloc you get is random"
+      ],
+      "tribes": [
+        "MURLOC"
+      ]
+    },
+    "TB_BaconShop_HERO_02": {
+      "name": "Galakrond",
+      "when": "You want a minion from above your Tavern Tier",
+      "bullets": [
+        "1 gold puts a higher-Tier card in the tavern; you still buy it",
+        "Best on a turn you were going to spend anyway"
+      ]
+    },
+    "BGDUO_HERO_223": {
+      "name": "Gall",
+      "when": "Duos, and you can make three Golden minions",
+      "bullets": [
+        "Both players get the Triple Reward, so each Golden pays twice",
+        "Only three uses - spend them on Goldens you were making anyway"
+      ]
+    },
+    "BG35_HERO_001": {
+      "name": "Genn, Worgen King",
+      "when": "You are happy to choose your power on turn 4",
+      "bullets": [
+        "No hero power at all before turn 4",
+        "Play the first turns generically - the plan arrives later"
+      ]
+    },
+    "TB_BaconShop_HERO_15": {
+      "name": "George the Fallen",
+      "when": "You have one big minion that must survive the first hit",
+      "bullets": [
+        "1 gold, permanent until the shield pops",
+        "Re-usable every turn, so a popped shield can go straight back"
+      ]
+    },
+    "TB_BaconShop_HERO_95": {
+      "name": "Greybough",
+      "when": "Your board summons minions during the fight",
+      "bullets": [
+        "Only minions summoned IN combat get the +1/+2 and Taunt",
+        "Tokens arriving with Taunt soak hits the rest of the board would take"
+      ]
+    },
+    "BG20_HERO_242": {
+      "name": "Guff Runetotem",
+      "when": "You buy high-Tier cards rather than cheap ones",
+      "bullets": [
+        "It counts TIERS bought, not cards, so Tier 5s and 6s fill it fast",
+        "Buying up costs gold - this rewards a spend-heavy game"
+      ]
+    },
+    "BG23_HERO_305": {
+      "name": "Heistbaron Togwaggle",
+      "when": "You can wait for the price to fall and empty a whole tavern",
+      "bullets": [
+        "Starts at 11 gold and drops 1 every turn - pure timing",
+        "Upgrade first: you steal the tavern at your current Tier"
+      ]
+    },
+    "TB_BaconShop_HERO_08": {
+      "name": "Illidan Stormrage",
+      "when": "You want the first hits of the combat",
+      "bullets": [
+        "Only the left-most and right-most minions get it",
+        "Two free attacks before the normal attack order starts"
+      ]
+    },
+    "TB_BaconShop_HERO_28": {
+      "name": "Infinite Toki",
+      "when": "You want to see above your Tier every turn",
+      "bullets": [
+        "A 1 gold refresh that includes two cards from the Tier above",
+        "You still pay full price for whatever you buy"
+      ]
+    },
+    "BG26_HERO_102": {
+      "name": "Inge, the Iron Hymn",
+      "when": "You are climbing Tiers and want free stats each turn",
+      "bullets": [
+        "The number given is your Tavern Tier, so upgrading grows it",
+        "It alternates Attack one turn, Health the next"
+      ]
+    },
+    "BG22_HERO_200": {
+      "name": "Ini Stormcoil",
+      "when": "Mechs are in the lobby",
+      "bullets": [
+        "Nine of your own minions have to die first - a slow trigger",
+        "The Mech you get is random"
+      ],
+      "tribes": [
+        "MECHANICAL"
+      ]
+    },
+    "TB_BaconShop_HERO_71": {
+      "name": "Jandice Barov",
+      "when": "You want to trade dead weight for a fresh card",
+      "bullets": [
+        "0 gold, so it works on a turn with nothing to spend",
+        "The swap is random and can hand you something worse"
+      ]
+    },
+    "BG31_HERO_801": {
+      "name": "Jim Raynor",
+      "when": "You refresh often and want a minion that grows",
+      "bullets": [
+        "You open with a free 2/2, so turn 1 is stronger than normal",
+        "Every refresh puts an Upgrade in the tavern for you to buy"
+      ]
+    },
+    "TB_BaconShop_HERO_60": {
+      "name": "Kael'thas Sunstrider",
+      "when": "You buy minions every turn instead of rolling",
+      "bullets": [
+        "Every third minion bought hands back a Tavern Coin",
+        "Refreshes do not count - only buys"
+      ]
+    },
+    "BG31_HERO_811": {
+      "name": "Kerrigan, Queen of Blades",
+      "when": "You want a Zerg board and can wait for the price to drop",
+      "bullets": [
+        "Free 2/2 Larva on turn 1",
+        "Starts at 6 gold and falls 1 a turn, so using it early is costly"
+      ]
+    },
+    "TB_BaconShop_HERO_38": {
+      "name": "King Mukla",
+      "when": "You want free buffs and do not mind arming the lobby",
+      "bullets": [
+        "Two Bananas a turn for you, one for every opponent",
+        "They are held, so a whole hand can be dumped into one fight"
+      ]
+    },
+    "BG20_HERO_280": {
+      "name": "Kurtrus Ashfallen",
+      "when": "You can buy three minions in a single turn",
+      "bullets": [
+        "Three buys in one turn is a gold-heavy turn - plan for it",
+        "The copy is plain, so buffs do not carry across"
+      ]
+    },
+    "BG23_HERO_304": {
+      "name": "Lady Vashj",
+      "when": "You want a free spell every single turn",
+      "bullets": [
+        "0 gold and automatic at the start of the turn",
+        "The spell is random and expires, so use it that turn"
+      ]
+    },
+    "TB_BaconShop_HERO_25": {
+      "name": "Lich Baz'hial",
+      "when": "You have health to spare and want tempo now",
+      "bullets": [
+        "Every use costs 2 gold AND 2 of your own health",
+        "Strongest early, while your health lead is still big"
+      ]
+    },
+    "BG33_HERO_001": {
+      "name": "Loh, the Living Legend",
+      "when": "You keep a full board attacking every fight",
+      "bullets": [
+        "15 friendly attacks is a few full-board combats",
+        "A wide board gets there much faster than a tall one"
+      ]
+    },
+    "TB_BaconShop_HERO_72": {
+      "name": "Lord Barov",
+      "when": "You read the other boards before you commit",
+      "bullets": [
+        "3 Tavern Coins on a right guess, 1 gold lost on a wrong one",
+        "Betting on the obvious blowout is the safe line"
+      ]
+    },
+    "BGDUO_HERO_104": {
+      "name": "Madam Goya",
+      "when": "Duos, and your teammate can use what you are holding",
+      "bullets": [
+        "2 gold to hand a minion across",
+        "Golden minions cannot be passed"
+      ]
+    },
+    "TB_BaconShop_HERO_62": {
+      "name": "Maiev Shadowsong",
+      "when": "You spot a card you cannot afford this turn",
+      "bullets": [
+        "The card is locked away for 2 turns before you can buy it",
+        "Costs 1 gold now plus the card's own price later"
+      ]
+    },
+    "TB_BaconShop_HERO_58": {
+      "name": "Malygos",
+      "when": "You want to re-roll single cards, not the whole tavern",
+      "bullets": [
+        "Twice a turn, 0 gold",
+        "Same Tier out, same Tier in - it never upgrades quality"
+      ]
+    },
+    "BG30_HERO_304": {
+      "name": "Marin the Manager",
+      "when": "You can hold gold on turn 5 for a trinket you choose",
+      "bullets": [
+        "You pick the Lesser Trinket instead of taking what shows up",
+        "You still pay for it, so budget that turn"
+      ]
+    },
+    "BG20_HERO_202": {
+      "name": "Master Nguyen",
+      "when": "You want to answer whatever the game hands you",
+      "bullets": [
+        "A new choice of two powers every single turn",
+        "0 gold, but you never keep a long-term plan"
+      ]
+    },
+    "TB_BaconShop_HERO_49": {
+      "name": "Millhouse Manastorm",
+      "when": "You want to buy hard and cheap on a low Tier",
+      "bullets": [
+        "Minions cost 2, so buying is a third cheaper than normal",
+        "Refreshes cost 2 and upgrades cost 1 more - rolling and climbing hurt"
+      ]
+    },
+    "TB_BaconShop_HERO_17": {
+      "name": "Millificent Manastorm",
+      "when": "Mechs are in and you can reach Tier 4",
+      "bullets": [
+        "Nothing at all before Tier 4",
+        "Magnetic means the discover glues onto a Mech you already have"
+      ],
+      "tribes": [
+        "MECHANICAL"
+      ]
+    },
+    "BG34_HERO_002": {
+      "name": "Mister Clocksworth",
+      "when": "You want Goldens fast and can live without the discovers",
+      "bullets": [
+        "2 copies instead of 3, so every Golden comes a card early",
+        "You trade the Triple Reward discover for Tavern Coins"
+      ]
+    },
+    "TB_BaconShop_HERO_70": {
+      "name": "Mr. Bigglesworth",
+      "when": "You survive into the back half of the lobby",
+      "bullets": [
+        "Nothing at all until other players start dying",
+        "The minion keeps its enchantments, so late deaths give huge cards"
+      ]
+    },
+    "BG23_HERO_303": {
+      "name": "Murloc Holmes",
+      "when": "You watch the boards you fight",
+      "bullets": [
+        "Free to use, so a wrong guess costs nothing but the turn",
+        "The answer is a minion your NEXT opponent had last combat"
+      ]
+    },
+    "BG20_HERO_301": {
+      "name": "Mutanus the Devourer",
+      "when": "You want to fold a small board into one giant minion",
+      "bullets": [
+        "The stats move across, the card and its text are gone",
+        "0 gold, and it opens the slot for something better"
+      ]
+    },
+    "TB_BaconShop_HERO_93": {
+      "name": "N'Zoth",
+      "when": "You are collecting Deathrattle minions",
+      "bullets": [
+        "Free 2/2 on turn 1",
+        "The Fish carries every Deathrattle you own - protect it"
+      ]
+    },
+    "BG36_HERO_105": {
+      "name": "Nightmare Lord Xavius",
+      "when": "You want a free extra minion on a timer",
+      "bullets": [
+        "Every 4 turns, no gold spent",
+        "The minion arrives with a Dark Gift attached"
+      ]
+    },
+    "TB_BaconShop_HERO_57": {
+      "name": "Nozdormu",
+      "when": "You want an extra look at the tavern every turn",
+      "bullets": [
+        "One free refresh a turn - take it before spending gold",
+        "Value that never stops, but it never scales either"
+      ]
+    },
+    "BG22_HERO_305": {
+      "name": "Onyxia",
+      "when": "You expect long fights where your minions die",
+      "bullets": [
+        "Needs 4 friendly deaths per whelp, so it wants a wide board",
+        "Each whelp is bigger than the last, so late fights get more"
+      ]
+    },
+    "BG20_HERO_102": {
+      "name": "Overlord Saurfang",
+      "when": "You buy minions constantly",
+      "bullets": [
+        "The +1/+1 sits on the TAVERN card, so you must buy it to keep it",
+        "It grows every 3 minions bought"
+      ]
+    },
+    "BG23_HERO_201": {
+      "name": "Ozumat",
+      "when": "You leave a combat slot open and sell often",
+      "bullets": [
+        "No empty slot in combat means no Tentacle",
+        "Every minion you sell makes the Tentacle permanently bigger"
+      ]
+    },
+    "TB_BaconShop_HERO_18": {
+      "name": "Patches the Pirate",
+      "when": "Pirates are in the lobby",
+      "bullets": [
+        "Buying Pirates makes the power cheaper, and the power gives Pirates",
+        "Starts at 3 gold, so the first use is the expensive one"
+      ],
+      "tribes": [
+        "PIRATE"
+      ]
+    },
+    "TB_BaconShop_HERO_34": {
+      "name": "Patchwerk",
+      "when": "You want to play greedy and lose early fights on purpose",
+      "bullets": [
+        "There is no power - the 30 extra health IS the power",
+        "It buys you turns to tier up, nothing else"
+      ]
+    },
+    "BG25_HERO_100": {
+      "name": "Professor Putricide",
+      "when": "Undead are in and you have gold to spare",
+      "bullets": [
+        "3 gold a use, and only three uses all game",
+        "You build the minion yourself, so it can fit the board you have"
+      ],
+      "tribes": [
+        "UNDEAD"
+      ]
+    },
+    "TB_BaconShop_HERO_39": {
+      "name": "Pyramad",
+      "when": "You want a cheap wall to hold the board together",
+      "bullets": [
+        "2 gold and the minion taken is random",
+        "It doubles HEALTH, not attack - this is a defensive power"
+      ]
+    },
+    "TB_BaconShop_HERO_14": {
+      "name": "Queen Wagtoggle",
+      "when": "Your board covers several different minion types",
+      "bullets": [
+        "One minion of EACH type gets +1/+1, so variety pays",
+        "The buff grows for every 10 gold you spend"
+      ]
+    },
+    "TB_BaconShop_HERO_75": {
+      "name": "Rakanishu",
+      "when": "You buy Tavern spells that buff minions",
+      "bullets": [
+        "Only helps on turns you actually cast a Tavern spell",
+        "The extra grows every 3 turns, so it is a late-game power"
+      ]
+    },
+    "TB_BaconShop_HERO_41": {
+      "name": "Reno Jackson",
+      "when": "You find one expensive high-Tier minion",
+      "bullets": [
+        "One use for the whole game - save it for a Tier 5 or 6",
+        "It is a free Golden, so the card's text doubles too"
+      ]
+    },
+    "BG26_HERO_104": {
+      "name": "Rock Master Voone",
+      "when": "You are holding a card worth having twice",
+      "bullets": [
+        "It copies the LEFT-most card in hand, so arrange your hand",
+        "Fires at the end of every third turn, free"
+      ]
+    },
+    "BG20_HERO_100": {
+      "name": "Rokara",
+      "when": "You are winning fights and your minions get the kills",
+      "bullets": [
+        "Attack only, and it stacks for the rest of the game",
+        "A losing board gets nothing from it"
+      ]
+    },
+    "BG21_HERO_010": {
+      "name": "Scabbs Cutterbutter",
+      "when": "You want a strong card and know who you face next",
+      "bullets": [
+        "2 gold, and the pool is whatever your next opponent built",
+        "The later the lobby, the higher the Tiers on offer"
+      ]
+    },
+    "TB_BaconShop_HERO_23": {
+      "name": "Shudderwock",
+      "when": "You keep Battlecry minions on the board",
+      "bullets": [
+        "0 gold every turn once turn 3 passes",
+        "Worth nothing with no Battlecry minion in play"
+      ]
+    },
+    "TB_BaconShop_HERO_90": {
+      "name": "Silas Darkmoon",
+      "when": "You can spend gold on tickets between buys",
+      "bullets": [
+        "Three tickets buys one discover at your Tier",
+        "Tickets take tavern slots, so they compete with minions"
+      ]
+    },
+    "TB_BaconShop_HERO_27": {
+      "name": "Sindragosa",
+      "when": "You want cheap minions and can live with a smaller tavern",
+      "bullets": [
+        "Every minion is 2 gold, whatever its Tier",
+        "One fewer card and an auto-freeze each turn, so you see less"
+      ]
+    },
+    "TB_BaconShop_HERO_40": {
+      "name": "Sir Finley Mrrgglton",
+      "when": "You want to choose a power that fits this lobby",
+      "bullets": [
+        "You pick the power before turn 1",
+        "Whatever you take is your plan - read the lobby first"
+      ]
+    },
+    "TB_BaconShop_HERO_68": {
+      "name": "Skycap'n Kragg",
+      "when": "You can hold the button for one big gold turn",
+      "bullets": [
+        "One use all game; the payout grows by 1 every turn you wait",
+        "Using it early is a real cost, not a free start"
+      ]
+    },
+    "BG28_HERO_400": {
+      "name": "Snake Eyes",
+      "when": "You are happy to gamble on a gold spike",
+      "bullets": [
+        "1 gold in, 1 to 6 out - a roll of 1 loses the turn",
+        "A high roll locks the power out for that many turns"
+      ]
+    },
+    "BG21_HERO_030": {
+      "name": "Sneed",
+      "when": "You are holding a big minion you cannot play yet",
+      "bullets": [
+        "Free 2/1 on turn 1",
+        "It pulls from your HAND in combat, so keep a card there"
+      ]
+    },
+    "BG23_HERO_306": {
+      "name": "Sylvanas Windrunner",
+      "when": "You fight boards carrying cards you want",
+      "bullets": [
+        "The pool is minions that died last combat, on either side",
+        "2 gold, and nothing at all after a fight where nothing died"
+      ]
+    },
+    "BG28_HERO_800": {
+      "name": "Tae'thelan Bloodwatcher",
+      "when": "You buy Tavern spells regularly",
+      "bullets": [
+        "Every third spell you buy is free",
+        "Cheap spells count the same, so they can bank the free one"
+      ]
+    },
+    "BG20_HERO_282": {
+      "name": "Tamsin Roame",
+      "when": "You have one very tanky, low-attack minion",
+      "bullets": [
+        "It picks your LOWEST-Attack minion, so build that on purpose",
+        "The rest of the board inherits its stats when it dies"
+      ]
+    },
+    "BG22_HERO_000": {
+      "name": "Tavish Stormpike",
+      "when": "You leave a combat slot open",
+      "bullets": [
+        "0 gold, and it clears a tavern card you did not want",
+        "No empty slot in combat means the shot never fires"
+      ]
+    },
+    "BG25_HERO_103": {
+      "name": "Teron Gorefiend",
+      "when": "Your board has a Deathrattle worth firing twice",
+      "bullets": [
+        "It destroys your own minion first, so the Deathrattle goes off",
+        "It needs space to bring the copy back"
+      ]
+    },
+    "TB_BaconShop_HERO_50": {
+      "name": "Tess Greymane",
+      "when": "You are fighting boards you would rather have yourself",
+      "bullets": [
+        "1 gold turns the tavern into your last opponent's warband",
+        "The copies are plain, and you still pay to buy them"
+      ]
+    },
+    "TB_BaconShop_HERO_33": {
+      "name": "The Curator",
+      "when": "You want a minion that counts as every tribe",
+      "bullets": [
+        "Free 2/2 on turn 1 that fills any tribe requirement",
+        "Venomous means it kills whatever it hits"
+      ]
+    },
+    "TB_BaconShop_HERO_21": {
+      "name": "The Great Akazamzarak",
+      "when": "You want a free effect on the board every turn",
+      "bullets": [
+        "0 gold, usable every turn",
+        "You choose the Secret, so it can answer what keeps beating you"
+      ]
+    },
+    "TB_BaconShop_HERO_702": {
+      "name": "The Jailer",
+      "when": "Undead are in the lobby",
+      "bullets": [
+        "You must destroy an Undead to get one - a re-roll, not growth",
+        "Locked until Tier 2"
+      ],
+      "tribes": [
+        "UNDEAD"
+      ]
+    },
+    "TB_BaconShop_HERO_22": {
+      "name": "The Lich King",
+      "when": "You want one minion to fight twice this combat",
+      "bullets": [
+        "0 gold, every turn",
+        "Reborn only lasts until next turn - tempo, not a build"
+      ]
+    },
+    "TB_BaconShop_HERO_12": {
+      "name": "The Rat King",
+      "when": "The type on offer matches what you are building",
+      "bullets": [
+        "You cannot choose the type - it swaps on its own each turn",
+        "2 gold per use, so wait for your type to come round"
+      ]
+    },
+    "BG27_HERO_801": {
+      "name": "Thorim, Stormlord",
+      "when": "You expect a long game and will spend 60 gold",
+      "bullets": [
+        "You choose the Tier 7 card at the start, then have to earn it",
+        "60 gold spent is deep into the mid game"
+      ]
+    },
+    "BG34_HERO_001": {
+      "name": "Time Twister Chromie",
+      "when": "You would rather have Tavern spells than minions",
+      "bullets": [
+        "The refresh fills the tavern with spells instead of minions",
+        "0 gold, so it is a free look every turn"
+      ]
+    },
+    "TB_BaconShop_HERO_10": {
+      "name": "Trade Prince Gallywix",
+      "when": "You sell a minion most turns anyway",
+      "bullets": [
+        "1 gold now, 1 gold back NEXT turn - only after you sell",
+        "No sale means the gold is simply gone"
+      ]
+    },
+    "BG36_HERO_101": {
+      "name": "Tras'tath, Soul Parasite",
+      "when": "You can survive to turn 7 for a free Tier 5 minion",
+      "bullets": [
+        "You choose the minion at the start of the game",
+        "Nothing lands until turn 7, so early health matters"
+      ]
+    },
+    "BG22_HERO_003": {
+      "name": "Vanndar Stormpike",
+      "when": "You keep a slot open and one very high-health minion",
+      "bullets": [
+        "Nothing happens before turn 7",
+        "It copies your highest HEALTH, so build a wall, not a hitter"
+      ]
+    },
+    "BG22_HERO_004": {
+      "name": "Varden Dawngrasp",
+      "when": "You want two copies of the best card in the tavern",
+      "bullets": [
+        "Every refresh doubles the highest-Tier minion in it",
+        "Both copies are frozen, so they are still there next turn"
+      ]
+    },
+    "BG20_HERO_201": {
+      "name": "Vol'jin",
+      "when": "You have a tanky minion that hits for nothing",
+      "bullets": [
+        "It moves Attack between two minions for one combat",
+        "0 gold, so it is a free swing every turn"
+      ]
+    },
+    "BG20_HERO_101": {
+      "name": "Xyrella",
+      "when": "You want a high-Tier card's TEXT more than its stats",
+      "bullets": [
+        "The minion arrives as a 2/2 - this is about the card text",
+        "2 gold, and it goes to your hand, not the board"
+      ]
+    },
+    "TB_BaconShop_HERO_92": {
+      "name": "Y'Shaarj",
+      "when": "You want an extra minion of your Tier every turn",
+      "bullets": [
+        "You keep the summoned minion after the fight",
+        "2 gold for a random card of your Tier, not one you choose"
+      ]
+    },
+    "TB_BaconShop_HERO_35": {
+      "name": "Yogg-Saron, Hope's End",
+      "when": "You want free random value every turn",
+      "bullets": [
+        "Free and automatic from turn 3 on",
+        "The spell is random, so some turns give you nothing useful"
+      ]
+    },
+    "TB_BaconShop_HERO_53": {
+      "name": "Ysera",
+      "when": "Dragons are in the lobby",
+      "bullets": [
+        "Every refresh carries an extra Dragon, so your pieces are easy to find",
+        "The extra card means a bigger tavern to read each roll"
+      ],
+      "tribes": [
+        "DRAGON"
+      ]
+    },
+    "TB_BaconShop_HERO_91": {
+      "name": "Zephrys, the Great",
+      "when": "You have pairs waiting to become triples",
+      "bullets": [
+        "3 gold a wish and only three wishes all game",
+        "Needs the two copies already - it cannot start a triple"
+      ]
+    },
+    "BG31_HERO_005": {
+      "name": "Zerek, Master Cloner",
+      "when": "You build one huge buffed minion",
+      "bullets": [
+        "One use all game, and the copy keeps every buff",
+        "Save it for the biggest minion you will ever have"
+      ]
+    }
+  }
+}

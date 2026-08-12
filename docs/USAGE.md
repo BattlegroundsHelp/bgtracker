@@ -124,7 +124,8 @@ diagnostic as the packaged build.
 
 ## 3. What you will see the first time
 
-The overlay is **ten small windows**, not one big panel. Each one opens and closes
+The overlay is **eleven small windows**, not one big panel (ten without the
+optional memory reader — OTHER PLAYERS needs it). Each one opens and closes
 on its own trigger, at the moment it is about the thing in front of you. Each one
 is **draggable on its own** and remembers its own spot in `.overlay.json`, so
 moving the tavern window never moves anything else.
@@ -150,10 +151,11 @@ They sit on the left because a panel on the right would cover the trinket row.
 |---|---|---|
 | **MINIONS** | always, as a slim one-line bar; click `browse ▸` to expand | The whole current minion pool, filtered by tier, tribe and mechanic, with card text. Built from the live card data, so it is always this patch. **Needs no stats at all.** |
 | **SESSION** | always, except while the hero draft is up | Every game that finished while it was running, with placement and hero, and this lobby's tribes. **Your MMR is a dash** unless you build the optional memory reader (section 5). It is never guessed. |
-| **PICK YOUR HERO** | hero select | All four heroes, named and shown. **The ranking numbers are blank** without a stats source. |
+| **PICK YOUR HERO** | hero select | All four heroes, named and shown, each with one line saying when that hero is the pick (111 of the 121 heroes have one; the rest show nothing rather than a guess). **The ranking numbers are blank** without a stats source. |
 | **PICK YOUR HERO POWER** | that choice only | One row per hero power on offer. Numbers blank without a source. |
 | **PICK YOUR TRINKET** | trinket offers | The four trinkets, named. Numbers blank without a source. |
 | **PICK ONE** | discovers and Dark Gifts | The options, named. Dark Gifts have no published stats anywhere, so those stay unrated even with a source. |
+| **OTHER PLAYERS** | while a lobby is running (it steps aside for a trinket offer) | Everyone else in place order: hero, tavern tier, health. For anyone you have fought, the board they were last seen holding, stamped `seen r7 · 2 rounds ago`; click a player to see it. **This window does not appear at all** unless you build the optional memory reader (section 5) — the log never states another player's board while you shop, so there is nothing to show without it. |
 
 ### The honest version of "what works right now"
 
@@ -173,6 +175,8 @@ They sit on the left because a panel on the right would cover the trinket row.
 - Session tracking of games and placements.
 - Combat odds (BETA).
 - Every pick window firing at the right moment, with the options named.
+- The hero tips at the draft: they ship with the tool as plain text, so they
+  need no source and no network.
 
 **Blank until you add numbers (section 4):** hero, hero power and trinket
 rankings, pick rates, sample sizes, measured tavern star ratings (the curated
@@ -235,10 +239,11 @@ the useful window early (`last-patch` will be nearly empty), and `--mmr` does
 nothing against your own feed because your own games are one bucket.
 
 There is also `python collect.py --upload <url>`, which is strictly opt-in and
-needs a server you have. A shared community dataset is built but **not deployed
-yet**, so there is nothing to point it at today. When it exists: uploading stays
-off by default, records are anonymised game results with no names and no
-battletags, the aggregates are free for everyone, and the data is never sold.
+shares your mined games with the community dataset. That server is now up and
+`sources.example.json` points at it; it is new, so its numbers are thin for
+now. Uploading stays off unless you run that command, the records are
+anonymised game results with no names and no battletags, the aggregates are
+free for everyone, and the data is never sold.
 
 ### Option B: point it at a stats source you have the right to use
 
@@ -257,12 +262,23 @@ source never ends up in a commit.
 
 - `{time}` becomes `all-time` | `past-seven` | `past-three` | `last-patch`, and
   `{mmr}` becomes your `--mmr` bracket. Both come from the command line flags.
+- A feed publishes a bracket only once it holds enough games, so `top 1%` often
+  does not exist yet. Then the tool reads the all players file instead and
+  labels it as such - it will not print pooled numbers under a "top 1%" heading.
+  Our own feed also stamps each file with the bracket it is (`"mmr": {"bucket":
+  25, "minRating": 7400, ...}`), and that stamp wins over what was asked for.
 - A value can be an `https` URL or a local file path (relative paths resolve next
   to `bgtracker.py`).
 - URL responses are cached in `.cache/` for one hour.
 - Delete a line to leave that table empty. Missing data degrades to "no numbers",
   it never crashes.
-- `heroes_duo` is an optional fifth key, used by `--duo`.
+- `heroes_duo`, `trinkets_duo`, `cards_duo` and `comps_duo` are optional extra
+  keys, used by `--duo`. They are the same four tables built from Duos games
+  only. There is deliberately no fallback from them to the solo tables: a Duos
+  lobby is four teams finishing 1st-4th where solo is eight players finishing
+  1st-8th, so a solo number under a Duos heading would answer the wrong
+  question. Leave them out and `--duo` shows no numbers instead.
+  `collect.py --local-feed` writes them for you.
 
 **The JSON shape.** Each file is one object with one array in it:
 
@@ -313,14 +329,17 @@ anything already on disk, and only needs re-running after a new card set.
 
 ### The memory reader (optional, and please read the risk note)
 
-`native/msync` is a small helper that reads three things Hearthstone never writes
+`native/msync` is a small helper that reads the things Hearthstone never writes
 to any log file:
 
 - the **exact tribes in the lobby, at hero select** instead of learning them
   slowly from minions appearing,
 - **hero picks re-scored for the lobby you are actually in** rather than a global
   average,
-- your **MMR** in the SESSION window, and your board for synergy marks.
+- your **MMR** in the SESSION window, and your board for synergy marks,
+- the **leaderboard** — everyone's hero, tavern tier and health — and the board
+  each opponent was last seen holding, which is the whole OTHER PLAYERS window.
+  Without this helper that window never appears.
 
 **The risk, plainly.** Reading `Power.log` is the default, is what Hearthstone
 Deck Tracker does, and Blizzard has publicly said log reading trackers are fine.
@@ -367,9 +386,9 @@ bgtracker.bat --mmr 10 --time past-seven
 
 | flag | what it does |
 |---|---|
-| `--mmr 100\|50\|25\|10\|1` | MMR bracket for the stats. `100` = everyone (default), `1` = top 1%. Only meaningful if your source has brackets. |
+| `--mmr 100\|50\|25\|10\|1` | MMR bracket for the stats. `100` = everyone (default), `1` = top 1%. Needs `{mmr}` in your source URL. A bracket your feed has not published yet falls back to the all players numbers, and the tool says which bracket it actually used. |
 | `--time last-patch\|past-seven\|past-three\|all-time` | How far back the stats go. Default `last-patch`. |
-| `--duo` | Use Duos hero stats (needs a `heroes_duo` source). Only heroes exist for Duos anywhere. |
+| `--duo` | Use Duos stats: heroes, trinkets, cards and comps, each from Duos games only (needs the `*_duo` sources). Never pooled with solo. |
 | `--demo <path-to-Power.log>` | Replay a finished log through the real windows. Good for testing without playing. |
 | `--diag` | Print where it reads and writes, and every window it loaded, then exit. The first thing to paste in a bug report. |
 
@@ -424,9 +443,9 @@ Have a quick look for an existing one first, and one issue per bug please.
 ### What makes a report actually fixable
 
 1. **Which window.** Name it exactly: COUNTERS, COMBAT, TAVERN, bgtracker,
-   MINIONS, SESSION, PICK YOUR HERO, PICK YOUR HERO POWER, PICK YOUR TRINKET, or
-   PICK ONE. Ten independent windows means "the overlay is wrong" narrows almost
-   nothing down.
+   MINIONS, SESSION, OTHER PLAYERS, PICK YOUR HERO, PICK YOUR HERO POWER, PICK
+   YOUR TRINKET, or PICK ONE. Eleven independent windows means "the overlay is
+   wrong" narrows almost nothing down.
 2. **What the game was doing at that exact moment.** Hero select, shopping,
    mid-fight, the animation between fight and shop, between games, at the menu.
    Add the turn number and the round if you have them. Most of the hard bugs in

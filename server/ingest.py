@@ -45,9 +45,13 @@ MAX_BODY = int(os.environ.get("BGTRACKER_MAX_BODY", str(256 * 1024)))   # 256 KB
 RATE = int(os.environ.get("BGTRACKER_RATE", "120"))                     # uploads / minute / IP
 
 # What a valid game looks like. Everything past the core four is optional - the
-# log backfill fills {uid, date, hero, place, tribes}; the live overlay can later
-# add offers / final board, which unlock pick-rate and card deltas in aggregate.py.
-HERO_RE = re.compile(r"^(BG\d+_HERO_\d+|TB_BaconShop_HERO_\d+)$")
+# log backfill fills {uid, date, hero, place, duo, tribes}; the live overlay can
+# later add offers / final board, which unlock pick-rate and card deltas in
+# aggregate.py.
+# The characters between BG and _HERO_ are not always digits: Duos heroes are
+# BGDUO_HERO_223. The old `BG\d+` shape rejected every duos game outright as
+# "hero malformed", so no duos data could reach this server at all.
+HERO_RE = re.compile(r"^(BG[A-Z0-9]*_HERO_\d+|TB_BaconShop_HERO_\d+)$")
 CARD_RE = re.compile(r"^[A-Za-z0-9_]{1,64}$")
 DATE_RE = re.compile(r"^\d{4}[-_]\d{2}[-_]\d{2}$")
 UID_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
@@ -62,7 +66,8 @@ CREATE TABLE IF NOT EXISTS games (
     ts               INTEGER NOT NULL,   -- server receive time (epoch s)
     date             TEXT,               -- game date, YYYY-MM-DD
     hero             TEXT,
-    place            INTEGER,            -- 1..8
+    place            INTEGER,            -- 1..8 solo, 1..4 duos (four teams)
+    duo              INTEGER,            -- 1 duos, 0 solo, NULL unknown
     mmr              INTEGER,
     tribes           TEXT,               -- json array of race names
     offered_heroes   TEXT,               -- json array of cardIds (pick-rate denominator)
@@ -80,6 +85,19 @@ def db():
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     return conn
+
+
+def migrate(conn):
+    """Add columns a running server's table predates. CREATE TABLE IF NOT EXISTS
+    silently leaves an existing table alone, so a new field would otherwise never
+    appear on a box that has been collecting for weeks - and every INSERT naming
+    it would fail. Rows already stored keep NULL, which is exactly right: nobody
+    knows whether they were solo or duos, and the aggregator counts them in
+    neither feed rather than guess."""
+    have = {r[1] for r in conn.execute("PRAGMA table_info(games)")}
+    for col, decl in (("duo", "INTEGER"),):
+        if col not in have:
+            conn.execute(f"ALTER TABLE games ADD COLUMN {col} {decl}")
 
 
 def _clean_ids(v, limit=16):
@@ -114,6 +132,16 @@ def validate(rec):
     if place is not None and not (isinstance(place, int) and 1 <= place <= 8):
         raise ValueError("place out of range")
 
+    # Solo or Duos. Optional and tri-state on purpose: True/False when the client
+    # could read it off the log, absent/null when the record predates the
+    # detector. Never defaulted to solo - a duos game placed 1st-4th against
+    # three other teams, and averaging that into the solo pool would flatter
+    # every solo number. A bad TYPE is rejected rather than coerced, because
+    # "duo": "yes" from a broken client must not silently become True.
+    duo = rec.get("duo")
+    if duo is not None and not isinstance(duo, bool):
+        raise ValueError("duo must be true, false or absent")
+
     mmr = rec.get("mmr")
     if mmr is not None and not (isinstance(mmr, int) and 0 <= mmr <= 30000):
         raise ValueError("mmr out of range")
@@ -131,7 +159,7 @@ def validate(rec):
     fb = _clean_ids(rec.get("final_board"), limit=14)
     return {
         "uid": uid, "ts": int(time.time()), "date": date, "hero": hero,
-        "place": place, "mmr": mmr,
+        "place": place, "duo": None if duo is None else int(duo), "mmr": mmr,
         "tribes": json.dumps(tribes) if tribes else None,
         "offered_heroes": json.dumps(oh) if oh else None,
         "offered_trinkets": json.dumps(ot) if ot else None,
@@ -141,9 +169,15 @@ def validate(rec):
     }
 
 
-COLS = ("uid", "ts", "date", "hero", "place", "mmr", "tribes",
+COLS = ("uid", "ts", "date", "hero", "place", "duo", "mmr", "tribes",
         "offered_heroes", "offered_trinkets", "picked_trinkets", "final_board", "client")
 INSERT = f"INSERT OR IGNORE INTO games ({','.join(COLS)}) VALUES ({','.join('?' * len(COLS))})"
+# Fills a gap; never rewrites a classification. Games stored before the client
+# could tell solo from duos sit here with duo IS NULL and count in neither feed.
+# When that client re-mines its logs and uploads again, the uid is unchanged, so
+# INSERT OR IGNORE would drop the news on the floor - this puts the mode in, and
+# only where nothing was known. An already-classified game is immutable.
+BACKFILL_DUO = "UPDATE games SET duo = ? WHERE uid = ? AND duo IS NULL"
 
 
 class Limiter:
@@ -186,7 +220,12 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 with db() as c:
                     n = c.execute("SELECT COUNT(*) FROM games").fetchone()[0]
-                self._send(200, {"ok": True, "games": n})
+                    # Per mode too, so a deploy can be checked without opening
+                    # the DB: unclassified games are the ones in neither feed.
+                    by = dict(c.execute(
+                        "SELECT duo, COUNT(*) FROM games GROUP BY duo").fetchall())
+                self._send(200, {"ok": True, "games": n, "solo": by.get(0, 0),
+                                 "duo": by.get(1, 0), "unclassified": by.get(None, 0)})
             except Exception as e:
                 self._send(500, {"ok": False, "error": str(e)})
         else:
@@ -219,26 +258,32 @@ class Handler(BaseHTTPRequestHandler):
         if len(records) > 500:
             return self._send(413, {"ok": False, "error": "max 500 games per request"})
 
-        rows, rejected = [], []
+        rows, modes, rejected = [], [], []
         for rec in records:
             try:
                 v = validate(rec)
                 rows.append(tuple(v[c] for c in COLS))
+                if v["duo"] is not None:
+                    modes.append((v["duo"], v["uid"]))
             except ValueError as e:
                 rejected.append(str(e))
 
-        stored = 0
+        stored = filled = 0
         if rows:
             try:
                 with db() as c:
                     before = c.total_changes
                     c.executemany(INSERT, rows)
-                    c.commit()
                     stored = c.total_changes - before   # INSERT OR IGNORE: real inserts only
+                    before = c.total_changes
+                    c.executemany(BACKFILL_DUO, modes)  # older rows learn their mode
+                    filled = c.total_changes - before
+                    c.commit()
             except Exception as e:
                 return self._send(500, {"ok": False, "error": f"store failed: {e}"})
 
         self._send(200, {"ok": True, "accepted": len(rows), "stored": stored,
+                         "classified": filled,
                          "rejected": len(rejected), "reasons": rejected[:10]})
 
 
@@ -246,6 +291,8 @@ def main():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with db() as c:
         c.executescript(SCHEMA)
+        migrate(c)
+        c.commit()
     srv = ThreadingHTTPServer((BIND, PORT), Handler)
     print(f"bgtracker ingest on http://{BIND}:{PORT}  db={DB_PATH}  "
           f"token={'on' if TOKEN else 'off'}  rate={RATE}/min")

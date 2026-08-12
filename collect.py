@@ -16,8 +16,12 @@ here is the player's own gameplay data from their own client - fully ours to kee
     python collect.py --stats    # print what we have so far
 
 Fields per record (JSONL):
-    {date, game_id, hero, place, tribes, source_log,
+    {date, game_id, hero, place, duo, tribes, source_log,
      offered_heroes, offered_trinkets, picked_trinkets}
+`duo` says whether the game was Duos (see DUO_RE) so the two modes can be
+counted apart - they place 1st-4th and 1st-8th respectively, so one average over
+both describes nothing. A record written before the detector existed has no
+`duo` key: that means UNKNOWN, and it is left out of both feeds, not assumed.
 `place` and `hero` are best-effort from the log; the memory reader fills the gaps
 when the overlay records live (see WISHLIST). A record with a null field is still
 kept - partial data still aggregates.
@@ -87,6 +91,38 @@ DRAFT_RE = re.compile(r"FULL_ENTITY - Updating \[entityName=[^\]]+? id=(\d+) "
                       r"zone=HAND zonePos=\d+ cardId="
                       r"(?:BG\w+?_HERO_\w+|TB_BaconShop_HERO_\d+)\S* player=(\d+)\]")
 NAME_MAP_RE = re.compile(r"PlayerID=(\d+), PlayerName=(\S+#\d+)")
+
+
+# ------------------------------------------------------------ solo or duos
+# Duos is a different game, not a variant: eight players in four teams, a hero
+# pool of its own, cards that only exist there - and, measured in his own logs,
+# a leaderboard that runs 1..4 instead of 1..8. So a duos game averaged into the
+# solo pool does not merely add noise, it drags every solo average toward a
+# better-looking number that no solo player can reach. The two must be counted
+# apart, which means every record has to say which it was.
+#
+# The signal: Hearthstone marks the lobby on the PLAYER entity itself -
+# `tag=BACON_DUO_TEAMMATE_PLAYER_ID` and `tag=BACON_DUO_TEAM_ID`, written in the
+# player block a few dozen lines after CREATE_GAME and re-written as TAG_CHANGEs
+# throughout the game.
+#
+# Measured over the 33 finished games in six real Power.logs (2026-08-11):
+#   BACON_DUO_TEAM*_ID tag          6 duos / 27 solo
+#   GameType=GT_BATTLEGROUNDS_DUO   6 duos / 27 solo  - agrees with the tag 33/33
+#   any BGDUO_ card seen in-game    6 duos / 27 solo  - agrees with the tag 33/33
+#   a BGDUO_HERO_ cardId in-game    4 duos / 29 solo  - MISSES 2 real duos games
+# So the duos hero-id shape is NOT the signal: two of the six duos games were
+# played out entirely on heroes that also exist in solo. GameType is exact, but
+# `DebugPrintGame() - GameType=` is printed BEFORE the CREATE_GAME line, i.e.
+# outside the game slice this module cuts, and a game whose header rotated into
+# the previous file would silently inherit the neighbour's mode. The tag is
+# inside the slice, near its top, and repeats ~15 times per game, so even a
+# slice that begins mid-game (a reconnect) still carries it. Hence the tag.
+#
+# Rejected on evidence, for the record: BACON_DUO_PASSABLE fired in 25 of 33
+# games (it is a property printed on ordinary cards, solo included) and
+# BACON_DUOS_PUNISH_LEAVERS in 32 of 33 (a lobby option, not a mode).
+DUO_RE = re.compile(r"tag=BACON_DUO_TEAM(?:MATE_PLAYER)?_ID ")
 
 
 # ------------------------------------------------------------ what's an offer
@@ -353,6 +389,7 @@ def games_in(path):
         game = txt[a:b]
         if not any("STATE value=COMPLETE" in l for l in game):
             continue                       # unfinished / disconnect
+        duo = any(DUO_RE.search(l) for l in game)
         got = extract(game, tag)
         if not got:
             continue
@@ -363,6 +400,12 @@ def games_in(path):
             "game_id": f"{path.parent.name}:{a}",   # stable de-dupe key
             "hero": hero,
             "place": place,
+            # Solo or Duos - see DUO_RE. Always a real boolean here, because the
+            # slice either carries the tag or provably does not. A record written
+            # by an older version has no `duo` key at all, and that absence means
+            # UNKNOWN: the aggregator must count it in neither pool rather than
+            # assume solo. Re-mining fills it in wherever the log still exists.
+            "duo": duo,
             "tribes": tribes,
             # Named exactly as server/aggregate.py reads them.
             "offered_heroes": off_h,
@@ -373,9 +416,10 @@ def games_in(path):
 
 
 # Every key a mined record carries. A record written by an older version is
-# missing the offer fields, and its game can be re-mined to fill them in - which
-# is the whole reason collect() rewrites rather than appends.
-FIELDS = ("date", "game_id", "hero", "place", "tribes",
+# missing the offer fields (or `duo`), and its game can be re-mined to fill them
+# in - which is the whole reason collect() rewrites rather than appends. Adding a
+# key here is what makes the next run repair every record whose log still exists.
+FIELDS = ("date", "game_id", "hero", "place", "duo", "tribes",
           "offered_heroes", "offered_trinkets", "picked_trinkets", "source_log")
 
 
@@ -416,6 +460,12 @@ def collect():
     print(f"  {with_t} carry trinket offers "
           f"({sum(len(r.get('offered_trinkets') or []) for r in kept.values())} options, "
           f"{sum(len(r.get('picked_trinkets') or []) for r in kept.values())} taken)")
+    duo = sum(1 for r in kept.values() if r.get("duo") is True)
+    solo = sum(1 for r in kept.values() if r.get("duo") is False)
+    unknown = len(kept) - duo - solo
+    tail = (f", {unknown} unknown (mined before duos was detected, and their log "
+            f"has rotated away)" if unknown else "")
+    print(f"  {solo} solo, {duo} duos{tail}")
 
 
 def stats():
@@ -426,19 +476,32 @@ def stats():
     print(f"{len(recs)} games recorded")
     with_both = [r for r in recs if r.get("hero") and r.get("place")]
     print(f"  {len(with_both)} have both hero and placement")
+    duo = sum(1 for r in recs if r.get("duo") is True)
+    solo = sum(1 for r in recs if r.get("duo") is False)
+    unknown = len(recs) - duo - solo
+    print(f"  {solo} solo, {duo} duos"
+          + (f", {unknown} of unknown mode (counted in neither feed)" if unknown else ""))
     with_off = [r for r in recs if r.get("offered_heroes")]
     with_tri = [r for r in recs if r.get("offered_trinkets")]
     picked = sum(len(r.get("picked_trinkets") or []) for r in recs)
     print(f"  {len(with_off)} carry the hero offer (pick rate needs it)")
     print(f"  {len(with_tri)} carry trinket offers - {picked} trinkets taken")
     names = bg.card_names()
-    per = defaultdict(list)
-    for r in with_both:
-        per[r["hero"]].append(r["place"])
-    rows = sorted((sum(v) / len(v), len(v), h) for h, v in per.items())
-    print("  your average placement by hero (own data so far):")
-    for avg, n, h in rows[:15]:
-        print(f"    {avg:.2f}  {names.get(h, h):26} n={n}")
+    # Solo and duos are listed apart for the same reason the feeds are: a duos
+    # game finishes 1st-4th, a solo game 1st-8th, so one average over both is a
+    # number that describes no game you ever played.
+    for label, want in (("solo", False), ("duos", True)):
+        per = defaultdict(list)
+        for r in with_both:
+            if r.get("duo") is want:
+                per[r["hero"]].append(r["place"])
+        if not per:
+            continue
+        rows = sorted((sum(v) / len(v), len(v), h) for h, v in per.items())
+        print(f"  your average placement by hero, {label} "
+              f"({sum(len(v) for v in per.values())} games):")
+        for avg, n, h in rows[:15]:
+            print(f"    {avg:.2f}  {names.get(h, h):26} n={n}")
 
 
 def client_id():
@@ -475,6 +538,10 @@ def upload(base_url, token=None, batch=300):
             "date": g.get("date"),
             "hero": g.get("hero"),
             "place": g.get("place"),
+            # Solo or duos. Sent as null when this record predates the detector,
+            # so the server can keep it out of both feeds rather than guess; a
+            # later upload of the re-mined record fills that null in.
+            "duo": g.get("duo"),
             "tribes": g.get("tribes") or [],
             # The options you turned down - the only way pick rate can exist.
             # Still just cardIds off your own screen; nothing identifying.
@@ -534,7 +601,9 @@ def local_feed():
             g = json.loads(line)
             # The aggregator indexes these keys directly; collected records
             # only carry what the log gives, so fill the rest as absent.
-            for k in ("hero", "place", "mmr"):
+            # `duo` included: absent means unknown, and the aggregator keeps an
+            # unknown game out of BOTH feeds instead of assuming it was solo.
+            for k in ("hero", "place", "mmr", "duo"):
                 g.setdefault(k, None)
             for k in ("tribes", "offered_heroes", "offered_trinkets",
                       "picked_trinkets", "final_board"):
@@ -544,25 +613,51 @@ def local_feed():
             games.append(g)
     from datetime import datetime
     stamp = datetime.now().isoformat(timespec="seconds")
-    for period, spec in agg.PERIODS.items():
-        window = agg.in_window(games, agg.cutoff_for(spec))
-        agg.write(f"heroes-{period}", {**agg.hero_stats(window), "generatedAt": stamp, "games": len(window)})
-        agg.write(f"trinkets-{period}", {**agg.trinket_stats(window), "generatedAt": stamp, "games": len(window)})
-        agg.write(f"cards-{period}", {**agg.card_stats(window), "generatedAt": stamp, "games": len(window)})
-        agg.write(f"comps-{period}", {**agg.comp_stats(window), "generatedAt": stamp, "games": len(window)})
-        print(f"  {period:11} {len(window):6} of your games -> data/feed/")
+    # Same bucketing rules as the community server (server/aggregate.py): one
+    # file per MMR bucket your own games can support. On a personal feed that is
+    # normally just the all-players bucket - the log never states your rating -
+    # and the client falls back to it, so nothing goes blank.
+    agg.write("buckets", agg.emit(games, stamp))
+    local = {
+        "heroes": "data/feed/heroes-{mmr}-{time}.json",
+        "trinkets": "data/feed/trinkets-{mmr}-{time}.json",
+        "cards": "data/feed/cards-{mmr}-{time}.json",
+        "comps": "data/feed/comps-{mmr}-{time}.json",
+        # The same four tables built from your DUOS games only, which is what
+        # `--duo` reads. Separate files, never mixed with the above.
+        "heroes_duo": "data/feed/heroes-duo-{mmr}-{time}.json",
+        "trinkets_duo": "data/feed/trinkets-duo-{mmr}-{time}.json",
+        "cards_duo": "data/feed/cards-duo-{mmr}-{time}.json",
+        "comps_duo": "data/feed/comps-duo-{mmr}-{time}.json",
+    }
     src = APP_DIR / "sources.json"
     if not src.exists():
-        src.write_text(json.dumps({
-            "heroes": "data/feed/heroes-{time}.json",
-            "trinkets": "data/feed/trinkets-{time}.json",
-            "cards": "data/feed/cards-{time}.json",
-            "comps": "data/feed/comps-{time}.json",
-        }, indent=2), encoding="utf-8")
+        src.write_text(json.dumps(local, indent=2), encoding="utf-8")
         print("wrote sources.json -> your own numbers now show in the overlay")
     else:
-        print("sources.json already exists - left untouched")
-    print(f"({len(games)} games total; under {bg.MIN_SAMPLE} per hero shows as thin - it fills in as you play)")
+        # An existing sources.json is the user's own file and is never rewritten
+        # - but a table that gained files since it was written would stay dark
+        # forever, which is how a `--duo` that reads nothing looks like a broken
+        # feature. So the MISSING keys are added, pointing at the feed this run
+        # just built, and nothing already in the file is touched.
+        try:
+            cur = json.loads(src.read_text(encoding="utf-8"))
+        except Exception:
+            cur = None
+        added = [k for k in local if isinstance(cur, dict) and k not in cur]
+        if added:
+            cur.update({k: local[k] for k in added})
+            src.write_text(json.dumps(cur, indent=2), encoding="utf-8")
+            print(f"sources.json kept as it was, plus your local feed for: "
+                  f"{', '.join(added)}")
+        else:
+            print("sources.json already exists - left untouched")
+    duo = sum(1 for g in games if g.get("duo") is True)
+    solo = sum(1 for g in games if g.get("duo") is False)
+    unknown = len(games) - solo - duo
+    print(f"({len(games)} games total: {solo} solo, {duo} duos"
+          + (f", {unknown} of unknown mode left out of both" if unknown else "")
+          + f"; under {bg.MIN_SAMPLE} per hero shows as thin - it fills in as you play)")
 
 
 def main():

@@ -48,10 +48,12 @@ from ui.counters import CounterState   # noqa: E402
 # manager built here is pointed at a throwaway file.
 POS_FILE = Path(tempfile.gettempdir()) / "bgtracker-test-overlay.json"
 
-# Two bands are shared on purpose (see ui/__init__.py): the session panel steps
-# aside for the hero draft, and the minion browser is a slim bar that only
-# covers the left column when the player clicks it open.
-SHARED_BANDS = {frozenset(("session", "heropick"))}
+# Three bands are shared on purpose (see ui/__init__.py): the session panel
+# steps aside for the hero draft, the leaderboard steps aside for a trinket
+# dialog, and the minion browser is a slim bar that only covers the left column
+# when the player clicks it open.
+SHARED_BANDS = {frozenset(("session", "heropick")),
+                frozenset(("trinkets", "players"))}
 
 HERO_HAND_RE = re.compile(
     r"FULL_ENTITY - Updating \[entityName=.*? id=\d+ zone=HAND .*?"

@@ -12,7 +12,13 @@ dist/
 *.manifest
 *.whl
 .cache/
-data/
+# data/ is runtime state (your collected games, your generated feed) and stays
+# out - EXCEPT the community hero tips, which are written text that ships with
+# the tool. Written as data/* so the two files below can be un-ignored: git
+# never looks inside a directory that is itself excluded.
+data/*
+!data/hero_tips.json
+!data/hero_tips.schema.json
 tests/.livetest/
 .overlay.json
 overlay_out.log

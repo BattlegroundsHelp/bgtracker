@@ -84,15 +84,16 @@ namespace Bgtracker.Msync
                 return new Result { ok = false, rating = rating, error = "races field not found", diag = diagInfo };
 
             var races = ReadIntList(image.Mem, image.Mem.ReadPtr(instance + racesOff));
-            var team = Hs.ReadTeam(image, instance);
+            var state = Hs.ReadState(image, instance);
             return new Result
             {
                 ok = races.Length > 0,
                 rating = rating,
                 races = races,
-                board = team.Board,
-                hand = team.Hand,
-                trinkets = team.Trinkets,
+                board = state.Team.Board,
+                hand = state.Team.Hand,
+                trinkets = state.Team.Trinkets,
+                players = state.Players,
                 diag = diagInfo,
             };
         }
@@ -122,6 +123,7 @@ namespace Bgtracker.Msync
             public string[] board = new string[0];
             public string[] hand = new string[0];
             public string[] trinkets = new string[0];
+            public LeaderPlayer[] players = new LeaderPlayer[0];
             public string error;
             public string diag;
         }
@@ -136,6 +138,10 @@ namespace Bgtracker.Msync
             sb.Append(",\"board\":").Append(JsonStrArray(r.board));
             sb.Append(",\"hand\":").Append(JsonStrArray(r.hand));
             sb.Append(",\"trinkets\":").Append(JsonStrArray(r.trinkets));
+            // ADDED field - every key above keeps its name and shape, so an
+            // older Python side reading this line is unaffected.
+            sb.Append(",\"players\":[").Append(string.Join(",",
+                r.players.Select(JsonPlayer))).Append(']');
             if (r.error != null) sb.Append(",\"error\":").Append(JsonStr(r.error));
             if (r.diag != null) sb.Append(",\"diag\":").Append(JsonStr(r.diag));
             sb.Append('}');
@@ -145,6 +151,26 @@ namespace Bgtracker.Msync
 
         private static string JsonStrArray(string[] items) =>
             "[" + string.Join(",", items.Select(JsonStr)) + "]";
+
+        private static string Num(int v) => v.ToString(CultureInfo.InvariantCulture);
+
+        // One leaderboard seat. "board" is empty unless the game is actually
+        // holding that player's minions right now (their fight is on screen) -
+        // an empty list means "not seen", never "they have nothing".
+        private static string JsonPlayer(LeaderPlayer p)
+        {
+            var sb = new StringBuilder("{\"place\":").Append(Num(p.Place));
+            sb.Append(",\"card\":").Append(JsonStr(p.CardId));
+            sb.Append(",\"health\":").Append(Num(p.Health));
+            sb.Append(",\"armor\":").Append(Num(p.Armor));
+            sb.Append(",\"tier\":").Append(Num(p.Tier));
+            sb.Append(",\"you\":").Append(p.You ? "true" : "false");
+            sb.Append(",\"board\":[").Append(string.Join(",", p.Board.Select(m =>
+                "{\"card\":" + JsonStr(m.Card) +
+                ",\"atk\":" + Num(m.Atk) +
+                ",\"health\":" + Num(m.Health) + "}"))).Append(']');
+            return sb.Append('}').ToString();
+        }
 
         private static string JsonStr(string s)
         {

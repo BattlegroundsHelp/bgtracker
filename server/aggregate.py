@@ -23,11 +23,28 @@ What it computes honestly, from the data we actually have:
               yet (see server/README.md "What's not computed"). The file is still
               written so the client degrades to "no comp data", never errors.
 
+Each of those is written once per MMR bucket the pool can actually support (see
+MMR_BUCKETS below): heroes-{mmr}-{period}.json. Bucket 100 is ALSO written under
+the old un-bucketed name (heroes-{period}.json), so a sources.json written before
+buckets existed keeps working untouched.
+
+...and once per GAME MODE. Solo and Duos are two datasets, not one: a duos lobby
+is four teams and finishes 1st-4th, a solo lobby finishes 1st-8th, and the hero
+and card pools differ. Duos gets its own family of files, heroes-duo-{mmr}-
+{period}.json (and the un-bucketed heroes-duo-{period}.json), built from a pool
+that shares no game with the solo one - which is what the client's `--duo` and
+the `*_duo` keys in sources.json read. Every file states its own "mode". A game
+whose mode is unknown - recorded before the client could tell them apart - is in
+neither pool; the count is published in buckets.json as "unclassified".
+
 Nothing here invents a number. A hero with no placements, a trinket nobody was
-recorded taking, a card never seen on a board: absent, not zero-filled.
+recorded taking, a card never seen on a board: absent, not zero-filled. A bucket
+with too few games: not written at all, so the client falls back to the whole
+pool instead of reading noise off four games.
 
 Env: BGTRACKER_DB, BGTRACKER_OUT (dir), BGTRACKER_PATCH_DATE (YYYY-MM-DD; the
-     cut-off for the "last-patch" window - defaults to a rolling 14 days).
+     cut-off for the "last-patch" window - defaults to a rolling 14 days),
+     BGTRACKER_MMR_MIN (games a bucket needs before it is published).
 """
 
 import gzip
@@ -46,6 +63,24 @@ PATCH_DATE = os.environ.get("BGTRACKER_PATCH_DATE") or None
 # window; None means "everything". last-patch uses BGTRACKER_PATCH_DATE if set,
 # else a rolling fortnight - a stand-in until we track real patch dates.
 PERIODS = {"all-time": None, "past-seven": 7, "past-three": 3, "last-patch": "patch"}
+
+# ------------------------------------------------------------- MMR buckets
+# The client asks for one of five buckets (bgtracker.py --mmr 100|50|25|10|1),
+# meaning "the top N% of players". We do NOT know the ladder's real rating
+# distribution - nobody publishes it, and lifting someone else's cut-offs would
+# be using their data. So a bucket is defined against the only distribution we
+# can honestly measure: OUR OWN pool. Bucket N = the games whose rating is in
+# the top N% of the ratings shared with this server, in that same time window.
+# Every file states its own boundary (the "mmr" block: bucket, minRating, games,
+# basis), so nobody has to guess what "top 10%" meant on the day it was built.
+MMR_BUCKETS = [100, 50, 25, 10, 1]
+
+# A bucket is published only once it holds this many games. Below it the split
+# is noise, not granularity: four games at "top 1%" is a worse answer than the
+# whole pool, and the client is built to fall back to bucket 100 rather than
+# show nothing. Same number as the client's MIN_SAMPLE - the line this project
+# already draws between "signal" and "no signal".
+MMR_MIN_GAMES = int(os.environ.get("BGTRACKER_MMR_MIN", "30"))
 
 
 def load_games():
@@ -82,6 +117,45 @@ def in_window(games, cutoff):
 
 def mean(xs):
     return sum(xs) / len(xs) if xs else None
+
+
+def rating_cut(rated, top_pct):
+    """The rating at the bottom edge of the top `top_pct`% of `rated` (a sorted
+    ascending list of ratings), rounded DOWN to a round hundred.
+
+    Nearest-rank, so even a tiny pool yields a cut - whether the bucket is
+    actually published is decided by the sample floor, not by this. Rounding
+    down keeps the published boundary off one individual player's exact rating
+    and holds it steady while the pool wobbles; it can pull in a few games below
+    the strict percentile, which is the honest direction to err (more sample,
+    never less)."""
+    if not rated:
+        return None
+    idx = min(int(len(rated) * (1 - top_pct / 100.0)), len(rated) - 1)
+    return (rated[idx] // 100) * 100
+
+
+def mmr_cuts(games):
+    """bucket -> minimum rating. Bucket 100 is everyone (None = no floor, and it
+    keeps the games that never reported a rating at all). The other four exist
+    only once somebody has actually reported a rating in this window."""
+    rated = sorted(g["mmr"] for g in games if isinstance(g.get("mmr"), int))
+    cuts = {100: None}
+    for b in MMR_BUCKETS:
+        if b == 100:
+            continue
+        cut = rating_cut(rated, b)
+        if cut is not None:
+            cuts[b] = cut
+    return cuts
+
+
+def in_bucket(games, cut):
+    """The games inside one bucket. A game with no rating counts only in bucket
+    100 - we cannot place it, and guessing would be inventing a number."""
+    if cut is None:
+        return games
+    return [g for g in games if isinstance(g.get("mmr"), int) and g["mmr"] >= cut]
 
 
 def hero_stats(games):
@@ -187,17 +261,148 @@ def write(name, obj):
         f.write(raw)
 
 
-def main():
-    games = load_games()
-    stamp = datetime.now().isoformat(timespec="seconds")
-    print(f"aggregate: {len(games)} games in {DB_PATH}")
+# ------------------------------------------------------------- solo vs duos
+# Solo and Duos are counted as two separate datasets, never one. A duos lobby is
+# four TEAMS, so it finishes 1st-4th while a solo lobby finishes 1st-8th: pool
+# them and every solo average is dragged toward a number no solo player can
+# reach, while every duos average is inflated by eight-place games. The modes
+# also run different hero pools and different cards, so even the pick rates
+# would be answering a question nobody asked.
+#
+# Three states, and the third one matters: a record from a client that could not
+# yet tell the modes apart says nothing, and "nothing" is not "solo". Those games
+# are counted in NEITHER feed and reported as unclassified, in keeping with the
+# rest of this file - an absent number is absent, never zero and never a guess.
+# They heal themselves: the client re-mines its logs and the ingest endpoint
+# fills the mode in (see BACKFILL_DUO in ingest.py).
+MODES = (("", False), ("-duo", True))       # (file-name infix, what `duo` must be)
+
+
+def is_duo(g):
+    """True / False / None(unknown). SQLite hands back 1/0, JSON true/false, and
+    a database written before the column existed hands back nothing at all."""
+    v = g.get("duo")
+    return None if v is None else bool(v)
+
+
+def split_modes(games):
+    """(solo, duo, unknown) - the three pools, no game in two of them."""
+    solo = [g for g in games if is_duo(g) is False]
+    duo = [g for g in games if is_duo(g) is True]
+    unknown = [g for g in games if is_duo(g) is None]
+    return solo, duo, unknown
+
+
+def emit_period(games, period, stamp, verbose=True, infix="", mode="solo"):
+    """Write every MMR bucket this window can support, for one period and one
+    game mode. `infix` goes into the file name ("" solo, "-duo" duos), so the
+    two modes land in files that can never be mistaken for each other, and every
+    file states its own `mode`.
+
+    Returns the manifest rows for the buckets that were actually published.
+    Shared with collect.py --local-feed, so a player's personal feed is bucketed
+    by exactly the same rules as the community one."""
+    cuts = mmr_cuts(games)
+    published = []
+    for b in MMR_BUCKETS:
+        if b not in cuts:
+            continue
+        sub = in_bucket(games, cuts[b])
+        if b != 100 and len(sub) < MMR_MIN_GAMES:
+            continue                      # too thin to mean anything: no file at all
+        published.append((b, cuts[b], sub))
+
+    # Trinkets carry their per-bucket placements INSIDE the all-players file as
+    # well (averagePlacementAtMmr). The client already prefers that field when it
+    # matches the requested bucket, so even a sources.json whose URL has no {mmr}
+    # placeholder gets the MMR split for trinkets, with no config change.
+    tstats = {b: trinket_stats(sub) for b, _, sub in published}
+    at_mmr = defaultdict(list)
+    for b, _, _ in published:
+        if b == 100:
+            continue
+        for row in tstats[b]["trinketStats"]:
+            if row["averagePlacement"] is not None:
+                at_mmr[row["trinketCardId"]].append(
+                    {"mmr": b, "placement": row["averagePlacement"],
+                     "dataPoints": row["dataPoints"]})
+
+    for b, cut, sub in published:
+        meta = {
+            "generatedAt": stamp,
+            "games": len(sub),
+            # Which game this counted. Written into every file so a feed can
+            # never be read as the other mode's numbers by accident - the
+            # placements alone would not give it away (1st-4th vs 1st-8th).
+            "mode": mode,
+            # Say what the bucket IS, in the file, so a reader never has to
+            # assume it matches anyone else's idea of "top 10%".
+            "mmr": {
+                "bucket": b,
+                "minRating": cut,
+                "games": len(sub),
+                "basis": "every shared game, rated or not" if cut is None else
+                         f"rating >= {cut}: the top {b}% of the ratings shared "
+                         f"with this server in this window",
+            },
+        }
+        trink = tstats[b]
+        if b == 100:
+            for row in trink["trinketStats"]:
+                rows = at_mmr.get(row["trinketCardId"])
+                if rows:
+                    row["averagePlacementAtMmr"] = rows
+        for base, obj in (("heroes", {**hero_stats(sub), **meta}),
+                          ("trinkets", {**trink, **meta}),
+                          ("cards", {**card_stats(sub), **meta}),
+                          ("comps", {**comp_stats(sub), **meta})):
+            write(f"{base}{infix}-{b}-{period}", obj)
+            if b == 100:
+                write(f"{base}{infix}-{period}", obj)   # pre-bucket names still work
+        if verbose:
+            floor = "any rating" if cut is None else f">= {cut}"
+            print(f"  {period:11} {mode:4} top {b:>3}% ({floor:>11}) {len(sub):6} games")
+
+    if verbose:
+        thin = [b for b in cuts if b not in [p[0] for p in published]]
+        if thin:
+            print(f"  {period:11} {mode:4} not published, under {MMR_MIN_GAMES} games: "
+                  + ", ".join(f"top {b}%" for b in sorted(thin, reverse=True)))
+    return [{"bucket": b, "minRating": cut, "games": len(sub)} for b, cut, sub in published]
+
+
+def emit(games, stamp, verbose=True):
+    """Every period x every mode x every publishable bucket.
+
+    Solo and duos are aggregated from disjoint pools and written to disjoint
+    file names, so neither can leak into the other. Games whose mode is unknown
+    are in neither pool; the manifest says how many, rather than hiding them."""
+    manifest = {"generatedAt": stamp, "minGamesPerBucket": MMR_MIN_GAMES,
+                "basis": "top N% of the ratings shared with this server, per period",
+                "modes": ["solo", "duo"],
+                "periods": {}}
     for period, spec in PERIODS.items():
         window = in_window(games, cutoff_for(spec))
-        write(f"heroes-{period}", {**hero_stats(window), "generatedAt": stamp, "games": len(window)})
-        write(f"trinkets-{period}", {**trinket_stats(window), "generatedAt": stamp, "games": len(window)})
-        write(f"cards-{period}", {**card_stats(window), "generatedAt": stamp, "games": len(window)})
-        write(f"comps-{period}", {**comp_stats(window), "generatedAt": stamp, "games": len(window)})
-        print(f"  {period:11} {len(window):6} games -> heroes/trinkets/cards/comps")
+        solo, duo, unknown = split_modes(window)
+        manifest["periods"][period] = {
+            "solo": emit_period(solo, period, stamp, verbose, infix="", mode="solo"),
+            "duo": emit_period(duo, period, stamp, verbose, infix="-duo", mode="duo"),
+            # Counted, not quietly dropped: these are games recorded before the
+            # client could tell the modes apart. Re-mining and re-uploading
+            # clears them (ingest.py fills a NULL mode, never overwrites one).
+            "unclassified": len(unknown),
+        }
+    return manifest
+
+
+def main():
+    games = load_games()
+    solo, duo, unknown = split_modes(games)
+    stamp = datetime.now().isoformat(timespec="seconds")
+    print(f"aggregate: {len(games)} games in {DB_PATH} "
+          f"({len(solo)} solo, {len(duo)} duos"
+          + (f", {len(unknown)} unclassified - in neither feed" if unknown else "") + ")")
+    write("buckets", emit(games, stamp))
     print(f"wrote {OUT}")
 
 

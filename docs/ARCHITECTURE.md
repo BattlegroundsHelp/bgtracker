@@ -25,7 +25,7 @@ flowchart LR
 |---|---|
 | `bgtracker.py` | Everything headless: stats tables, log following/rotation, the `OfferDetector`, lobby/tribe tracking, phase detection, console rendering. Runnable alone as the console version. |
 | `overlay.py` | The launcher only: the log Reader that turns Power.log into events, the Router that hands each event to the windows that declared it, and the Tk loop. No drawing. Imports `bgtracker` for all parsing. |
-| `ui/` | One frameless window per concern (ten of them, table below), plus `ui/base.py` (anchoring, per-window saved position, rounded drawing, click-through badge strips). `ui/__init__.py` holds the window registry, the plugin contract and the event table. |
+| `ui/` | One frameless window per concern (eleven of them, table below; OTHER PLAYERS only ever opens with the memory reader), plus `ui/base.py` (anchoring, per-window saved position, rounded drawing, click-through badge strips). `ui/__init__.py` holds the window registry, the plugin contract and the event table. |
 | `sim/` | Combat odds, log-only: `boards.py` pulls both warbands out of Power.log before the first attack, `engine.py` is the Monte Carlo simulator, `validate.py` scores its predictions against every logged fight. BETA — see ROADMAP. |
 | `collect.py` | Own-data collector: mines finished games (hero, placement, tribes) from the whole log history into `data/games.jsonl`. |
 | `fetch_art.py` | One-shot card art download (tiles + crops) from HearthstoneJSON. |
@@ -133,15 +133,17 @@ loop; `ui/__init__.py` documents the contract, the events and the layout.
 | PICK YOUR HERO POWER | `heropower.py` | the hero powers on offer | `heropower` | `picks_over`, next `tavern`, 45s |
 | PICK YOUR TRINKET | `trinkets.py` | the ranked trinkets + badges on the cards | `trinket` | `picks_over`, next `tavern`, 45s |
 | PICK ONE | `discover.py` | discovers and Dark Gifts, rated per option | `discover` | `picks_over`, next `tavern`, 25s |
+| OTHER PLAYERS | `players.py` | the leaderboard, and each opponent's last-seen board with the round it was seen | `players` (memory reader only) | `game`; stands aside for a trinket offer |
 
 Layout is geometry, not runtime logic: each window claims a fixed band down one
 edge of the game window (right = the state of play, left = the cards you are
 choosing between, because a right-hand panel would sit on the trinket row,
 which reaches x 0.79). Every window's height is capped to its own band, so a
-long shop or an expanded comp list can never spill onto a neighbour. Two bands
+long shop or an expanded comp list can never spill onto a neighbour. Three bands
 are shared, and only ever by one window at a time: SESSION steps aside for the
-hero draft (and stops doing so once you drag it elsewhere), and MINIONS is a
-one-line bar until you deliberately expand it.
+hero draft (and stops doing so once you drag it elsewhere), OTHER PLAYERS does
+the same for a trinket offer, and MINIONS is a one-line bar until you
+deliberately expand it.
 
 - **The COUNTERS strip reads the log itself.** Its numbers are tags the game
   writes about you, so it tails Power.log on its own thread rather than routing

@@ -31,6 +31,78 @@ python tests/test_live.py
 Exercises the live path — tail-follow, mid-run log rotation — against a fake
 Logs dir. Fetches the stats tables once (cached for an hour).
 
+## Hero tips - the easiest thing to contribute
+
+The overlay prints one line of advice under each hero in the draft. Those lines
+live in [`data/hero_tips.json`](data/hero_tips.json), they are plain text, and
+**a pull request is how they get added, improved or thrown out**. No account, no
+API, no upvote button: open a PR, argue it in the diff, the better wording wins.
+If enough people are editing this file for that to stop working, we will build
+something better on top of it.
+
+### The schema
+
+[`data/hero_tips.schema.json`](data/hero_tips.schema.json) is the contract and
+describes every field. One entry per hero cardId:
+
+```json
+"BG26_HERO_101": {
+  "name": "Cap'n Hoggarr",
+  "when": "Pirates are in the lobby",
+  "bullets": [
+    "Each Pirate you buy hands 1 gold straight back",
+    "Chaining Pirate buys in one turn is the whole plan"
+  ],
+  "tribes": ["PIRATE"]
+}
+```
+
+- `when` - **one line: when this hero is good.** This is the line that appears
+  in the draft, so it has to stand alone and stay short. Past about 50
+  characters it is truncated on screen. No trailing full stop.
+- `bullets` - one to three short notes (how to play it, what it needs, what it
+  costs). Not drawn in the draft window today; this is the detail half of the
+  entry.
+- `tribes` - optional, and only when the hero's own printed power really is
+  tribe-locked. Uppercase, as Hearthstone spells them.
+- `name` - informational. The app looks the hero up by cardId; the name is
+  there so a human can grep the file.
+
+The key is the hero's cardId as HearthstoneJSON gives it - the same ids
+`bgtracker.bg_ids()["heroes"]` returns, e.g. `BG26_HERO_101`. To find one:
+
+```bash
+python -c "import bgtracker as bg; print([c for c, n in bg.card_names().items() if n.startswith('Cap')])"
+```
+
+### The one hard rule: original text only
+
+Every line in that file must be **your own words, or someone else's words given
+to this repo under its licence** (MIT - opening a PR is you licensing it). Do
+not copy, re-word, translate or run another site's hero guide through a model.
+Those guides are somebody's paid work; taking them is theft, and the fastest
+way to get this project taken down.
+
+Writing from the hero's own printed hero-power text is always safe. That is
+where the seed tips came from, and it is also why some heroes have **no** tip:
+when the printed power names a reward the card never explains (a Quest, a
+Timewarp, a Darkmoon Prize), no honest tip can be derived from the card, and no
+entry beats an invented one. Same rule for numbers - this file is advice, not
+statistics. Do not paste placement averages into it from anywhere.
+
+### Submitting one
+
+1. Edit `data/hero_tips.json`. Keep entries in alphabetical order by hero name,
+   and keep the file `json.load`-able (trailing commas are not JSON).
+2. Run `python tests/test_regression.py`. It validates this file offline:
+   unknown cardId, missing `when`, too many bullets, an unknown tribe or an
+   over-long line all fail, so CI catches a broken tip before a human reads it.
+3. Open the PR. One hero per PR is easiest to argue about; a batch is fine when
+   the tips belong together (all the Pirate heroes, say).
+4. Improving an existing tip is exactly as welcome as adding a missing one. Say
+   in the PR *why* the new wording is better - "it is wrong above 8000 MMR"
+   beats "it reads nicer".
+
 ## Ground rules
 
 - **Read-only, always.** The tool never injects code, modifies the client,

@@ -3,8 +3,10 @@
 What every surface shows, why it helps you play better, where the information
 comes from, and what it needs to work.
 
-The overlay is **ten small independent windows**. Each one opens and closes on
-its own trigger and is dragged and remembered on its own (`.overlay.json`).
+The overlay is **eleven small independent windows** — ten without the optional
+memory reader, since OTHER PLAYERS cannot exist without it. Each one opens and
+closes on its own trigger and is dragged and remembered on its own
+(`.overlay.json`).
 There is no shared mode anywhere, so a bug in one surface cannot make another
 one lie. [USAGE.md](USAGE.md) is how to install and run it,
 [ARCHITECTURE.md](ARCHITECTURE.md) is how it is built, and this file is what it
@@ -23,13 +25,14 @@ Two rules run through everything below:
 
 | area | window(s) | needs |
 |---|---|---|
-| [The pick moments](#the-pick-moments) | PICK YOUR HERO, PICK YOUR HERO POWER, PICK YOUR TRINKET, PICK ONE | nothing to detect and name; a stats source for numbers |
+| [The pick moments](#the-pick-moments) | PICK YOUR HERO, PICK YOUR HERO POWER, PICK YOUR TRINKET, PICK ONE | nothing to detect and name; a stats source for numbers; hero tips ship with the tool |
 | [The tavern](#the-tavern-stars-and-comp-tags) | TAVERN | nothing; a cards source for real star ratings |
 | [Comps and your board](#comps-and-your-board) | bgtracker | nothing; a comps source for measured rows; memory reader for your board |
 | [Lobby tribes](#lobby-tribes) | bgtracker, SESSION, MINIONS | nothing; memory reader for exactness at turn zero |
 | [Counters](#counters) | COUNTERS | nothing; memory reader for board tribe counts |
 | [Minion browser](#minion-browser) | MINIONS | nothing; a cards source for star ratings |
 | [Session](#session) | SESSION | nothing; memory reader for MMR |
+| [The other players](#the-other-players) | OTHER PLAYERS | the memory reader — without it the window never appears |
 | [Combat odds BETA](#combat-odds-beta) | COMBAT | nothing |
 | [Your own data](#your-own-data-and-the-community-dataset) | `collect.py`, `server/` | nothing |
 
@@ -88,6 +91,28 @@ just after the burst, so the badges land on the right portraits.
 
 **Needs.** Nothing to open, list and name the heroes. A `heroes` source for the
 numbers.
+
+**Tips.** Under each hero's name, one line of written advice saying when that
+hero is the pick — `strongest when the lobby has Beasts`, and so on. It is
+drawn in the strip the placement bar would use, so the panel is exactly as tall
+with tips as without and cannot grow past its band. **A hero with no tip shows
+nothing at all**: no placeholder, no "no tip yet".
+
+The tips are not data, they are text, so unlike every stats table they **ship
+with the tool** — [`data/hero_tips.json`](../data/hero_tips.json), a plain file
+you can edit next to the exe (your copy wins over the bundled one, so an edit
+survives an update). 111 of the 121 heroes have a line. The ten that do not are
+the ones whose hero power names a reward the card itself never describes, and
+an empty line beats an invented one.
+
+Anyone can add or fix one: open a pull request against that file, and that
+review is the voting mechanism until something better exists. The rules are in
+[CONTRIBUTING.md](../CONTRIBUTING.md), the contract is
+[`data/hero_tips.schema.json`](../data/hero_tips.schema.json), and CI checks
+every entry against it — including that the hero id actually exists, so a typo
+fails the build instead of silently never appearing. Every seeded line was
+written from the hero's own printed hero-power text; nothing is taken from
+anyone else's guide, because those are that site's paid product.
 
 **Lobby tuned scores.** When the tribes in the lobby are known *at draft time*
 and your hero rows carry per tribe data (`tribeStats`), each hero is re scored
@@ -353,6 +378,38 @@ writes, and the two de duplicate against each other.
 saying so, and with it but no successful read (Hearthstone closed) the number is
 a **dash**, never the last reading dressed up as current.
 
+## The other players
+
+**Shows.** The leaderboard as its own window: every other player in place order,
+their hero, their tavern tier and their health (armour shown as `30+9`), with
+anyone who is out marked `out`. For each player you have already fought, the
+board they were **last seen holding**, stamped with the round it was seen in and
+how long ago that was — `seen r7 · 2 rounds ago`. Click a player to open that
+board: their minions with the attack and health they had, in their real order.
+
+**Why it helps.** It is the one thing you cannot get from the log while you
+shop: what the people you are about to face actually had. Combined with their
+tier and health it is the difference between "I think I am fine" and knowing.
+
+**From.** Game memory only, through the **memory reader**. Hearthstone does not
+write another player's board to Power.log during recruit — that has been checked
+against real logs repeatedly and it is still true.
+
+**Never invented.** A player you have not fought has no board line at all, not
+an empty board and not a guess from their tier. The hero, tier and health are
+live every reading; only the board is historical, and only the board carries the
+"seen" stamp. Two measured facts shape what is kept: the seat that holds an
+enemy warband in memory *also* holds Bob's shop, so anything the tavern is
+offering is excluded (an early version reported the shop as somebody's board,
+caught by checking a capture against the log's own record of the same fight);
+and the warband is complete in memory before a fight animates and again after
+it, but is being killed off *during* it, so the reading kept is the first of
+each fight. Any reading that cannot be a board — more than seven minions, or
+positions that are not a clean 1..N — is discarded rather than shown.
+
+**Needs.** The **memory reader**. Without it this window never appears at all,
+and nothing else in the overlay changes.
+
 ## Combat odds BETA
 
 **Shows.** The round that is fighting, and one clearly flagged BETA line of
@@ -427,8 +484,10 @@ server uses over your own games, writes hero, trinket, card and comp feeds into
 own numbers**, with no third party involved. Thin samples stay flagged until
 they fill in; under 30 games an average reads as no signal at all.
 
-**The community dataset** is built and **not yet deployed to a host**. Its terms
-are fixed before it exists: uploading is **opt in only** and off by default
+**The community dataset** is **up**, and `sources.example.json` points at it.
+It is new, so it holds a few dozen games: expect most rows to be flagged thin,
+which means no signal rather than weak signal. Its terms were fixed before it
+existed: uploading is **opt in only** and off by default
 (nothing leaves your machine unless you turn it on), records are anonymised game
 results (hero, placement, lobby tribes, final board, no names, no battletags, no
 account ids) under an opaque per machine id, the aggregates are **free for
@@ -438,7 +497,11 @@ validated insert on the public endpoint and the heavy grouping on a timer off
 the request path. What it does not do yet is honest too: comp classification is
 not built (the comps file is written empty, so the client falls back to curated
 families instead of erroring), pick rates only appear once clients upload the
-offers, and per tribe hero impact and MMR buckets are not split out yet. A
+offers, and per tribe hero impact is not split out yet. MMR brackets ARE split
+(five of them, the same `--mmr 100|50|25|10|1` the client asks for), but a
+bracket is only published once it holds 30 games, so on a young pool most of
+them do not exist and the client falls back to the all players numbers and says
+so rather than labelling the whole pool "top 1%". A
 public write endpoint is not tamper proof against a determined stats poisoner,
 and it is not advertised as one.
 
@@ -451,10 +514,11 @@ yourself.
   real logged fights, with the highest impact cards scripted but a long tail
   that is not. It is labelled BETA on screen for exactly that reason. If you
   want the mature version, run HDT's free Bob's Buddy alongside.
-* **No per hero written strategy guides or tips.** The most requested feature in
-  the r/BobsTavern thread, and it is a content pipeline rather than a data feed:
-  the paid sites' tips are hand written content that cannot be reused, so this
-  needs our own or community written blurbs. Open, not refused.
+* **Hero tips are one line, not a strategy guide.** The pick panel says when a
+  hero is the pick and stops there. Full written guides are hand written content
+  and the paid sites' versions cannot be reused, so what exists here is a
+  community file anyone can extend by pull request, seeded from each hero's own
+  printed power text. Depth comes from contributors or not at all.
 * **No bundled stats and no default feed.** Not an oversight, see the stance
   above. Every feature works without them.
 * **No Dark Gift ratings and no quest stats.** Nobody publishes gift placement
@@ -472,7 +536,11 @@ yourself.
   strips are click through so clicks reach the game, which is exactly what makes
   them undraggable), badges drawn on the discover cards themselves, turn by turn
   minion advice, mechanical synergy ("you have 4 beasts, this buffs beasts"),
-  opponent last seen boards, and Duos beyond a hero table.
+  and opponent last seen boards.
+* **Duos** is collected and counted separately from solo. The collector marks
+  every game from the log itself, and `--duo` reads Duos-only heroes, trinkets,
+  cards and comps. The two are never pooled - a Duos lobby is four teams
+  finishing 1st-4th, a solo lobby is eight players finishing 1st-8th.
 
 ## How it compares to HDT / Tier7
 
@@ -489,6 +557,9 @@ HDT is the incumbent. It is free, it is fine, and it does things this does not.
 | Comps filtered to your lobby, with key minions | Tier7 | yes, from your own data source |
 | Tribes in the lobby | exact | exact with the memory reader, else inferred |
 | Hero picks tailored to the lobby's tribes | Tier7 | yes, with the memory reader |
+| Written hero advice at the draft | Tier7, paid and hand written | one line per hero, community written, ships with the tool and free |
+| Opponents' last-seen boards | free | yes, with the memory reader, stamped with the round it was seen |
+| Duos | some of it | heroes, trinkets, cards and comps from Duos games only, never pooled with solo |
 
 The last row needs `native/msync` built. The lobby scoring arithmetic itself is
 standard and documented in open source trackers; what you bring is a data source

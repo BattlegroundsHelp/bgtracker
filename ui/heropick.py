@@ -12,6 +12,12 @@ Lifecycle:
 It sits down the LEFT edge of the game window by default because the hero
 portraits occupy the middle and the badge strip already writes each hero's
 number above its own portrait.
+
+Each hero also gets one line of community-written advice under its name, from
+data/hero_tips.json (see CONTRIBUTING.md). A hero with no tip shows nothing at
+all - no placeholder, no "no tip yet" - and the line is drawn inside the row
+that already exists, so the window is exactly as tall as it was and stays
+inside its band.
 """
 
 from __future__ import annotations
@@ -41,16 +47,36 @@ class HeroPickWindow(BaseWindow):
         self.rows, self.tuned = [], False
         self.hide()
 
+    @staticmethod
+    def _with_tips(rows):
+        """Attach each hero's community tip line, by cardId.
+
+        The rows come from the reader, which knows stats and nothing else, so
+        the tip is attached here - the window that shows it. A hero with no
+        entry gets no key at all, and the drawing code then draws nothing for
+        it. A broken or missing tips file leaves every row untouched rather
+        than taking the draft window down with it.
+        """
+        try:
+            tips = bg.hero_tips()
+        except Exception:
+            return rows
+        out = []
+        for r in rows:
+            t = tips.get(r.get("card"))
+            out.append(dict(r, tip=t["when"]) if t and t.get("when") else r)
+        return out
+
     def on_event(self, name, payload):
         if name == "hero":
-            self.rows = payload.get("rows") or []
+            self.rows = self._with_tips(payload.get("rows") or [])
             self.tuned = payload.get("tuned", False)
             self.show()
             self.badges_show(self.rows, bg.MIN_SAMPLE)
         elif name == "hero_slots":
             # Same offer, corrected on-screen order: move the badges, do not
             # re-open the window (it may have been closed by the pick).
-            self.rows = payload.get("rows") or self.rows
+            self.rows = self._with_tips(payload.get("rows") or []) or self.rows
             if self.is_open:
                 self.badges_show(self.rows, bg.MIN_SAMPLE)
                 self.redraw()

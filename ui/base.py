@@ -30,6 +30,7 @@ import tkinter as tk
 import traceback
 from ctypes import wintypes
 from pathlib import Path
+from tkinter import font as tkfont
 
 from paths import APP_DIR
 
@@ -146,6 +147,51 @@ def shadow_text(c, cx, cy, text, fill, font, anchor="center"):
         c.create_text(cx + dx, cy + dy, text=text, fill=col, font=font, anchor=anchor)
 
 
+_FONTS = {}
+
+
+def fit_text(text, max_px, font=F_SUB):
+    """``text`` shortened until it really fits ``max_px``, measured in the font
+    it will be drawn in.
+
+    A panel is a fixed width inside a fixed band, and canvas text does not
+    wrap: one word too many runs under the number on the right or straight off
+    the panel. Cutting on a word boundary and MEASURING (instead of guessing a
+    character count) is what stops a contributed line of text from breaking a
+    layout nobody re-tested.
+    """
+    text = " ".join((text or "").split())
+    if not text:
+        return ""
+    try:
+        # A Font belongs to ONE interpreter: keeping it past its root's destroy
+        # raises "application has been destroyed" on the next measure. The test
+        # harness builds and destroys a manager per log, so the cache is keyed
+        # by the live root and a dead one simply never matches.
+        root = tk._default_root
+        key = (id(root), font)
+        m = _FONTS.get(key)
+        if m is None:
+            _FONTS.clear()
+            m = _FONTS[key] = tkfont.Font(font=font)
+        measure = m.measure
+        if measure(text) <= max_px:
+            return text
+        words = text.split(" ")
+        while len(words) > 1:
+            words.pop()
+            cut = " ".join(words) + "…"
+            if measure(cut) <= max_px:
+                return cut
+        while text and measure(text + "…") > max_px:
+            text = text[:-1]
+        return text + "…"
+    except Exception:
+        # No usable Tk yet, or it went away mid-draw: fall back to an average
+        # glyph width. Never let measuring text be what breaks a redraw.
+        return text if len(text) * 5.4 <= max_px else text[:max(1, int(max_px / 5.4))]
+
+
 def offer_rows(c, y, rows, width, art, min_sample=0):
     """Draw a ranked list of offered cards - one big color-graded placement
     number each, the standout highlighted, a bar whose length is the expected
@@ -154,6 +200,12 @@ def offer_rows(c, y, rows, width, art, min_sample=0):
 
     Returns the y below the last row. A row with no stats shows a dash - never
     a filled-in guess.
+
+    A row may carry ``tip``: one line of community-written advice, drawn in the
+    strip the placement bar would use. It replaces the bar rather than adding a
+    line, so the row stays 48px and the window cannot grow past the band it is
+    allotted (see the layout law in ui/__init__.py). No tip, no line - the
+    space stays empty and the bar comes back.
     """
     best = next((r for r in rows
                  if r.get("avg") is not None and r.get("n", 0) >= min_sample), None)
@@ -178,6 +230,7 @@ def offer_rows(c, y, rows, width, art, min_sample=0):
             if r.get("n", 0) < min_sample:
                 sub += " · thin!"
         c.create_text(tx, y + 31, text=sub, anchor="w", fill=DIM, font=F_SUB)
+        tip = " ".join(str(r.get("tip") or "").split())
         if shown is not None:
             col = avg_color(shown)
             c.create_text(width - 18, y + 16, text=f"{shown:.2f}", anchor="e",
@@ -186,13 +239,17 @@ def offer_rows(c, y, rows, width, art, min_sample=0):
                 d = r["adj"] - r["avg"]
                 c.create_text(width - 18, y + 32, text=f"{d:+.2f} here", anchor="e",
                               fill=col if d < 0 else DIM, font=F_DELTA)
-            frac = max(0.10, min(1.0, (5.2 - shown) / 2.2))
-            c.create_rectangle(20, y + 41, width - 98, y + 43, fill=LINE, outline="")
-            c.create_rectangle(20, y + 41, 20 + (width - 118) * frac, y + 43,
-                               fill=col, outline="")
+            if not tip:
+                frac = max(0.10, min(1.0, (5.2 - shown) / 2.2))
+                c.create_rectangle(20, y + 41, width - 98, y + 43, fill=LINE, outline="")
+                c.create_rectangle(20, y + 41, 20 + (width - 118) * frac, y + 43,
+                                   fill=col, outline="")
         else:
             c.create_text(width - 18, y + 16, text="—", anchor="e",
                           fill=DIM, font=F_BIG)
+        if tip:
+            c.create_text(tx, y + 41, text=fit_text(tip, width - tx - 18),
+                          anchor="w", fill=SOFT, font=F_SUB)
         y += 48
     return y
 

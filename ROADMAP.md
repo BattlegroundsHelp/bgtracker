@@ -48,18 +48,58 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
   the log history into `data/games.jsonl`. The seed of an independent dataset:
   with enough users pooling their own play, the same average-placement numbers
   can be computed without leaning on anyone else's feed.
+- ✅ **Duos** — collected and counted as its own dataset. Every mined game is
+  marked solo or Duos from the log itself (the `BACON_DUO_TEAM_ID` /
+  `BACON_DUO_TEAMMATE_PLAYER_ID` tags on the player entity, which agreed with
+  the game's own `GameType` line on 33 of 33 real games), and the aggregator
+  writes a separate Duos feed for heroes, trinkets, cards and comps. `--duo`
+  reads those. Nothing is pooled: a Duos lobby is four teams finishing 1st-4th,
+  a solo lobby is eight players finishing 1st-8th, so one shared average would
+  describe neither. This used to be "blocked on data" — it wasn't, the data was
+  in your own logs all along.
+- ✅ **Opponents' last-seen boards** — the log provably never contains opponent
+  boards during recruit, so this one is memory-only: `native/msync` now emits
+  the leaderboard (`players`) and the OTHER PLAYERS window shows every other
+  player's hero, tavern tier and health, plus the board each was last seen
+  holding, stamped with the round and how long ago. Two things had to be
+  measured rather than assumed. The seat that hosts the enemy warband also
+  hosts Bob's shop, so an early version reported the tavern as somebody's
+  board (caught by checking a captured board against the log's own snapshot of
+  the same fight); shop minions are now excluded by their drag-buy token. And
+  the warband is complete in memory *before* the fight animates and again
+  after it, but decimated *during* it — so the reading kept is the fullest one
+  of each fight. Needs the memory reader; without it the window never appears.
+- ✅ **Per-hero tips at the draft** — the most-requested feature in the
+  r/BobsTavern thread, built as a mechanism rather than a corpus: one line per
+  hero saying when it is the pick, drawn under the name at hero select. They
+  live in [`data/hero_tips.json`](data/hero_tips.json), ship with the tool, and
+  anyone can add or fix one by pull request — that review is the voting for
+  now. 111 of 121 heroes are seeded, each written from the hero's own printed
+  hero-power text; the ten left out are the ones whose power names a reward the
+  card never describes, and no tip beats an invented one. Nothing is copied
+  from anyone else's guide, since those are that site's paid product.
+- ✅ **MMR brackets in our own feed** — the aggregator publishes the same five
+  brackets the client asks for and stamps every file with the bracket it is. A
+  bracket appears only once it holds 30 games, and until then the client reads
+  the all-players file and says so instead of labelling the whole pool
+  "top 1%".
 
 ## Partial
 
 - 🔨 **Community dataset** — the pooling half of the own-data collector: an
   upload endpoint plus an aggregator that turns opt-in game records into the
-  stats feed the client already reads. Built; not yet deployed to a host. The
-  terms are fixed before it exists: upload is opt-in only (off by default),
-  records are anonymised (hero, placement, lobby tribes, final board — no
-  names, no battletags), aggregates are free for everyone, and the data is
-  never sold or paywalled. Meanwhile `collect.py --local-feed` gives every
-  player their own personal feed, and comps fall back to curated families
-  computed from the live card pool — so nothing shows a blank panel.
+  stats feed the client already reads. The server is **up**, and it now splits
+  solo from Duos and publishes MMR brackets. What is still thin is the pool
+  itself: it holds a few dozen games, so most rows are flagged thin and most
+  brackets are not published yet. The terms were fixed before it existed:
+  upload is opt-in only (off by default), records are anonymised (hero,
+  placement, lobby tribes, final board — no names, no battletags), aggregates
+  are free for everyone, and the data is never sold or paywalled. Still
+  missing: comp classification (that file is written empty rather than faked),
+  per-tribe hero impact, and any real defence against a determined stats
+  poisoner. Meanwhile `collect.py --local-feed` gives every player their own
+  personal feed, and comps fall back to curated families computed from the live
+  card pool — so nothing shows a blank panel.
 
 - 🔨 **Combat win % (a Bob's Buddy equivalent)** — shipped as BETA and labelled
   BETA on screen. Both warbands come out of Power.log before the fight
@@ -75,22 +115,9 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
   forever. `sim/validate.py` names the exact cards to script next. If you want
   the mature version, run HDT's free Bob's Buddy alongside — both tools read
   the same log and coexist happily.
-- 🔨 **Duos** — `--duo` reads a `heroes_duo` source if you configure one;
-  duo comp/trinket/card data doesn't meaningfully exist anywhere upstream.
-  Blocked on data, not code.
-- 🔨 **Opponent last-seen board on hover** — the log provably never contains
-  opponent boards. Game memory exposes each leaderboard player (hero, health,
-  tech level, board tribe), but the actual minion list only populates after
-  you mouse over them in-game — so "last-known board" is buildable, exact
-  live boards are not. Plan: extend `native/msync` to emit leaderboard players,
-  overlay shows the last-seen comp on hover.
 
 ## Open
 
-- ⬜ **Per-hero strategy tips on hover** — the most-requested feature in the
-  r/BobsTavern thread. HSReplay's tips are paid, hand-written content, so they
-  can't be reused; this needs our own or community-written blurbs (with voting,
-  ideally) — a content pipeline, not a data feed.
 - ⬜ **Movable badges** — the badge strips are click-through so clicks reach
   the game, which is exactly what makes them un-draggable. Plan: a nudge
   hotkey or a settings drag-handle that temporarily disables click-through.
@@ -104,6 +131,14 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
   current statistical "appears on X% of winning boards".
 - ⬜ **Quick disconnect/reconnect button** — would have to drive the game or
   Battle.net, which sits outside the read-only design. Unlikely.
+- ⬜ **macOS** — untouched, and it is not a small job. The log parsing is plain
+  Python and would port as is, but everything that puts a window over the game
+  (finding the Hearthstone window, following it, click-through, staying hidden
+  while the game is not in front) is Win32, and so is the memory reader. Nobody
+  has started it and there is no Mac here to test on, so no promises.
+- ⬜ **Linux** — same story, one step further: the game itself only runs there
+  through Wine or Proton, so an overlay has to deal with that as well.
+  Unaddressed.
 
 ## Not possible today (and why)
 

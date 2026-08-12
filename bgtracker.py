@@ -22,6 +22,7 @@ Usage:
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -32,11 +33,12 @@ import time
 import urllib.request
 from pathlib import Path
 
-from paths import APP_DIR
+from paths import APP_DIR, BUNDLE_DIR
 
 # There is NO built-in stats feed. To see numbers, create sources.json next to
 # this file with any of the keys
-#   heroes, heroes_duo, trinkets, comps, cards
+#   heroes, trinkets, comps, cards
+#   heroes_duo, trinkets_duo, comps_duo, cards_duo   (what --duo reads)
 # each mapping to a URL or a local JSON file you have the right to use
 # ({mmr} and {time} placeholders are filled in). collect.py grows your own
 # dataset from your own games. See README: "Bring your own stats".
@@ -139,9 +141,10 @@ def _fetch(url: str):
     return json.loads(raw)
 
 
-def stats_source(kind: str, **fmt):
-    """The user-configured source for one stats table (sources.json).
-    Returns a URL or file path, or None when the user hasn't configured one."""
+def raw_source(kind: str):
+    """The un-formatted template for one table from sources.json - {mmr} and
+    {time} still in it. The template, not just the filled-in URL, is what tells
+    us whether this feed is bucketed at all."""
     try:
         srcs = json.loads(SOURCES_FILE.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -149,6 +152,13 @@ def stats_source(kind: str, **fmt):
     except json.JSONDecodeError as e:
         sys.exit(f"sources.json is not valid JSON: {e}")
     src = srcs.get(kind)
+    return src if isinstance(src, str) and src else None
+
+
+def stats_source(kind: str, **fmt):
+    """The user-configured source for one stats table (sources.json).
+    Returns a URL or file path, or None when the user hasn't configured one."""
+    src = raw_source(kind)
     if not src:
         return None
     try:
@@ -169,7 +179,11 @@ def load_stats(source, key: str, refresh: bool = False):
             p = APP_DIR / p
         return json.loads(p.read_text(encoding="utf-8"))
     CACHE_DIR.mkdir(exist_ok=True)
-    path = CACHE_DIR / (key + ".json")
+    # The source itself is part of the key. Without it, pointing sources.json at
+    # a different server keeps serving the old server's cached numbers, and a
+    # fetch failure "falls back" to a feed you are no longer using - which is a
+    # wrong number, silently. (Caught live while testing MMR buckets.)
+    path = CACHE_DIR / f"{key}-{hashlib.sha1(source.encode()).hexdigest()[:8]}.json"
     if not refresh and path.exists() and time.time() - path.stat().st_mtime < CACHE_TTL:
         return json.loads(path.read_text(encoding="utf-8"))
     try:
@@ -184,10 +198,120 @@ def load_stats(source, key: str, refresh: bool = False):
         raise
 
 
+# The MMR buckets a feed can publish, widest pool first. 100 = every player.
+MMR_BUCKETS = ["100", "50", "25", "10", "1"]
+
+# Which bucket each table was actually served from, after any fallback. The
+# label on screen has to say what the numbers ARE, not what was asked for.
+USED_MMR: dict[str, str] = {}
+
+
+def bucket_in_use(kind: str, requested: str) -> str:
+    """The bucket `kind`'s numbers actually came from (see load_bucket)."""
+    return USED_MMR.get(kind, requested)
+
+
+# Duos reads its own four sources.json keys - heroes_duo, trinkets_duo,
+# cards_duo, comps_duo - and there is deliberately NO fallback to the solo feed.
+# Duos is four teams placing 1st-4th where solo is eight players placing 1st-8th,
+# on a different hero pool, so a solo number shown under a duos heading would be
+# worse than showing nothing. With no duos source configured the table comes back
+# empty and every option renders as "no data", which is the honest answer.
+# server/aggregate.py builds these files from duos games only.
+def source_kind(kind: str, duo: bool) -> str:
+    """The sources.json key for one table in one game mode."""
+    return f"{kind}_duo" if duo else kind
+
+
+def _declared_bucket(data, asked: str) -> str:
+    """What the feed itself says this file is. Our aggregator stamps every file
+    with {"mmr": {"bucket": N, "minRating": R, ...}}, and that beats what we
+    asked for: a source URL with no {mmr} placeholder returns the same file
+    whatever bucket you request, and calling it 'top 1%' would be a lie. A feed
+    that carries no stamp gets the benefit of the doubt."""
+    got = (data or {}).get("mmr")
+    if isinstance(got, dict) and got.get("bucket") is not None:
+        return str(got["bucket"])
+    return asked
+
+
+# "-{mmr}" / "_{mmr}" / "{mmr}" anywhere in a template, so the pre-bucket file
+# name can be derived from the bucketed one: heroes-{mmr}-{time} -> heroes-{time}.
+MMR_TAG_RE = re.compile(r"[-_]?\{mmr\}")
+
+
+def bucket_sources(kind: str, mmr: str, period: str):
+    """Where to look for one table, best first, each with the bucket it deserves
+    to be labelled as:
+
+      1. the bucket that was asked for;
+      2. the all-players bucket - a young feed publishes a bucket only once it
+         holds enough games, so top-1% may simply not exist yet;
+      3. the pre-bucket file name (heroes-{time}.json), for a server that has
+         not been rebuilt since buckets existed. Our aggregator still writes it
+         as a twin of bucket 100, and an older one writes nothing else.
+
+    Only 1 exists when the template has no {mmr} in it; then that one file
+    answers for every bucket, exactly as before."""
+    raw = raw_source(kind)
+    if not raw:
+        return []
+
+    def fill(tpl, m):
+        try:
+            return tpl.format(mmr=m, time=period)
+        except (KeyError, IndexError):
+            return tpl
+
+    cands = [(fill(raw, mmr), mmr)]
+    if "{mmr}" in raw:
+        cands.append((fill(raw, "100"), "100"))
+        cands.append((fill(MMR_TAG_RE.sub("", raw), "100"), "100"))
+    out, seen = [], set()
+    for url, label in cands:
+        if url and url not in seen:
+            seen.add(url)
+            out.append((url, label))
+    return out
+
+
+def load_bucket(kind: str, listkey: str, mmr: str, period: str, refresh: bool = False):
+    """One stats table for one MMR bucket, with an honest fallback.
+
+    Walks bucket_sources() in order and takes the first file that actually has
+    rows, recording in USED_MMR what was really used so the caller can label it
+    truthfully - showing the whole pool under a "top 1%" heading would be a
+    wrong number, which this project treats the same as a made-up one."""
+    cands = bucket_sources(kind, mmr, period)
+    if not cands:                       # nothing configured: quietly no numbers
+        USED_MMR[kind] = mmr
+        return {}
+    first_err, blank = None, {}
+    for i, (url, label) in enumerate(cands):
+        try:
+            data = load_stats(url, f"{kind}-{label}-{period}", refresh)
+        except Exception as e:
+            first_err = first_err or e
+            continue
+        if data.get(listkey):
+            if i and label != mmr:      # a different FILE for the same bucket is
+                                        # not worth a word; a different BUCKET is
+                print(f"  ! no top {mmr}% {kind} feed yet - showing top {label}%",
+                      file=sys.stderr)
+            USED_MMR[kind] = _declared_bucket(data, label)
+            return data
+        blank = blank or data
+    if first_err and not blank:
+        if len(cands) == 1:
+            raise first_err             # one source and it is dead: fail as before
+        print(f"  ! {kind} feed unreachable ({first_err}) - no numbers", file=sys.stderr)
+    USED_MMR[kind] = _declared_bucket(blank, mmr)
+    return blank
+
+
 def hero_table(mmr: str, period: str, duo: bool = False, refresh: bool = False) -> dict:
     """cardId -> {avg placement, pick rate, sample size}."""
-    src = stats_source("heroes_duo" if duo else "heroes", mmr=mmr, time=period)
-    data = load_stats(src, f"heroes-{'duo-' if duo else ''}{mmr}-{period}", refresh)
+    data = load_bucket(source_kind("heroes", duo), "heroStats", mmr, period, refresh)
     out = {}
     for h in data.get("heroStats", []):
         offered = h.get("totalOffered") or 0
@@ -223,15 +347,16 @@ def lobby_adjust(stat: dict, present: set):
     return stat["avg"] + sum(t.get("impactAveragePosition", 0) for t in rows)
 
 
-def trinket_table(period: str, mmr: str, refresh: bool = False) -> dict:
-    data = load_stats(stats_source("trinkets", time=period, mmr=mmr),
-                      f"trinkets-{period}", refresh)
+def trinket_table(period: str, mmr: str, refresh: bool = False, duo: bool = False) -> dict:
+    data = load_bucket(source_kind("trinkets", duo), "trinketStats", mmr, period, refresh)
     out = {}
+    bucketed = False
     for t in data.get("trinketStats", []):
         avg = t.get("averagePlacement")
         for row in t.get("averagePlacementAtMmr") or []:      # prefer the requested MMR bucket
             if str(row.get("mmr")) == str(mmr):
                 avg = row.get("placement")
+                bucketed = True     # this row IS the asked-for bucket, inline
                 break
         out[t["trinketCardId"]] = {
             "avg": avg,
@@ -239,13 +364,15 @@ def trinket_table(period: str, mmr: str, refresh: bool = False) -> dict:
             "n": t.get("dataPoints", 0),
             "dist": [],
         }
+    if bucketed:
+        USED_MMR[source_kind("trinkets", duo)] = mmr   # served from the all-players
+                                        # file, but the numbers are the asked bucket's
     return out
 
 
-def card_table(mmr: str, period: str, refresh: bool = False) -> dict:
+def card_table(mmr: str, period: str, refresh: bool = False, duo: bool = False) -> dict:
     """cardId -> {avg placement when played, sample}. Powers the tavern panel."""
-    data = load_stats(stats_source("cards", mmr=mmr, time=period),
-                      f"cards-{mmr}-{period}", refresh)
+    data = load_bucket(source_kind("cards", duo), "cardStats", mmr, period, refresh)
     out = {}
     for c in data.get("cardStats", []):
         avg, other = c.get("averagePlacement"), c.get("averagePlacementOther")
@@ -343,6 +470,53 @@ def hero_power_universe(refresh: bool = False) -> dict:
     return {i: {} for i in ids}
 
 
+# Community hero tips: written text, not collected data, so unlike every stats
+# table this one SHIPS with the tool. It is a plain file people edit by pull
+# request (data/hero_tips.schema.json + CONTRIBUTING.md) - that review is the
+# whole quality mechanism, and it is why nothing here may be copied from
+# anyone else's guide.
+_TIPS_CACHE = None
+
+
+def hero_tips(refresh: bool = False) -> dict:
+    """cardId -> {"when": str, "bullets": [str], "tribes": [str]}.
+
+    Read from data/hero_tips.json. A user's own copy beside the exe wins over
+    the bundled one, so an edit survives an update instead of being overwritten
+    by it (APP_DIR vs BUNDLE_DIR - see paths.py).
+
+    A missing, unreadable or malformed file is not an error: it means no tips,
+    and every surface draws nothing rather than a placeholder. Entries that do
+    not match the schema are skipped one by one, so one bad pull request cannot
+    take the whole file down with it.
+    """
+    global _TIPS_CACHE
+    if _TIPS_CACHE is not None and not refresh:
+        return _TIPS_CACHE
+    out = {}
+    for base in (APP_DIR, BUNDLE_DIR):
+        try:
+            doc = json.loads((base / "data" / "hero_tips.json").read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for cid, e in (doc.get("tips") or {}).items():
+            if not isinstance(e, dict) or not isinstance(e.get("when"), str):
+                continue
+            bullets = [b for b in (e.get("bullets") or []) if isinstance(b, str)]
+            tribes = [t for t in (e.get("tribes") or []) if t in TRIBES]
+            out[cid] = {"name": e.get("name"), "when": e["when"].strip(),
+                        "bullets": bullets, "tribes": tribes}
+        break                    # first file found wins; they are not merged
+    _TIPS_CACHE = out
+    return out
+
+
+def hero_tip(card_id: str) -> dict | None:
+    """The tip for one hero, or None. Golden/skin suffixes never appear on a
+    hero cardId, so this is a plain lookup."""
+    return hero_tips().get(card_id)
+
+
 def comp_minion_counts(comp: dict) -> tuple:
     """(cardId -> appearances, number of boards) over this comp's real boards.
     Golden copies fold into the plain card - '_G' is the same minion, upgraded."""
@@ -364,15 +538,16 @@ def key_minions(comp: dict, names: dict, limit: int = 4) -> list:
     return [names.get(cid, cid) for cid, _ in top]
 
 
-def comp_table(period: str, mmr: str, refresh: bool = False) -> list:
+def comp_table(period: str, mmr: str, refresh: bool = False, duo: bool = False) -> list:
     """The archetypes behind the 'comps' page: what to build, and how it places.
 
     With a configured comps source: real measured rows (avg placement + n).
     Without one (or while it's still empty): the CURATED baseline - evergreen
     tribe families whose core minions are computed from the live card pool, so
-    the panel is useful with zero stats and never shows a stale list."""
-    data = load_stats(stats_source("comps", time=period, mmr=mmr),
-                      f"comps-{period}", refresh)
+    the panel is useful with zero stats and never shows a stale list. The
+    baseline is tribe-mechanic families, not measured placements, so it is the
+    same honest starting point in duos as in solo."""
+    data = load_bucket(source_kind("comps", duo), "compStats", mmr, period, refresh)
     names = card_names(refresh)
     out = []
     for c in data.get("compStats", []):
@@ -382,6 +557,7 @@ def comp_table(period: str, mmr: str, refresh: bool = False) -> list:
             if str(row.get("mmr")) == str(mmr):
                 avg = row.get("placement", avg)
                 n = row.get("dataPoints", n)
+                USED_MMR[source_kind("comps", duo)] = mmr
                 break
         if avg is None:
             continue
@@ -572,6 +748,11 @@ class MemoryTribes(threading.Thread):
     msync helper. This is the only way to know them AT HERO SELECT - the log
     says nothing about tribes until minions start appearing, several turns later.
 
+    It also carries the LEADERBOARD (``players``): the other seven seats with
+    their hero, health, armour and tavern tier - and, while their fight is the
+    one on screen, the minions the game is actually holding for them. Power.log
+    never states any of that during recruit.
+
     Optional: if msync.exe hasn't been built, everything falls back to log
     inference and simply knows less, later.
     """
@@ -584,6 +765,10 @@ class MemoryTribes(threading.Thread):
         self.board = []        # cardIds of the minions on YOUR board, live
         self.hand = []
         self.trinkets = []
+        # One dict per leaderboard seat, newest reading:
+        #   {place, card, health, armor, tier, you, board:[{card, atk, health}]}
+        # An empty board means "the game is not holding it", never "empty board".
+        self.players = []
         self.rating = None
         self.error = "starting"
         self.proc = None
@@ -612,6 +797,8 @@ class MemoryTribes(threading.Thread):
             self.board = d.get("board") or []
             self.hand = d.get("hand") or []
             self.trinkets = d.get("trinkets") or []
+            # Added by a later msync build; an older helper simply omits it.
+            self.players = d.get("players") or []
             if d.get("rating", -1) > 0:
                 self.rating = d["rating"]
             if d.get("ok"):
@@ -908,7 +1095,9 @@ def main():
                     help="MMR bucket: 100=all, 1=top 1%% (default: 100)")
     ap.add_argument("--time", default="last-patch",
                     choices=["all-time", "past-three", "past-seven", "last-patch"])
-    ap.add_argument("--duo", action="store_true", help="use Duos stats")
+    ap.add_argument("--duo", action="store_true",
+                    help="use Duos stats (heroes, trinkets, cards and comps all "
+                         "come from Duos games only)")
     ap.add_argument("--replay", nargs="?", const="__newest__", default=None,
                     help="scan an existing log instead of following live")
     ap.add_argument("--refresh", action="store_true", help="force re-download of stats")
@@ -919,14 +1108,17 @@ def main():
     args = ap.parse_args()
 
     print("bgtracker - loading ...")
-    comps = comp_table(args.time, args.mmr, args.refresh)
+    comps = comp_table(args.time, args.mmr, args.refresh, args.duo)
+    # A feed publishes an MMR bucket only once it holds enough games, so a table
+    # may have come back from the all-players pool instead. Label what we got.
+    comp_mmr = bucket_in_use(source_kind("comps", args.duo), args.mmr)
 
     if args.comps:
         if not comps:
             sys.exit("  no comps available (offline and no card-pool cache yet)")
         curated = bool(comps and comps[0].get("baseline"))
         print(f"\n  COMPS  -  " + ("curated baseline (no stats configured)"
-                                   if curated else f"top {args.mmr}% MMR, {args.time}")
+                                   if curated else f"top {comp_mmr}% MMR, {args.time}")
               + "\n" + "=" * 68)
         for c in comps:
             if not c.get("baseline") and c["n"] < MIN_SAMPLE:
@@ -941,14 +1133,24 @@ def main():
         return
 
     heroes = hero_table(args.mmr, args.time, args.duo, args.refresh)
-    trinkets = trinket_table(args.time, args.mmr, args.refresh)
+    trinkets = trinket_table(args.time, args.mmr, args.refresh, args.duo)
+    hero_mmr = bucket_in_use(source_kind("heroes", args.duo), args.mmr)
+    trinket_mmr = bucket_in_use(source_kind("trinkets", args.duo), args.mmr)
     # Recognition comes from the card database, not from any stats table, so
     # every offer is detected and named even with no stats configured at all.
     hero_ids = hero_universe(args.refresh)
     trinket_ids = trinket_universe(args.refresh)
     if heroes or trinkets:
-        print(f"  stats: {len(heroes)} heroes, {len(trinkets)} trinkets"
-              f"  (top {args.mmr}% MMR, {args.time}{', duos' if args.duo else ''})")
+        print(f"  stats: {len(heroes)} heroes (top {hero_mmr}%),"
+              f" {len(trinkets)} trinkets (top {trinket_mmr}%)"
+              f"  ({args.time}{', duos' if args.duo else ''})")
+    elif args.duo:
+        # Say which sources are missing, not just "some". Duos numbers never
+        # fall back to the solo feed - they would be the wrong game's numbers.
+        print("  no Duos stats sources configured (heroes_duo / trinkets_duo /"
+              " cards_duo / comps_duo in sources.json) - offers will show without"
+              " numbers. `collect.py --local-feed` builds them from your own"
+              " Duos games.")
     else:
         print("  no stats sources configured - offers will show without numbers"
               " (README: 'Bring your own stats')")
@@ -968,10 +1170,11 @@ def main():
         if not event:
             return
         kind, opts = event
-        table = heroes if kind == "hero choice" else trinkets
+        hero_choice = kind == "hero choice"
+        table = heroes if hero_choice else trinkets
         # Only heroes have per-tribe stats to re-score against.
-        render(kind, opts, table, args.mmr, args.time,
-               lobby.tribes if kind == "hero choice" else None)
+        render(kind, opts, table, hero_mmr if hero_choice else trinket_mmr, args.time,
+               lobby.tribes if hero_choice else None)
 
     def track(line):
         """Returns True when a newly confirmed tribe should refresh the panel."""
@@ -989,7 +1192,7 @@ def main():
             for line in f:
                 show(det.feed(line))
                 if track(line):
-                    render_lobby(lobby, comps, args.mmr)
+                    render_lobby(lobby, comps, comp_mmr)
         show(det.flush())
         return
 
@@ -1005,7 +1208,7 @@ def main():
                 continue
             show(det.feed(line))
             if track(line):
-                render_lobby(lobby, comps, args.mmr)
+                render_lobby(lobby, comps, comp_mmr)
     except KeyboardInterrupt:
         print("\nbye")
 

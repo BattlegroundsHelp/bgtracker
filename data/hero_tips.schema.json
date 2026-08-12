@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hero_tips.schema.json",
+  "title": "bgtracker hero tips",
+  "description": "Community-written strategy tips shown under each hero in the draft. One entry per Battlegrounds hero cardId. Every tip must be ORIGINAL text or contributed under the repository licence - never copied, paraphrased or machine-reworded from anyone else's guide. tests/test_regression.py enforces this file's shape offline, so a pull request that breaks it fails CI.",
+  "type": "object",
+  "required": ["version", "tips"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "description": "Schema version of this file. Bump only when the shape changes.",
+      "type": "integer",
+      "const": 1
+    },
+    "schema": {
+      "description": "Filename of this schema, for editors that follow it.",
+      "type": "string"
+    },
+    "note": {
+      "description": "Free text for human editors. Ignored by the app.",
+      "type": "string"
+    },
+    "tips": {
+      "description": "Battlegrounds hero cardId -> one tip. The cardId is the id HearthstoneJSON gives the hero (bgtracker.bg_ids()['heroes']), e.g. 'BG26_HERO_101'. An unknown cardId fails the test rather than silently doing nothing.",
+      "type": "object",
+      "propertyNames": {"pattern": "^[A-Za-z0-9_]+$"},
+      "additionalProperties": {
+        "type": "object",
+        "required": ["when", "bullets"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "The hero's name. Informational only - the app looks the hero up by cardId. Spell it the way the card database spells it so the file stays greppable.",
+            "type": "string",
+            "maxLength": 60
+          },
+          "when": {
+            "description": "ONE line: when this hero is good. This is the line the overlay prints under the hero during the draft, so it must stand alone and stay short - past about 50 characters it is truncated on screen. No trailing full stop.",
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 80
+          },
+          "bullets": {
+            "description": "One to three short notes: how to play it, what it needs, what it costs. Not drawn in the draft window today - they are the reference half of the entry and the place to put detail.",
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": {"type": "string", "minLength": 8, "maxLength": 100}
+          },
+          "tribes": {
+            "description": "Optional: the tribes this hero's own power names or needs. Uppercase, exactly as Hearthstone spells them. Leave it out unless the printed power really is tribe-locked.",
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 4,
+            "items": {
+              "enum": ["BEAST", "DEMON", "DRAGON", "ELEMENTAL", "MECHANICAL",
+                       "MURLOC", "NAGA", "PIRATE", "QUILBOAR", "UNDEAD"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

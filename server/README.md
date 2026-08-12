@@ -76,14 +76,17 @@ Copy `sources.example.json` (repo root) to `sources.json` and point it at your h
 
 ```json
 {
-  "heroes":   "https://stats.example.com/heroes-{time}.json",
-  "trinkets": "https://stats.example.com/trinkets-{time}.json",
-  "cards":    "https://stats.example.com/cards-{time}.json",
-  "comps":    "https://stats.example.com/comps-{time}.json"
+  "heroes":   "https://stats.example.com/heroes-{mmr}-{time}.json",
+  "trinkets": "https://stats.example.com/trinkets-{mmr}-{time}.json",
+  "cards":    "https://stats.example.com/cards-{mmr}-{time}.json",
+  "comps":    "https://stats.example.com/comps-{mmr}-{time}.json"
 }
 ```
 
-`{time}` is one of `all-time | past-seven | past-three | last-patch`.
+`{time}` is one of `all-time | past-seven | past-three | last-patch`; `{mmr}` is
+the client's `--mmr` bracket, `100 | 50 | 25 | 10 | 1`. Leaving `{mmr}` out still
+works (that file name is bracket 100), and a `{mmr}` URL still works against a
+server built before brackets existed - see "MMR buckets" below.
 
 ## Contribute data (opt-in)
 
@@ -127,8 +130,81 @@ Nothing here invents a number. Empty beats fake.
 - **comps** - **not yet.** Archetype labelling (Beasts / Murlocs / Menagerie ...)
   needs a classifier we haven't built; the file is written empty so the client
   shows "no comp data" instead of erroring.
-- **per-tribe hero impact** (`tribeStats`) and **MMR buckets** - not split yet;
-  every request currently serves the whole pool. They turn on with volume.
+- **MMR buckets** - yes, five of them. See "MMR buckets" below for what the
+  boundaries are and why.
+- **per-tribe hero impact** (`tribeStats`) - not split yet; turns on with volume.
+
+## MMR buckets
+
+The client asks for one of five brackets (`--mmr 100|50|25|10|1`, "the top N% of
+players"), so the aggregator writes each table once per bracket:
+
+```
+heroes-{mmr}-{time}.json      trinkets-{mmr}-{time}.json
+cards-{mmr}-{time}.json       comps-{mmr}-{time}.json
+buckets.json                  # which brackets exist, per period, with counts
+```
+
+Bracket `100` is **also** written under the old un-bucketed name
+(`heroes-{time}.json`), so a `sources.json` from before brackets existed keeps
+working with no edit.
+
+### Where the boundaries come from
+
+**The top N% of the ratings shared with this server, in that same time window.**
+Not a fixed rating ladder, and deliberately not anyone else's cut-offs.
+
+Nobody publishes the real distribution of Battlegrounds rating, and copying
+another site's bracket numbers would be using their data - the one thing this
+project does not do. The only distribution we can honestly measure is our own
+pool, so that is what a bracket is measured against, and every file says so in
+its own `mmr` block:
+
+```json
+"mmr": {"bucket": 25, "minRating": 7400, "games": 100,
+        "basis": "rating >= 7400: the top 25% of the ratings shared with this server in this window"}
+```
+
+Two deliberate details:
+
+- **Nearest-rank percentile, rounded DOWN to a round hundred.** Rounding down
+  keeps the published boundary off one individual player's exact rating and
+  holds it steady while the pool wobbles. It can pull in a few games below the
+  strict percentile, which is the honest direction to err: more sample, never
+  less.
+- **A game with no rating counts only in bracket 100.** The log never states
+  your rating (only the optional memory reader knows it), so most early records
+  have none. Placing them by guesswork would be inventing a number.
+
+### A bracket is published only when it has data
+
+Below **30 games** (`BGTRACKER_MMR_MIN`, the same number as the client's
+`MIN_SAMPLE`) the bracket file is **not written at all**. Four games at "top 1%"
+is not granularity, it is noise wearing a label - and a wrong number is treated
+here exactly like a made-up one.
+
+When a bracket is missing the client does not go blank: it falls back to the
+all-players file, and says which bracket the numbers actually came from
+(`stats: 81 heroes (top 100%)`, plus a one-line note on stderr). It never
+prints pooled numbers under a "top 1%" heading. The fallback order is: the
+bracket asked for, then bracket 100, then the pre-bracket file name - so a
+client configured with `{mmr}` also works against a server that has not been
+rebuilt yet.
+
+Expect exactly this while the pool is young: **only bracket 100 exists**, and
+`--mmr 1` quietly shows everyone. `buckets.json` lists what is really published:
+
+```json
+{"minGamesPerBucket": 30,
+ "periods": {"past-seven": {"solo": [{"bucket": 100, "minRating": null, "games": 392},
+                                     {"bucket": 50, "minRating": 5600, "games": 178}],
+                            "duo": [...], "unclassified": 0}}}
+```
+
+Trinkets carry a bonus: the all-players file also holds each trinket's
+per-bracket placement inline (`averagePlacementAtMmr`), which the client already
+prefers when it matches the request - so trinket brackets work even for a
+`sources.json` whose URL has no `{mmr}` in it.
 
 > **Data note:** `collect.py`'s log backfill reliably recovers tribes + date, but
 > hero + placement come out thin from the logs alone. The overlay's **memory

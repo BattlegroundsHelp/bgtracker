@@ -61,6 +61,12 @@ show/hide, or windows describe a moment that is not on screen yet.
   picks_over  None                         -> heropower, trinkets, discover
   hero_over   None                         -> heropick, session (takes its band
                                               back once the draft is gone)
+  players     {round, rows}                -> players. OPTIONAL, and the only
+                                              event with no log source at all:
+                                              it exists only when the memory
+                                              reader (native/msync) is built.
+                                              Without it the window never opens
+                                              and nothing else changes.
   counters    {gold_base, tier, ...}       -> counters, OPTIONAL: nothing emits
                                               it today, so the window tails the
                                               log itself. A reader that starts
@@ -80,7 +86,7 @@ they open while those cards occupy the middle of the screen, and a panel on
 the right would sit over them (the trinket row reaches x 0.79 of the window):
   browser  y+8 (34px, a slim bar until it is clicked open)
   session / heropick y+70 (256px)   heropower y+334 (150px)
-  trinkets y+492 (272px)            discover  y+772 (the rest)
+  trinkets / players y+492 (272px)  discover  y+772 (the rest)
 
 Non-overlap is structural, not a hope: every window's MAX_H is its band, so a
 long shop or an expanded comp list can never spill into its neighbour. The
@@ -88,10 +94,15 @@ last window in each column takes the remaining height. Verified on a
 1920x1080 game window: 10 windows, zero overlapping pairs at maximum height,
 all inside the game rect.
 
-Two bands are shared on purpose, and only ever by one window at a time:
+Three bands are shared on purpose, and only ever by one window at a time:
   * session and heropick both want y+70 on the left. The draft owns it while
     it is up; session hides on ``hero`` and comes back on ``hero_over``, and
     only while it still sits in its default slot (drag it and it stays up).
+  * players and trinkets both want y+492 on the left. Same deal, same reason:
+    a trinket dialog is a moment, the leaderboard is a standing surface, so
+    players hides on ``trinket`` and returns on ``picks_over`` (with its own
+    timeout as a backstop, since a dialog that is dismissed oddly must not
+    cost the leaderboard the rest of the game).
   * browser is a one-line bar; clicking ``browse`` expands it over the left
     column. That is a deliberate act by the player, it is draggable, and a new
     game collapses it again.
@@ -108,6 +119,7 @@ from .counters import CountersWindow
 from .discover import DiscoverWindow
 from .heropick import HeroPickWindow
 from .heropower import HeroPowerWindow
+from .players import PlayersWindow
 from .session import SessionWindow
 from .tavern import TavernWindow
 from .trinkets import TrinketWindow
@@ -124,12 +136,13 @@ WINDOWS = (
     HeroPickWindow,
     HeroPowerWindow,
     TrinketWindow,
+    PlayersWindow,
 )
 
 __all__ = [
     "WINDOWS", "BrowserWindow", "CombatWindow", "CompsWindow", "CountersWindow",
-    "DiscoverWindow", "HeroPickWindow", "HeroPowerWindow", "SessionWindow",
-    "TavernWindow", "TrinketWindow", "classify_choice",
+    "DiscoverWindow", "HeroPickWindow", "HeroPowerWindow", "PlayersWindow",
+    "SessionWindow", "TavernWindow", "TrinketWindow", "classify_choice",
 ]
 
 # A hero power reads "<set>_HERO_<n>p" or "TB_BaconShop_HP_<n>"; the hero

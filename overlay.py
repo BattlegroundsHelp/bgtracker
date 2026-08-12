@@ -305,6 +305,101 @@ class Reader(threading.Thread):
                 out.append(names.get(base, base))
             return out
 
+        # -------------------------------------------------- the other players
+        # The leaderboard, and the last board each opponent was actually seen
+        # holding. This is the ONE surface with no log source at all: during
+        # recruit Power.log states nothing about another player's board, so
+        # without the memory reader no event is ever emitted here and the
+        # window simply never appears.
+        #
+        # WHEN a reading is worth believing - and this was settled by checking
+        # captured boards against the log's own record of the same fights, not
+        # by reasoning. Ungated, three of five captures were somebody's shop:
+        # after a fight ends the client rebuilds the tavern in the same zone the
+        # warband was in, and for a moment those minions carry no drag-buy token
+        # for msync to exclude them by, while the beaten opponent's hero is
+        # still standing there to attribute them to. Their sizes (4, 5, 5) were
+        # shop sizes, and two of the cards were in that game's own shop.
+        #
+        # So capture ONLY while the fight is on the SCREEN. Nothing else in the
+        # game puts an opponent's minions in that zone, and the PowerTaskList
+        # copy is what says the screen is in a fight - the same rule every
+        # window's lifecycle follows.
+        #
+        # Two rules keep the stamp honest:
+        #   * within one fight, keep the FULLEST sighting. Minions only leave a
+        #     warband as it is fought, so the biggest real reading of that fight
+        #     is the closest to what they brought. Nothing is merged - a
+        #     sighting is replaced whole or not at all, and a board that lost a
+        #     minion before we first read it is short, never padded.
+        #   * an unchanged board is never re-stamped, so the same warband cannot
+        #     be re-filed under a later round and claim to have been seen more
+        #     recently than it was.
+        # A reading msync judged incoherent arrives here as an empty board and
+        # is ignored - see the coherence rule in native/msync.
+        seen_boards = {}            # hero cardId -> {"round": int, "board": [...]}
+        last_players = [None]       # what we last pushed, to stay quiet when idle
+        players_tick = [0.0]        # throttle: this runs off the line stream
+
+        def flush_players():
+            # Ticked from the line stream rather than from the GameState copy
+            # alone: that copy writes the whole fight BEFORE it animates and is
+            # then silent for the entire fight, which is exactly the window
+            # this needs to read in (measured: gating on it captured nothing
+            # across four minutes of live fights). Throttled, because the
+            # stream is thousands of lines per burst and this reads and
+            # rebuilds the whole leaderboard.
+            now = time.monotonic()
+            if now - players_tick[0] < 0.4:
+                return
+            players_tick[0] = now
+            if memory is None or not memory.players:
+                return
+            names = bg.card_names()
+
+            def named(cid):
+                base = cid[:-2] if cid.endswith("_G") else cid
+                nm = names.get(base, base)
+                return nm + (" (golden)" if cid.endswith("_G") else "")
+
+            rnd = odds.parser.turn or None
+            # The round of the fight ON SCREEN, and only while it is on screen.
+            # Not the round the log parser has reached: the GameState copy is
+            # already past it, which filed one warband under two rounds.
+            fight = odds.round if ui_phase[0] == "combat" else None
+            rows = []
+            for p in memory.players:
+                card = p.get("card") or ""
+                board = p.get("board") or []
+                if board and fight is not None and not p.get("you"):
+                    sig = [(m.get("card"), m.get("atk"), m.get("health"))
+                           for m in board]
+                    prev = seen_boards.get(card)
+                    if prev is None:
+                        keep = True
+                    elif prev["round"] == fight:
+                        keep = len(board) > len(prev["board"])
+                    else:
+                        keep = prev["sig"] != sig
+                    if keep:
+                        seen_boards[card] = {"round": fight, "sig": sig, "board": [
+                            {"card": m.get("card"), "name": named(m.get("card") or ""),
+                             "atk": m.get("atk"), "health": m.get("health")}
+                            for m in board]}
+                kept = seen_boards.get(card) or {}
+                rows.append({
+                    "place": p.get("place"), "card": card, "name": named(card),
+                    "health": p.get("health"), "armor": p.get("armor"),
+                    "tier": p.get("tier"), "you": bool(p.get("you")),
+                    "board": kept.get("board") or [],
+                    "seen_round": kept.get("round"),
+                })
+            rows.sort(key=lambda r: r["place"] or 99)
+            payload = {"round": rnd, "rows": rows}
+            if payload != last_players[0]:
+                last_players[0] = payload
+                self.q.put(("players", payload))
+
         def flush_board():
             # Board synergy needs the memory reader (native/msync). The log
             # can't give a reliable board: bought minions move via tag-changes
@@ -495,6 +590,7 @@ class Reader(threading.Thread):
         def consume(line):
             nonlocal hero_open, shop_ts, me_name, last_gold
             odds.feed(line)              # combat boards -> BETA win/tie/loss
+            flush_players()              # leaderboard (memory reader only)
 
             blk = choice.feed(line)
             if blk:
@@ -525,6 +621,8 @@ class Reader(threading.Thread):
                 lobby.reset()
                 board.clear()
                 shop_ents.clear()
+                seen_boards.clear()      # last game's boards belong to last game
+                last_players[0] = None
                 rolls[0] = 0
                 pending_shop[0] = False
                 pending_choice[0] = None
@@ -633,6 +731,7 @@ class Reader(threading.Thread):
             if line is None:
                 emit_hero(det.flush())
                 flush_board()      # catch msync updates between log bursts
+                flush_players()
             else:
                 consume(line)
 

@@ -2,8 +2,10 @@
 
 `msync` is the small, optional helper that reads the Battlegrounds lobby state
 Hearthstone never writes to its log: the **tribes in the lobby** (known at hero
-select), your **rating**, and your **board / hand / trinkets**. The overlay uses
-these for exact lobby tribes, lobby-tuned hero picks, and board synergy.
+select), your **rating**, your **board / hand / trinkets**, and the
+**leaderboard** — the other players, with the boards the game is holding for
+them. The overlay uses these for exact lobby tribes, lobby-tuned hero picks,
+board synergy, and the OTHER PLAYERS window.
 
 It is a **clean-room** reader. It walks the standard Mono/Unity managed heap —
 the layout of which is fixed by the public Mono runtime source Unity ships
@@ -43,11 +45,28 @@ Output is one JSON line:
 
 ```json
 {"ok":true,"rating":4758,"races":[15,24,14,23,43],
- "board":["BG36_704","BG34_140"],"hand":["BG32_330_G"],"trinkets":[]}
+ "board":["BG36_704","BG34_140"],"hand":["BG32_330_G"],"trinkets":[],
+ "players":[{"place":1,"card":"BG27_HERO_801_SKIN_A","health":22,"armor":0,
+             "tier":4,"you":false,
+             "board":[{"card":"BG36_524","atk":10,"health":9}]}]}
 ```
 
 `ok` is true when a lobby's tribes are known. `races` are Hearthstone Race enum
 ids. At the menu you get `{"ok":false,"rating":<mmr>,"races":[]}`.
+
+`players` is the leaderboard, one entry per seat, in place order — hero cardId,
+health (already less damage taken), armour, tavern tier, and `you` for your own
+seat. Fields are only ever ADDED to this line, never renamed, so an older
+reader keeps working.
+
+A player's `board` is **empty unless the game is really holding those minions**,
+which in practice means a fight against them has been staged. Empty means "not
+seen", never "they have nothing". A reading that cannot be trusted - more
+minions than a board can hold, or positions that are not a clean 1..N - also
+reports empty, because the seat that hosts the enemy warband also hosts Bob's
+shop and half-resolved moments genuinely mix the two. Minions the tavern is
+offering are excluded by their drag-buy token, the same way the log-side parser
+tells a shop from a warband.
 
 ## On fragility
 
@@ -63,6 +82,6 @@ in `Offsets.cs` are re-derived from the same public Mono headers; `DumpFields` i
 |---|---|
 | `Mono.cs` | the generic reader: process memory, the domain→assembly→class walk, and by-name field/string/array reads on live objects |
 | `Offsets.cs` | every Mono/PE struct offset, annotated with its source field |
-| `HsBattlegrounds.cs` | Hearthstone reads: tribes, and your board / hand / trinkets |
+| `HsBattlegrounds.cs` | Hearthstone reads: tribes, your board / hand / trinkets, and the leaderboard |
 | `Rating.cs` | the Battlegrounds MMR, via the NetCache service |
 | `Program.cs` | the CLI and JSON output |

@@ -76,8 +76,10 @@ are computed from the live card pool, so they are always current-patch. They are
 labelled `curated`, and measured comp rows replace them the moment a comps
 source has data.
 
-A community dataset built from pooled games is being set up (see ROADMAP), and
-its terms are fixed up front, in the spirit of asking rather than assuming:
+A community dataset built from pooled games is now running, and
+`sources.example.json` points at it — it is new, so expect thin samples,
+flagged as thin, for a while. Its terms were fixed up front, in the spirit of
+asking rather than assuming:
 **uploading is opt-in only** (off by default — nothing leaves your machine
 unless you turn it on), records are **anonymised game results** (hero,
 placement, lobby tribes, final board — no names, no battletags, no account
@@ -139,10 +141,11 @@ top of them:
 |---|---|---|
 | **MINIONS** | a slim bar until you click `browse`, then the whole current minion pool filtered by tier / tribe / mechanic, with card text and art | on click |
 | **SESSION** | this sitting: MMR now vs when you started, every game that finished while it was running with its placement and hero, and this lobby's tribes | always, except while the draft is up |
-| **PICK YOUR HERO** | the four heroes ranked, one big color-graded number each (green = better finish), best highlighted, pick% and sample size, plus a badge on each portrait. With the memory reader the lobby's tribes re-score them and the delta is shown ("−0.06 here") | hero select |
+| **PICK YOUR HERO** | the four heroes ranked, one big color-graded number each (green = better finish), best highlighted, pick% and sample size, plus a badge on each portrait, and one line of community-written advice per hero saying when it is the pick. With the memory reader the lobby's tribes re-score them and the delta is shown ("−0.06 here") | hero select |
 | **PICK YOUR HERO POWER** | one row per hero power on offer | that choice only |
 | **PICK YOUR TRINKET** | the four trinkets ranked, badges on the cards | trinket offers |
 | **PICK ONE** | discovers and Dark Gifts, rated per option; the shop's stars step out of the way while it is up | that choice only |
+| **OTHER PLAYERS** | the leaderboard — every other player's hero, tavern tier and health — and, for anyone you have fought, the board they were last seen holding, stamped with the round and how long ago that was. Click a player to see that board. Needs the memory reader; without it the window never appears | while a lobby is running, except while a trinket offer is up |
 
 - **Every window anchors itself to the Hearthstone window** and is draggable on
   its own — each remembers its own place in `.overlay.json`, so moving the
@@ -178,7 +181,7 @@ Start it before or during a game and leave it running. Options:
 |---|---|
 | `--mmr 100\|50\|25\|10\|1` | MMR bracket. `100` = everyone (default), `1` = top 1% |
 | `--time last-patch\|past-seven\|past-three\|all-time` | how far back the stats go |
-| `--duo` | use Duos stats instead of solo |
+| `--duo` | use Duos stats instead of solo — heroes, trinkets, cards and comps all come from Duos games only, never pooled with solo |
 | `--replay [path]` | scan a finished log instead of following live (defaults to newest) |
 | `--refresh` | ignore the 1-hour cache and re-download |
 | `--comps` | print the comp/archetype rankings and exit |
@@ -268,9 +271,20 @@ placeholders are filled from the command-line flags:
   "trinkets": "path/or/url/to/trinket-stats.json",
   "comps":    "path/or/url/to/comp-stats.json",
   "cards":    "path/or/url/to/card-stats.json",
-  "heroes_duo": "optional, duos hero stats"
+
+  "heroes_duo":   "optional, the same four tables from DUOS games only",
+  "trinkets_duo": "optional",
+  "comps_duo":    "optional",
+  "cards_duo":    "optional"
 }
 ```
+
+The four `*_duo` keys are what `--duo` reads, and there is no fallback from
+them to the solo tables: Duos is four teams finishing 1st–4th where solo is
+eight players finishing 1st–8th, on its own hero pool, so a solo number under a
+Duos heading would be the wrong game's answer. Leave them out and `--duo` shows
+no numbers instead. `collect.py --local-feed` builds both sets from your own
+games and fills these keys in for you.
 
 Expected shapes (any source in this shape works, including one you compute
 yourself from `collect.py` output): hero records carry `heroCardId`,
@@ -279,8 +293,17 @@ yourself from `collect.py` output): hero records carry `heroCardId`,
 `averagePlacement`, plus `averagePlacementAtMmr` per bracket; comps carry
 `compStats[].archetype/averagePlacement/heroStats[].finalBoards`; cards carry
 `cardStats[].cardId/averagePlacement/averagePlacementOther/totalPlayed`.
-URL responses are cached in `.cache/` for an hour. With no `sources.json`,
-every offer still appears — named, ranked by nothing, numbers hidden.
+URL responses are cached in `.cache/` for an hour, per source, so pointing at a
+different feed takes effect immediately. With no `sources.json`, every offer
+still appears — named, ranked by nothing, numbers hidden.
+
+**MMR brackets.** `--mmr` only means something if your source URL carries
+`{mmr}`. A feed publishes a bracket once it holds enough games, so `top 1%` may
+not exist on a young pool; the tool then reads the all-players file and **says
+which bracket the numbers actually came from**, rather than printing the whole
+pool under a "top 1%" heading. Our own feed stamps every file with the bracket
+it is (`"mmr": {"bucket": 25, "minRating": 7400, "games": 412}`) and that stamp
+wins over what was asked for.
 
 ## Tests
 
@@ -340,9 +363,11 @@ python bgtracker.py --replay
 
 The tribe list is the one thing Hearthstone never writes to any log — verified by
 checking every tag before hero select (including unnamed numeric ones) and every
-other log file. It *is* in the game's memory, which is where the established
-trackers get it. `native/msync` is a small **clean-room** helper that reads it
-(plus your rating and board) by walking the standard Mono/Unity managed heap.
+other log file. The same is true of the other players' boards while you are
+shopping. Both *are* in the game's memory, which is where the established
+trackers get them. `native/msync` is a small **clean-room** helper that reads
+them (plus your rating, your board, and the leaderboard) by walking the standard
+Mono/Unity managed heap.
 
 It's optional. Without it everything still works, just from log inference.
 
@@ -359,9 +384,11 @@ finds on its own. Run it by hand to check it:
 native/msync/bin/Release/net48/msync.exe
 ```
 
-`{"ok":true,"rating":8500,"races":[11,14,17],"board":[...]}` when you're in a
-lobby; `{"ok":false,"rating":8500,"races":[]}` at the menu; `--diag` shows where
-the memory walk resolved. Full detail: [native/msync/README.md](native/msync/README.md).
+`{"ok":true,"rating":8500,"races":[11,14,17],"board":[...],"players":[...]}` when
+you're in a lobby; `{"ok":false,"rating":8500,"races":[]}` at the menu; `--diag`
+shows where the memory walk resolved. `players` is the leaderboard, and it is what
+the OTHER PLAYERS window is made of. Full detail:
+[native/msync/README.md](native/msync/README.md).
 
 **On fragility:** this does *not* break on balance or content patches. It resolves
 fields by name (`m_availableRacesInBattlegroundsExcludingAmalgam`), so new cards and
@@ -380,11 +407,14 @@ HDT is the incumbent. It is free, it is fine, and it does things this does not.
 | Counters (gold, tier price, buffs, tribes) | free | yes |
 | Minion browser | free | yes — the live pool, no stats needed |
 | MMR session tracker | free | yes, with the memory reader for the rating |
+| Opponents' last-seen boards | free | yes, with the memory reader — stamped with the round it was seen |
 | Hero pick stats | overlay is Tier7 | yes, from your own data source |
 | Trinket pick stats | Tier7 | yes, from your own data source |
 | Comps filtered to your lobby, with key minions | Tier7 | yes, from your own data source |
 | Tribes in the lobby | exact | exact with the memory reader, else inferred |
 | Hero picks *tailored to the lobby's tribes* | Tier7 | yes, with the memory reader |
+| Written hero advice at the draft | Tier7, paid and hand-written | one line per hero, community-written, ships with the tool and free |
+| Duos | some of it | heroes, trinkets, cards and comps from Duos games only, never pooled with solo |
 
 The last row needs `native/msync` built. The lobby-scoring arithmetic is
 standard and documented in open-source trackers (`averagePosition +
@@ -414,8 +444,22 @@ the tribes at turn zero, and that comes out of memory.
   So heroes, trinkets, tribes and comps is the complete set of what can be shown.
 - Crowd stats are other people's games. Average placement carries selection bias:
   a hero looks good partly because the players who pick it know how to play it.
+- **Windows only.** The log parsing would port anywhere, but everything that
+  puts a window over the game is Win32, and so is the memory reader. macOS and
+  Linux are open on the [roadmap](ROADMAP.md), not started, and there is no Mac
+  here to test on. iPad cannot host an overlay at all.
 
 ## Contributing
+
+**The easiest thing to contribute is a hero tip.**
+[`data/hero_tips.json`](data/hero_tips.json) is the one line of advice shown
+under each hero at the draft: 111 of the 121 heroes have one, and adding or
+fixing one is a pull request against a plain text file. That review is the
+voting mechanism for now. The rules are in [CONTRIBUTING.md](CONTRIBUTING.md),
+the contract is [`data/hero_tips.schema.json`](data/hero_tips.schema.json), and
+CI checks every entry, so a typo in a hero id fails the build instead of
+silently never showing up. Write your own words — nothing here is copied from
+anyone's paid guides.
 
 [docs/FEATURES.md](docs/FEATURES.md) is the reference for every surface (what it
 shows, why it helps, where the data comes from, what it needs),
