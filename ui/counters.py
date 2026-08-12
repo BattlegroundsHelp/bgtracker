@@ -94,7 +94,7 @@ from pathlib import Path
 import bgtracker as bg
 
 from .base import (ACCENT, AMBER, DIM, F_SUB, GOOD, LINE, PANEL_HI, SOFT,
-                   TRIBE_COLOR, TRIBE_TAG, BaseWindow, rrect)
+                   TRIBE_COLOR, TRIBE_TAG, BaseWindow, advance, rrect)
 
 # The screen-synced copy. Every VALUE below is taken from it and nothing else.
 PTL = "PowerTaskList"
@@ -648,7 +648,9 @@ class CountersWindow(BaseWindow):
         important instead of clipping."""
         t = c.create_text(x + 8, y + self.ROW_H // 2 + 1, text=text, anchor="w",
                           fill=fill, font=F_SUB)
-        x2 = c.bbox(t)[2] + 8
+        # advance(), not bbox()[2]: the pill is measured against a base-pixel
+        # limit, and the raw bbox is in the pixels actually painted.
+        x2 = advance(c, t) + 8
         if x2 > limit:
             c.delete(t)
             return None

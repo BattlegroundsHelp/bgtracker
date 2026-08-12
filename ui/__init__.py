@@ -106,6 +106,35 @@ Three bands are shared on purpose, and only ever by one window at a time:
   * browser is a one-line bar; clicking ``browse`` expands it over the left
     column. That is a deliberate act by the player, it is draggable, and a new
     game collapses it again.
+
+SCALING
+-------
+Every number above is in BASE pixels, measured against a 1920x1080 game
+window, and they stay that way at any scale: ``draw()`` is written in base
+pixels and ``ui.base`` scales the finished canvas, the panel geometry and the
+fonts. So the bands tile a 4K game exactly the way they tile a 1080p one, and
+a window module needs no scale arithmetic of its own. When the player scales
+past what the game window can hold, the column keeps its band order and the
+excess runs off the BOTTOM edge - it never doubles back over a neighbour
+(``BaseWindow.default_xy`` states the invariant).
+
+The whole public surface is four names in ``ui.base`` - ``set_scale(s)``,
+``get_scale()``, ``auto_scale()`` and ``SCALE_MIN``/``SCALE_MAX``, plus
+``set_badge_scale``/``get_badge_scale`` for the badges, which are sized by the
+GAME window rather than by this preference. Nothing is persisted here: the
+storage belongs to ``settings.py`` and the panel in ``ui/settings.py``, which
+is the one window in this package that is deliberately NOT an overlay surface
+(it is clickable and focusable, and it is not in WINDOWS). See the SCALING
+section at the top of ui/base.py.
+
+TURNING A WINDOW OFF
+--------------------
+The settings panel offers one switch per entry in WINDOWS, and off means the
+class is never built: not built, not routed to, no badge strip. Hiding it
+instead would leave it consuming its events and holding a strip in the
+priority list that can suppress another window's badges. Live changes go
+through ``WindowManager.enable``/``disable``, which ask their owner to rebuild
+the router - it indexes windows by event once, at construction.
 """
 
 from __future__ import annotations

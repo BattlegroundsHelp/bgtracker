@@ -115,9 +115,18 @@ on that id). Add `--token <secret>` if the server requires one.
 | `offered_trinkets` |     | `[...]`                        | unlocks trinket pick-rate |
 | `picked_trinkets`  |     | `[...]`                        | trinket placement |
 | `final_board`      |     | `["BG26_888", ...]`            | unlocks card played-vs-not |
+| `v`                |     | `"0.3.0-alpha"`                | the client's version |
 
 \* at least one of `hero`/`place` is required; a no-signal record is rejected.
 Reply: `{"ok":true,"accepted":N,"stored":M,"rejected":K,"reasons":[...]}`.
+
+`v` is stored so a strange week in the numbers can be checked against **which
+builds sent them** before anyone concludes the meta moved. `GET /health` reports
+the tally: `{"ok":true,"games":N,"solo":N,"duo":N,"unclassified":N,
+"versions":{"0.3.0-alpha":N,"unknown":N}}`. Rows stored before clients sent a
+version read `unknown`, never a guessed one. The column is added by the same
+`migrate()` that added `duo`, so a server that has been collecting for weeks
+picks it up on restart with no data loss.
 
 ## What's computed - and what isn't
 
@@ -210,6 +219,86 @@ prefers when it matches the request - so trinket brackets work even for a
 > hero + placement come out thin from the logs alone. The overlay's **memory
 > reader** is what fills those at game-over (see ROADMAP). Until that's wired, the
 > feed is real but sparse - it grows correct, just slowly.
+
+## The update manifest
+
+The same box also answers "is there a newer build?" - and only that. It serves
+`update.json`, about 200 bytes, dropped in `out/` beside the stats files. It
+does **not** serve the build.
+
+That split is the whole design. A release zip is 28 MB; every client checking on
+start costs this box a couple of hundred bytes, while the bytes themselves come
+off GitHub's CDN for free, from the same Releases asset the README already links
+to. The download location is a plain `url` field, so pointing it somewhere else
+later (a mirror, or this box once bandwidth stops mattering) is a manifest edit
+rather than a client release - which matters because the clients that would need
+that change are exactly the ones that cannot be updated yet.
+
+```json
+{
+  "schema": 1,
+  "version": "0.3.0-alpha",
+  "url": "https://github.com/BattlegroundsHelp/bgtracker/releases/download/v0.3.0-alpha/bgtracker-windows.zip",
+  "sha256": "3b1f…64 hex characters…9c",
+  "size": 27913121,
+  "published": "2026-08-12",
+  "notes": "https://github.com/BattlegroundsHelp/bgtracker/releases/tag/v0.3.0-alpha"
+}
+```
+
+| field | required | what it is |
+|---|---|---|
+| `schema` | no | manifest format number, `1` today; the client ignores it, it exists so a future format can be told apart |
+| `version` | yes | the newest build's version, compared with semver rules (`0.10.0` beats `0.9.0`, and `0.3.0-alpha` is older than `0.3.0`) |
+| `url` | yes | where the zip is. **Must be https** - the client refuses anything else, and so does `make_manifest.py` |
+| `sha256` | yes | of the zip, 64 hex characters. A mismatch refuses the install, full stop |
+| `size` | yes | of the zip in bytes. Checked before the hash and used to cut off a download that runs long |
+| `published` | no | `YYYY-MM-DD`, for the "released on" line |
+| `notes` | no | link to the patch notes, shown so nobody installs a surprise |
+
+A client that cannot reach this file, gets HTML from a hotel wifi, or reads a
+manifest older than what it is running, does nothing at all and says nothing.
+Checking is on by default; downloading and installing only ever happen when the
+user asks.
+
+**One honest limit.** The sha256 proves the bytes are the ones *this manifest*
+named. That is exactly as trustworthy as the channel the manifest came over, and
+today that is plain HTTP because the box has no certificate. Putting a domain and
+TLS in front of this (or Cloudflare, which is free and already recommended above)
+is the one thing worth doing before the tool has many users.
+
+## Ship a release
+
+Three lines, after `python build.py` has produced the zip:
+
+```bash
+# 1. upload dist/bgtracker-win64-<date>.zip to a GitHub release as bgtracker-windows.zip
+# 2. write the manifest from the zip that was actually uploaded (sha256 and size computed, never typed)
+python server/make_manifest.py dist/bgtracker-win64-2026-08-12.zip \
+    --url https://github.com/BattlegroundsHelp/bgtracker/releases/download/v0.3.0-alpha/bgtracker-windows.zip
+# 3. put it on the box
+scp server/out/update.json root@<IP>:/opt/bgtracker/server/out/update.json
+```
+
+`bash server/deploy/deploy.sh root@<IP>` does step 3 for you when
+`server/out/update.json` exists locally, and then fetches it back to prove it is
+being served. Either way, check what the world now sees before walking away:
+
+```bash
+curl -s http://<IP>/update.json
+python update.py --check          # from a checkout on the old version
+```
+
+`make_manifest.py` reads the version out of the zip's own `version.txt`, so it
+refuses a manifest that disagrees with the build it describes. That is the
+mistake worth engineering against: a manifest one version ahead of its zip ships
+an update that installs, still reports the old version, and gets offered again
+on every start forever.
+
+CI does **not** build or publish releases - `.github/workflows/ci.yml` runs the
+lint, the offline regression and the updater's failure-mode suite on
+windows-latest, and nothing else. The build and the upload are done by hand, on
+purpose: the release is a 28 MB unsigned binary and there is no signing key.
 
 ## Hardening (honest MVP, not the finish)
 

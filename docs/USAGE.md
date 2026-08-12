@@ -122,6 +122,43 @@ diagnostic as the packaged build.
 
 ---
 
+## 2c. New versions
+
+On start, the tool asks the stats server one small question: is there a newer
+build? That is a 200 byte answer, fetched on its own thread while the overlay is
+already opening. Then:
+
+- **Nothing is downloaded and nothing is installed.** If there is a new build,
+  one line appears in the console saying so, with a link to what changed.
+- **If the check does not work, nothing happens and nothing is said.** No
+  network, a hotel wifi login page, the server down, a garbled answer: the tool
+  gets on with the game. It is not allowed to interrupt you over an update.
+- **To install one, you ask for it.** It is downloaded to a temp folder, checked
+  against the size and the SHA-256 the manifest published, and only then
+  unpacked. If either does not match it is deleted, and nothing on your machine
+  is touched.
+- **Your files survive.** Your collected games (`data/`), card art (`assets/`),
+  window positions (`.overlay.json`), `sources.json` and anything else you put
+  in the folder are copied into the new build before it takes over. The old
+  install is kept beside it as `bgtracker.old-<version>` until the new one has
+  started once.
+- **If anything goes wrong part way, the old install stays.** The swap itself is
+  two folder renames, and either one failing puts everything back. If the
+  machine dies between them you will find a `bgtracker-RECOVER.txt` next to the
+  two folders saying which one to rename back.
+- **Turn the check off** with `--no-update-check`, or for good by setting
+  `BGTRACKER_NO_UPDATE_CHECK=1`, or by putting `{"check_on_start": false}` in
+  `data/update.json`.
+
+You can ignore all of this and just download the new zip from the
+[Releases page](https://github.com/BattlegroundsHelp/bgtracker/releases) and
+extract it over the top. The update does the same thing, more carefully.
+
+`python update.py --check` prints what the server currently offers, which is the
+fastest way to see whether the check is reaching anything at all.
+
+---
+
 ## 3. What you will see the first time
 
 The overlay is **eleven small windows**, not one big panel (ten without the
@@ -133,6 +170,11 @@ moving the tavern window never moves anything else.
 They only draw while Hearthstone (or one of the overlay's own windows) is the
 window in front. Alt-tab to your browser and they all disappear. That is on
 purpose.
+
+The **settings panel** opens with it. That one is a normal window: it has a
+title bar, you can move it, scroll it and close it, and it takes clicks like
+any other program. Closing it leaves the overlay running, and the gear in the
+bgtracker window's header opens it again. Section 3b says what is in it.
 
 ### Down the right edge, the state of play
 
@@ -192,7 +234,7 @@ stars above stand in), measured comp averages.
 ### About the combat odds
 
 Both warbands are read out of the log before the fight animates and a Monte Carlo
-simulation gives win / tie / loss. Across 343 real logged fights it called the
+simulation gives win / tie / loss. Across 339 real logged fights it called the
 winning side about **86%** of the time. It knows the vanilla rules, deathrattle
 summons and the highest-impact per-card triggers, but plenty of cards are still
 unscripted, so when one is on the board the odds are deliberately widened. It
@@ -202,6 +244,46 @@ no number at all.
 
 If you want the mature version, run HDT's free Bob's Buddy alongside. Both tools
 read the same log and coexist happily.
+
+---
+
+## 3b. The settings panel
+
+It opens when the tool starts, and the gear in the bgtracker window's header
+brings it back. Everything it saves goes in `settings.json`, next to
+`sources.json`. **A flag you type on the command line beats the file for that
+run and is never written into it**, so `--mmr 1` once does not quietly make
+every later run a top 1% run; the panel says on screen when a flag is
+overriding it.
+
+- **DISPLAY.** One scale for the whole overlay, either worked out from the game
+  window (a 4K game asks for about 2.00x) or set by hand on the slider. It is
+  applied while you drag, so you can size it against the game instead of
+  restarting to find out. Below it, a nudge for the badges printed on the cards:
+  those already follow the game window on their own, so this only leans on them.
+- **DATA.** Sharing your finished games is **off** and stays off unless you tick
+  it. The line under the box lists exactly what would be sent: the hero you
+  played, your placement, the lobby tribes, the heroes and trinkets you were
+  offered, whether it was Duos, and a random id kept on this machine. No name,
+  no battletag, no log files. The pooled numbers are free for everyone and are
+  never paywalled. The same section picks where numbers come from (the
+  community feed, your own games, or whatever `sources.json` already says), the
+  MMR bracket, the period, and Duos.
+- **WHAT TO SHOW.** One switch per overlay window, built from the window
+  registry, so a window added in a later version turns up here on its own. Off
+  means the window is not built at all: no panel, no badges on the cards, and
+  nothing routed to it. Switching one back on takes effect immediately.
+- **UPDATES.** Which version you are running, when it last checked, a check now
+  button, and, when there is something newer, what changed and an install
+  button. If the server cannot be reached it says so; it never claims you are up
+  to date without an answer.
+
+Rows that cannot take effect until the next start say so in the row. That is
+the MMR bracket, the period, Duos and the choice of feed: those four tables are
+loaded once, when the log reader starts.
+
+`--no-panel` starts without it, and the last checkbox in the panel turns off
+opening it on start. The tool works exactly the same if you never open it.
 
 ---
 
@@ -390,7 +472,9 @@ bgtracker.bat --mmr 10 --time past-seven
 | `--time last-patch\|past-seven\|past-three\|all-time` | How far back the stats go. Default `last-patch`. |
 | `--duo` | Use Duos stats: heroes, trinkets, cards and comps, each from Duos games only (needs the `*_duo` sources). Never pooled with solo. |
 | `--demo <path-to-Power.log>` | Replay a finished log through the real windows. Good for testing without playing. |
-| `--diag` | Print where it reads and writes, and every window it loaded, then exit. The first thing to paste in a bug report. |
+| `--diag` | Print the version, where it reads and writes, and every window it loaded, then exit. The first thing to paste in a bug report. |
+| `--no-update-check` | Do not ask whether there is a newer build (section 2c). Nothing is ever installed either way. |
+| `--no-panel` | Start without opening the settings panel (section 3b). |
 
 **Console version (`python bgtracker.py`)** — no overlay, just text. Takes
 `--mmr`, `--time` and `--duo` as above, plus:

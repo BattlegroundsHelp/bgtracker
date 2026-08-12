@@ -43,6 +43,7 @@ from pathlib import Path
 
 import bgtracker as bg
 from paths import APP_DIR, BUNDLE_DIR, frozen
+from version import USER_AGENT, VERSION
 
 # How the person reading the output actually runs this program. Telling a
 # standalone-build user to "run python collect.py" is telling them to install
@@ -56,6 +57,23 @@ OUT = DATA / "games.jsonl"
 CLIENT_ID_FILE = DATA / "client_id"
 
 HERO_RE = re.compile(r"(BG\w+?_HERO_\w+|TB_BaconShop_HERO_\d+)")
+
+# What `--local-feed` writes into sources.json: your own games, as the four
+# tables the overlay reads. Module level because the settings panel offers the
+# same switch, and two copies of these paths is two chances to point half the
+# tool at a feed that is not there.
+LOCAL_FEED = {
+    "heroes": "data/feed/heroes-{mmr}-{time}.json",
+    "trinkets": "data/feed/trinkets-{mmr}-{time}.json",
+    "cards": "data/feed/cards-{mmr}-{time}.json",
+    "comps": "data/feed/comps-{mmr}-{time}.json",
+    # The same four tables built from your DUOS games only, which is what
+    # `--duo` reads. Separate files, never mixed with the above.
+    "heroes_duo": "data/feed/heroes-duo-{mmr}-{time}.json",
+    "trinkets_duo": "data/feed/trinkets-duo-{mmr}-{time}.json",
+    "cards_duo": "data/feed/cards-duo-{mmr}-{time}.json",
+    "comps_duo": "data/feed/comps-duo-{mmr}-{time}.json",
+}
 
 
 # Tags print as INDENTED lines under an entity header, not keyed inline - so we
@@ -456,6 +474,7 @@ def collect():
     tmp.replace(OUT)
     extra = f", filled in offers for {filled} older ones" if filled else ""
     print(f"collected {added} new games{extra}; total {len(kept)} in {OUT}")
+    out = {"added": added, "filled": filled, "total": len(kept)}
     with_t = sum(1 for r in kept.values() if r.get("offered_trinkets"))
     print(f"  {with_t} carry trinket offers "
           f"({sum(len(r.get('offered_trinkets') or []) for r in kept.values())} options, "
@@ -466,6 +485,10 @@ def collect():
     tail = (f", {unknown} unknown (mined before duos was detected, and their log "
             f"has rotated away)" if unknown else "")
     print(f"  {solo} solo, {duo} duos{tail}")
+    # Returned as well as printed: the settings panel runs this and has to show
+    # the outcome in a row, and scraping stdout for it would be a lie waiting to
+    # happen the first time a print is reworded.
+    return out
 
 
 def stats():
@@ -524,7 +547,8 @@ def upload(base_url, token=None, batch=300):
     depending on anyone's paid data."""
     if not OUT.exists():
         print("no data yet - run `" + HOWTO + "` first")
-        return
+        return {"sent": 0, "stored": 0, "error": None,
+                "note": "no games collected yet"}
     cid = client_id()
     recs = []
     for line in OUT.read_text(encoding="utf-8").splitlines():
@@ -549,10 +573,17 @@ def upload(base_url, token=None, batch=300):
             "offered_trinkets": g.get("offered_trinkets") or [],
             "picked_trinkets": g.get("picked_trinkets") or [],
             "client": cid[:8],
+            # Which client version mined this. Not about you - it is how the
+            # server can tell "the numbers moved" from "a build with a parsing
+            # bug is in the wild", and which versions are still uploading. An
+            # older server ignores an unknown field, so sending it is safe
+            # before the server that stores it is deployed.
+            "v": VERSION,
         })
     if not recs:
         print("nothing to upload (no games with a hero or placement yet)")
-        return
+        return {"sent": 0, "stored": 0, "error": None,
+                "note": "no games with a hero or placement yet"}
 
     url = base_url.rstrip("/")
     if not url.endswith("/upload"):
@@ -561,7 +592,8 @@ def upload(base_url, token=None, batch=300):
     for i in range(0, len(recs), batch):
         body = json.dumps({"games": recs[i:i + batch]}).encode()
         req = urllib.request.Request(url, data=body, method="POST",
-                                     headers={"Content-Type": "application/json"})
+                                     headers={"Content-Type": "application/json",
+                                              "User-Agent": USER_AGENT})
         if token:
             req.add_header("X-Upload-Token", token)
         try:
@@ -569,10 +601,16 @@ def upload(base_url, token=None, batch=300):
                 res = json.loads(r.read())
         except Exception as e:
             print(f"  ! upload failed at batch {i // batch}: {e}")
-            return
+            # The caller gets the failure verbatim. A partial upload is still
+            # reported as what it was - some batches did land, and the server
+            # de-dupes on uid, so re-running is safe and never doubles a game.
+            return {"sent": sent, "stored": stored, "error": f"{type(e).__name__}: {e}",
+                    "note": f"stopped at batch {i // batch + 1} of "
+                            f"{(len(recs) + batch - 1) // batch}"}
         sent += res.get("accepted", 0)
         stored += res.get("stored", 0)
     print(f"uploaded {sent} games to {url} ({stored} new to the server)")
+    return {"sent": sent, "stored": stored, "error": None, "note": None}
 
 
 def local_feed():
@@ -618,18 +656,7 @@ def local_feed():
     # normally just the all-players bucket - the log never states your rating -
     # and the client falls back to it, so nothing goes blank.
     agg.write("buckets", agg.emit(games, stamp))
-    local = {
-        "heroes": "data/feed/heroes-{mmr}-{time}.json",
-        "trinkets": "data/feed/trinkets-{mmr}-{time}.json",
-        "cards": "data/feed/cards-{mmr}-{time}.json",
-        "comps": "data/feed/comps-{mmr}-{time}.json",
-        # The same four tables built from your DUOS games only, which is what
-        # `--duo` reads. Separate files, never mixed with the above.
-        "heroes_duo": "data/feed/heroes-duo-{mmr}-{time}.json",
-        "trinkets_duo": "data/feed/trinkets-duo-{mmr}-{time}.json",
-        "cards_duo": "data/feed/cards-duo-{mmr}-{time}.json",
-        "comps_duo": "data/feed/comps-duo-{mmr}-{time}.json",
-    }
+    local = dict(LOCAL_FEED)
     src = APP_DIR / "sources.json"
     if not src.exists():
         src.write_text(json.dumps(local, indent=2), encoding="utf-8")

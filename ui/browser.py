@@ -42,9 +42,9 @@ import threading
 
 import bgtracker as bg
 
-from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_SUB, F_TITLE, GOOD, LINE,
-                   PANEL, PANEL_HI, SOFT, STAR_COLOR, TEXT, TRIBE_COLOR,
-                   TRIBE_TAG, BaseWindow, rrect)
+from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_STARS, F_SUB, F_TITLE,
+                   GOOD, LINE, PANEL, PANEL_HI, SOFT, STAR_COLOR, TEXT,
+                   TRIBE_COLOR, TRIBE_TAG, BaseWindow, rrect)
 
 # A minion with no tribe at all is in EVERY lobby, so it is a filter of its
 # own rather than something the tribe chips can express.
@@ -520,7 +520,7 @@ class BrowserWindow(BaseWindow):
                               fill=DIM, font=F_SUB)
             else:
                 c.create_text(self.WIDTH - 74, y + 14, text="★" * s, anchor="e",
-                              fill=STAR_COLOR.get(s, DIM), font=("Segoe UI", 8))
+                              fill=STAR_COLOR.get(s, DIM), font=F_STARS)
 
     def _detail(self, m):
         """The opened row: what it is, what it does, and - only with a real

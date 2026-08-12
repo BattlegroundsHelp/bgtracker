@@ -432,9 +432,9 @@ the screen. A Monte Carlo simulator then replays the fight thousands of times.
 
 **What BETA means here, honestly.**
 
-* Across 343 real logged fights it called the winning side about **86%** of the
-  time, with a mean absolute error around 14 percentage points and a Brier
-  score of 0.077.
+* Across 339 real logged fights it called the winning side about **86%** of the
+  time, with a mean absolute error around 13 percentage points and a Brier
+  score of 0.072.
 * It implements the vanilla combat rules (attack order, taunt, stealth, divine
   shield, poisonous and venomous, windfury, reborn, deathrattle ordering, the
   seven minion cap, hero damage as the tier sum) plus deathrattle token summons
@@ -510,7 +510,7 @@ yourself.
 
 ## What is deliberately NOT here
 
-* **Combat odds are BETA, not Bob's Buddy.** About 86% winner accuracy over 343
+* **Combat odds are BETA, not Bob's Buddy.** About 86% winner accuracy over 339
   real logged fights, with the highest impact cards scripted but a long tail
   that is not. It is labelled BETA on screen for exactly that reason. If you
   want the mature version, run HDT's free Bob's Buddy alongside.
@@ -548,7 +548,7 @@ HDT is the incumbent. It is free, it is fine, and it does things this does not.
 
 | | HDT / Tier7 | this |
 |---|---|---|
-| Combat odds (Bob's Buddy) | free, mature | **beta**: log only, clearly flagged, about 86% of fights called correctly over 343 real logged fights. Run Bob's Buddy alongside if you want the mature one |
+| Combat odds (Bob's Buddy) | free, mature | **beta**: log only, clearly flagged, about 86% of fights called correctly over 339 real logged fights. Run Bob's Buddy alongside if you want the mature one |
 | Counters (gold, tier price, buffs, tribes) | free | yes |
 | Minion browser | free | yes, the live pool, no stats needed |
 | MMR session tracker | free | yes, with the memory reader for the rating |

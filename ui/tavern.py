@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import bgtracker as bg
 
-from .base import ACCENT, AMBER, DIM, F_SUB, F_TITLE, SOFT, STAR_COLOR, TEXT, BaseWindow
+from .base import (ACCENT, AMBER, DIM, F_STARS, F_SUB, F_TITLE, SOFT,
+                   STAR_COLOR, TEXT, BaseWindow)
 
 
 class TavernWindow(BaseWindow):
@@ -78,7 +79,7 @@ class TavernWindow(BaseWindow):
             if ic is not None:
                 c.create_image(22, y + 10, image=ic, anchor="w")
             c.create_text(44, y + 10, text="★" * s, anchor="w",
-                          fill=STAR_COLOR.get(s, DIM), font=("Segoe UI", 8))
+                          fill=STAR_COLOR.get(s, DIM), font=F_STARS)
             c.create_text(90, y + 10, text=r["name"][:16], anchor="w",
                           fill=TEXT if r.get("mine") else SOFT, font=F_SUB)
             if r.get("mine"):

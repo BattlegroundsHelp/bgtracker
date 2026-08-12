@@ -11,6 +11,15 @@ ui/__init__.py for the plugin contract and the event table.
 
 Run Hearthstone in BORDERLESS WINDOWED.
 
+SETTINGS PRECEDENCE (settings.py owns the file, this file owns the flags):
+
+    an explicit flag  >  settings.json  >  the built-in default
+
+A flag wins for the run it was typed on and is NEVER written back to the file,
+so `--duo` once does not silently make every later run a Duos run. That is why
+every flag below defaults to None rather than to a value: None is how argparse
+says "the user did not type this", and only a typed flag becomes an override.
+
 THE ONE RULE THE READER OBEYS
 -----------------------------
 Power.log writes everything twice. ``GameState.DebugPrintPower()`` writes an
@@ -31,14 +40,20 @@ import re
 import sys
 import threading
 import time
+import traceback
 from pathlib import Path
 
 import bgtracker as bg
+import settings as settings_store
 import ui
+import ui.base
+import update
+from version import VERSION
 from sim import boards as sim_boards
 from sim import engine as sim_engine
 from ui.base import WindowManager
 from ui.comps import COMP_MIN
+from ui.settings import SettingsPanel
 
 DRAGBUY = "TB_BaconShop_DragBuy"
 GOLD_TAG = "BACON_PLAYER_EXTRA_GOLD_NEXT_TURN"
@@ -72,8 +87,8 @@ class OddsEngine:
       empty side - rounds 1-2 can genuinely produce one) -> no event ever,
       never a guessed number;
     - a sim exception -> no event;
-    - the label stays BETA: replayed against 343 real logged combats the sim
-      called the winning side 86.0% of the time (MAE 14.0pp, Brier 0.077) -
+    - the label stays BETA: replayed against the 339-fight cached harness the
+      sim called the winning side 85.8% of the time (MAE 13.2pp, Brier 0.072) -
       vanilla rules, derived deathrattle summons, and per-card scripts for the
       cards that measurably cost the most accuracy. The long tail of cards is
       still unscripted, so engine.simulate() widens its own odds in proportion
@@ -83,7 +98,31 @@ class OddsEngine:
       the result as raw_win / raw_tie / raw_loss.
     """
 
-    def __init__(self, push, n=3000, threaded=True):
+    # ROLLOUTS. Measured over the 339 cached real combats, on the fights that
+    # are actually CLOSE (sim win% between 35 and 65), which are the only ones
+    # where a percentage point changes what the player does:
+    #
+    #        n     ms/fight   sd across re-runs   worst spread
+    #     1000        134        1.57pp              9.12pp
+    #     3000        409        0.80pp              3.94pp
+    #    10000       1482        0.42pp              2.02pp
+    #    30000       4416        0.26pp              1.17pp
+    #
+    # 3000 used to be the default on the theory that the sim had to finish
+    # inside the ~0.7s minimum lead the log gives before the first attack. That
+    # was the wrong deadline: the odds have the whole fight ANIMATION to appear
+    # in, which is tens of seconds (see the timing note in sim/boards.py). So
+    # the budget is far larger than one second and 10000 fits inside it easily.
+    #
+    # What it buys is not accuracy - 12x the rollouts moves winner accuracy
+    # 86.14% -> 86.43% over all 339 combats, one fight - it is STABILITY. On a
+    # coin-flip fight 3000 rollouts can show a number ~4pp away from where the
+    # same board lands on a different roll of the dice; 10000 halves that. The
+    # model itself is still off by ~14pp, so this is polish, not a fix.
+    #
+    # Not higher than 10000: 30000 costs 4.4s to shave the worst spread from
+    # 2.02pp to 1.17pp, and a short fight can be over before that lands.
+    def __init__(self, push, n=10000, threaded=True):
         self.push, self.n, self.threaded = push, n, threaded
         self.parser = sim_boards.GameLogParser()
         self._lineno = 0
@@ -119,11 +158,17 @@ class OddsEngine:
 
     def _run(self, c, fr, en, seq):
         try:
-            r = sim_engine.simulate(fr, en, n=self.n)
+            r = sim_engine.simulate(fr, en, n=self.n,
+                                    heroes=c["boards_pre_attack"].get("heroes"))
         except Exception:
             return          # a sim failure means no line, never a fake one
+        # dmg/lethal/kill ride the same rollouts. Each is None whenever the
+        # log did not state the facts it needs (hero tier or life unknown,
+        # ghost opponent) - the window shows a dash for None, never a guess.
         self.push({"seq": seq, "round": c["round"], "win": r["win"],
-                   "tie": r["tie"], "loss": r["loss"], "n": r["n"]})
+                   "tie": r["tie"], "loss": r["loss"], "n": r["n"],
+                   "dmg_dealt": r["dmg_dealt"], "dmg_taken": r["dmg_taken"],
+                   "lethal": r["lethal"], "kill": r["kill"]})
 
 
 class Reader(threading.Thread):
@@ -760,17 +805,75 @@ class Router:
 class App:
     """Tk loop + reader thread + router. No drawing lives here."""
 
-    def __init__(self, mmr, period, demo=None, duo=False):
+    def __init__(self, settings, demo=None, panel=True):
         self.q = queue.Queue()
-        self.manager = WindowManager(ui.WINDOWS, names_fn=bg.card_names)
+        self.settings = settings
+        self.panel = None
+        # Scale FIRST, before a single window exists: a window built at the
+        # right size never has to be repainted into it, and set_scale is a
+        # no-op when the saved value is already in force.
+        ui.base.set_scale(settings.get("ui_scale") or ui.base.auto_scale())
+        ui.base.set_badge_scale(settings.get("badge_scale"))
+        # A window switched off is NOT built. Hiding it would leave it eating
+        # its events and holding a badge strip in the priority list that can
+        # hide somebody else's badges - "off" has to mean absent.
+        # QUIT_BUTTON is exempt from the toggle: every other surface is
+        # click-through, so that window's gear and X are the only clicks the
+        # overlay can take. The panel refuses to switch it off and heals a
+        # hand-edited "off"; this filter is the boot-time half of the same
+        # guarantee (the panel may be set to not open on start).
+        classes = [c for c in ui.WINDOWS
+                   if c.QUIT_BUTTON or settings.window_enabled(c.KEY)]
+        self.manager = WindowManager(classes, names_fn=bg.card_names)
         self.router = Router(self.manager.windows)
         self.memory = None
         self.manager.on_quit = self._on_quit
-        self.reader = Reader(self.q, mmr, period, demo=demo, duo=duo,
+        self.manager.on_windows_changed = self._rebuild_router
+        self.manager.open_settings = self.open_settings
+        self.reader = Reader(self.q, settings.get("mmr"), settings.get("time"),
+                             demo=demo, duo=settings.get("duo"),
                              on_memory=self._on_memory)
         # The reference surface comes up straight away, so there is something
         # on screen ("waiting for a game") before the first log line arrives.
-        self.manager.by_key["comps"].show()
+        # It is a window like any other, so it can be switched off.
+        comps = self.manager.by_key.get("comps")
+        if comps is not None:
+            comps.show()
+        if panel:
+            self.open_settings()
+
+    # -- the settings panel ------------------------------------------------
+
+    def open_settings(self):
+        """Build it once, then show the same one. Closing it only hides it."""
+        try:
+            if self.panel is None:
+                self.panel = SettingsPanel(self, self.settings, self.manager)
+            self.panel.show()
+        except Exception:
+            # A settings panel that fails to build must not take the overlay
+            # down with it: the tool is fully usable without ever opening one.
+            traceback.print_exc()
+
+    def _rebuild_router(self):
+        """The registry changed. The router indexes windows by event when it is
+        built, so a window added or dropped behind its back would never be
+        dispatched to (or would be dispatched to after being destroyed)."""
+        self.router = Router(self.manager.windows)
+
+    def set_window_enabled(self, key, on):
+        cls = next((c for c in ui.WINDOWS if c.KEY == key), None)
+        if cls is None:
+            return
+        if not on:
+            self.manager.disable(key)
+            return
+        w = self.manager.enable(cls)
+        # A window built mid-session has missed every event so far. The ones
+        # that open on their own trigger will do so at the next one; the
+        # reference surface is the only one that is simply always up.
+        if key == "comps":
+            w.show()
 
     def _on_memory(self, memory):
         self.memory = memory
@@ -778,6 +881,9 @@ class App:
     def _on_quit(self):
         if self.memory is not None:
             self.memory.stop()   # else msync outlives us and locks its binary
+
+    def quit(self):
+        self.manager.quit()
 
     def _poll(self):
         try:
@@ -797,7 +903,7 @@ class App:
         self.manager.root.mainloop()
 
 
-def diag():
+def diag(settings=None):
     """Print what this build actually loaded, then exit.
 
     The failure mode a standalone build has and a source checkout does not is
@@ -812,6 +918,7 @@ def diag():
 
     from paths import app_dir, bundle_dir, frozen
     print("bgtracker diag")
+    print(f"  version     {VERSION}")
     print(f"  frozen      {frozen()}")
     print(f"  executable  {sys.executable}")
     print(f"  app dir     {app_dir()}        (writes: .cache, data, assets, "
@@ -829,14 +936,26 @@ def diag():
           f"  ({bg.MSYNC_EXE})")
     print(f"  sources     {'configured' if bg.SOURCES_FILE.exists() else 'none'}"
           f"  ({bg.SOURCES_FILE})")
+    print(f"  updates     {'checked on start' if update.checks_enabled() else 'off'}"
+          f"  ({update.manifest_url()})")
 
     print(f"  sim         {sim_boards.__name__} + {sim_engine.__name__} loaded "
           f"({len(sim_engine.SCRIPTS)} hand-written card scripts)")
 
+    # The settings, with where each value came from - a bug report that says
+    # "the panel is off" or "it keeps showing Duos" is answered by this block.
+    settings = settings or settings_store.Settings.load()
+    print(f"\nsettings    {settings.path} "
+          f"({'present' if settings.path.exists() else 'not written yet, all defaults'})")
+    print("\n".join(settings.describe()))
+    for problem in settings.problems:
+        print(f"  ! {problem}")
+
     print(f"\nui.WINDOWS registry: {len(ui.WINDOWS)} windows")
     for cls in ui.WINDOWS:
+        state = "on" if settings.window_enabled(cls.KEY) else "OFF (not built)"
         print(f"  {cls.KEY:9} {cls.__name__:18} {cls.__module__:14} "
-              f"{cls.COLUMN:5} y+{cls.DY:<4} {','.join(cls.EVENTS)}")
+              f"{cls.COLUMN:5} y+{cls.DY:<4} {state:15} {','.join(cls.EVENTS)}")
 
     mgr = WindowManager(ui.WINDOWS, names_fn=lambda: {})
     router = Router(mgr.windows)
@@ -849,22 +968,92 @@ def diag():
     return 0 if not missing and len(mgr.windows) == len(ui.WINDOWS) else 1
 
 
+def _announce_update(u):
+    """One line in the console the tool prints everything else to.
+
+    Nothing pops up and nothing installs. The build is unsigned, so a folder
+    the user extracted by hand is not something to swap out from under them
+    without being asked - see update.py.
+    """
+    if u.available:
+        print(f"\n{u}\n  what changed: {u.notes or u.url}\n"
+              f"  nothing has been downloaded and nothing will be until you ask\n",
+              flush=True)
+
+
+def share_if_opted_in(settings):
+    """Contribute this machine's games to the community feed - opt-in only.
+
+    Three gates, in order: the saved opt-in (OFF by default, and nothing here
+    runs while it is off), a feed address, and at most one share every twelve
+    hours. Off the UI thread, and a failure is printed rather than raised: a
+    feed that is down is not a reason for the overlay to behave differently.
+    """
+    if not settings.get("upload"):
+        return None
+    url = (settings.get("upload_url") or "").strip()
+    if not url:
+        return None
+    last = settings.get("last_upload")
+    if last and time.time() - last < 12 * 3600:
+        return None
+
+    def work():
+        # Mining reads every Power.log the machine still has: measured at 53
+        # seconds over 1.6 GB of them. It is off the UI thread and disk bound
+        # rather than CPU bound, but that is still a minute of reading, so it
+        # waits until the overlay and the game have finished starting.
+        time.sleep(20)
+        try:
+            import collect
+            collect.collect()
+            res = collect.upload(url) or {}
+            if res.get("sent"):
+                settings.set("last_upload", time.time())
+        except Exception as e:
+            print(f"  ! sharing games failed: {type(e).__name__}: {e}",
+                  file=sys.stderr)
+
+    t = threading.Thread(target=work, name="share-games", daemon=True)
+    t.start()
+    return t
+
+
 def main():
     ap = argparse.ArgumentParser(description="Anchored, per-concern Battlegrounds overlay.")
-    ap.add_argument("--mmr", default="100", choices=["100", "50", "25", "10", "1"])
-    ap.add_argument("--time", default="last-patch",
-                    choices=["all-time", "past-three", "past-seven", "last-patch"])
-    ap.add_argument("--duo", action="store_true",
+    # Every flag defaults to None: only a flag the user actually typed becomes
+    # an override, and an override lasts for this run only (settings.py).
+    ap.add_argument("--mmr", default=None, choices=list(settings_store.MMR_CHOICES),
+                    help="MMR bracket to read numbers from (saved setting otherwise)")
+    ap.add_argument("--time", default=None, choices=list(settings_store.TIME_CHOICES),
+                    help="how far back the numbers go (saved setting otherwise)")
+    ap.add_argument("--duo", action="store_true", default=None,
                     help="Duos hero stats (only heroes exist for Duos; comps, "
                          "trinkets and minions have no Duos feed)")
     ap.add_argument("--demo", help="replay a Power.log through the windows")
     ap.add_argument("--diag", action="store_true",
                     help="print the loaded windows and the paths in use, then exit")
+    ap.add_argument("--no-update-check", action="store_true",
+                    help="do not look for a new version on start")
+    ap.add_argument("--no-panel", action="store_true",
+                    help="do not open the settings panel on start")
     args = ap.parse_args()
+    s = settings_store.Settings.load(overrides={
+        "mmr": args.mmr, "time": args.time, "duo": args.duo})
+    for problem in s.problems:
+        print(f"  ! {problem}", file=sys.stderr)
     if args.diag:
-        raise SystemExit(diag())
-    App(args.mmr, args.time, Path(args.demo) if args.demo else None,
-        duo=args.duo).run()
+        raise SystemExit(diag(s))
+    # A 200-byte JSON fetch on a daemon thread, before anything is built: it
+    # cannot stall the overlay, and a dead server, no network or a captive
+    # portal all end in silence (update.py). It never installs anything.
+    update.start_check(_announce_update, disabled=args.no_update_check)
+    # A demo replays somebody's log through the windows; sharing games out of a
+    # run whose whole point is that it is not live would be wrong.
+    if not args.demo:
+        share_if_opted_in(s)
+    App(s, Path(args.demo) if args.demo else None,
+        panel=bool(s.get("open_on_start")) and not args.no_panel).run()
 
 
 if __name__ == "__main__":

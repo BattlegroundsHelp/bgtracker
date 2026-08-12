@@ -25,7 +25,8 @@ flowchart LR
 |---|---|
 | `bgtracker.py` | Everything headless: stats tables, log following/rotation, the `OfferDetector`, lobby/tribe tracking, phase detection, console rendering. Runnable alone as the console version. |
 | `overlay.py` | The launcher only: the log Reader that turns Power.log into events, the Router that hands each event to the windows that declared it, and the Tk loop. No drawing. Imports `bgtracker` for all parsing. |
-| `ui/` | One frameless window per concern (eleven of them, table below; OTHER PLAYERS only ever opens with the memory reader), plus `ui/base.py` (anchoring, per-window saved position, rounded drawing, click-through badge strips). `ui/__init__.py` holds the window registry, the plugin contract and the event table. |
+| `ui/` | One frameless window per concern (eleven of them, table below; OTHER PLAYERS only ever opens with the memory reader), plus `ui/base.py` (anchoring, per-window saved position, rounded drawing, click-through badge strips). `ui/__init__.py` holds the window registry, the plugin contract and the event table. `ui/settings.py` is the one window built the opposite way: a normal, clickable, focusable panel. |
+| `settings.py` | The saved settings (`settings.json`) and the precedence rule: an explicit flag beats the file beats the built-in default, and a flag is never written back. |
 | `sim/` | Combat odds, log-only: `boards.py` pulls both warbands out of Power.log before the first attack, `engine.py` is the Monte Carlo simulator, `validate.py` scores its predictions against every logged fight. BETA — see ROADMAP. |
 | `collect.py` | Own-data collector: mines finished games (hero, placement, tribes) from the whole log history into `data/games.jsonl`. |
 | `fetch_art.py` | One-shot card art download (tiles + crops) from HearthstoneJSON. |
@@ -181,12 +182,54 @@ deliberately expand it.
   drag offset under its own key in `.overlay.json`. Windows exist only while
   Hearthstone (or one of them) is foreground.
 - **Click-through** via `WS_EX_TRANSPARENT` so clicks reach the game — which
-  is also why badges aren't draggable yet (see ROADMAP).
+  is also why badges aren't draggable yet (see ROADMAP). The style is
+  re-asserted every time a badge strip is shown, *after* the deiconify: until a
+  strip has been mapped, `GetParent` answers 0 and the style lands on the child
+  instead of the wrapper Windows hit-tests (measured: `0x80088` when it is set
+  before the deiconify, `0x80800A8` after it).
 - Tkinter traps that cost real time: `overrideredirect(True)` must be set
   *before* building widgets (else the window balloons to fullscreen), and
   64-bit `Get/SetWindowLongPtrW` need explicit `argtypes` or click-through
   silently no-ops. A stderr log + heartbeat exist because a KeyError inside a
   Tk callback once killed the redraw chain with the window still "visible".
+
+## The settings panel (settings.py + ui/settings.py)
+
+The panel is the one window in `ui/` that is the opposite of an overlay
+surface, and every difference is deliberate: a plain `Toplevel` with the
+system's own title bar (no `overrideredirect`), **no** `-transparentcolor`
+(the key colour is a hole, and a hole cannot be clicked), **no**
+`WS_EX_TRANSPARENT` (nothing calls `clickthrough()` on it), and `-topmost`
+**yes** - the game is borderless fullscreen, so a panel that is merely focused
+opens behind it (screenshotted against a running client). Topmost is z-order
+only and has nothing to do with hit testing. Its window handle goes into
+`WindowManager.extra_hwnds`, the focus allow-set, so giving the panel focus is
+not read as the game losing focus: without that the overlay would withdraw
+exactly while you drag the scale slider, which is the one moment you need to
+watch it.
+
+What is live and what is not, because a settings panel that quietly needs a
+restart is worse than one that says so:
+
+| setting | when it takes effect |
+|---|---|
+| UI scale, badge nudge | as you drag |
+| every window on or off | immediately, built or destroyed |
+| the data opt-in, the update settings | immediately |
+| MMR bracket, period, Duos, which feed | next start, and the row says so |
+
+The four that wait are the tables the log reader loads once, at startup.
+Reloading them under a running game would re-score an offer that is already on
+screen from a different table.
+
+Storage is split so nothing owns the same value twice: `settings.json` (this
+panel), `data/update.json` (`update.py`), `sources.json` (the feeds),
+`.overlay.json` (where each window was dragged). The WHAT TO SHOW list is
+generated from `ui.WINDOWS`, and each line's description is the first sentence
+of that window module's own docstring, so a window added later cannot be
+forgotten here. Switched off means **not built**: hiding it would leave it
+consuming its events and holding a badge strip whose priority can suppress
+another window's badges.
 
 ## The memory reader (native/msync)
 

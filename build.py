@@ -26,6 +26,9 @@ import zipfile
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from version import VERSION  # noqa: E402 - after sys.path, so `python build.py` works anywhere
+
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist" / "bgtracker"
 
@@ -39,6 +42,17 @@ EXTRAS = [
     (ROOT / "docs" / "USAGE.md", "USAGE.md"),
     (ROOT / "sources.example.json", "sources.example.json"),
 ]
+
+# What the spec's DATAS promise must actually be IN the finished folder, under
+# _internal where the bundle loader reads. Checked after PyInstaller runs
+# because the features that read these degrade silently when they are absent
+# (that is their offline behavior) - a zip missing one would ship with the
+# feature dead and no error anywhere. Add a file to the spec, add it here.
+BUNDLED_DATA = (
+    Path("_internal") / "data" / "hero_tips.json",
+    Path("_internal") / "data" / "comp_roles.json",
+    Path("_internal") / "server" / "aggregate.py",
+)
 
 LAUNCHER = """@echo off
 REM Double-click to start the overlay. Keep Hearthstone in BORDERLESS WINDOWED.
@@ -110,15 +124,25 @@ def main():
 
     if not (DIST / "bgtracker.exe").exists():
         sys.exit("no bgtracker.exe in dist - the build did not produce one")
+    missing = [str(rel) for rel in BUNDLED_DATA if not (DIST / rel).is_file()]
+    if missing:
+        sys.exit("bundled data missing from the build (the feature that reads "
+                 "it would ship dead): " + ", ".join(missing))
 
     for src, name in EXTRAS:
         if src.exists():
             shutil.copy2(src, DIST / name)
     (DIST / "bgtracker.bat").write_text(LAUNCHER, encoding="utf-8")
     (DIST / "READ ME FIRST.txt").write_text(READ_ME_FIRST, encoding="utf-8")
+    # The build states its own version, in plain text, inside itself. That is
+    # what lets server/make_manifest.py refuse to publish a manifest whose
+    # version does not match the zip it describes - otherwise a release built
+    # from the wrong commit ships an update that installs and then offers
+    # itself again forever.
+    (DIST / "version.txt").write_text(VERSION + "\n", encoding="utf-8")
 
     print(f"\nbuilt {DIST}  ({size_mb(DIST):.1f} MB, "
-          f"{sum(1 for f in DIST.rglob('*') if f.is_file())} files)")
+          f"{sum(1 for f in DIST.rglob('*') if f.is_file())} files)  version {VERSION}")
 
     if args.no_zip:
         return
@@ -131,6 +155,10 @@ def main():
                 z.write(f, Path("bgtracker") / f.relative_to(DIST))
     print(f"zipped {zpath}  ({size_mb(zpath):.1f} MB)")
     print("\nHand over the zip: Extract All, then bgtracker.bat.")
+    print("\nTo release it: upload this zip to a GitHub release, then\n"
+          f"  python server/make_manifest.py {zpath.relative_to(ROOT)} --url <the asset url>\n"
+          "and copy server/out/update.json to the box (server/README.md, "
+          '"Ship a release").')
 
 
 if __name__ == "__main__":

@@ -18,3 +18,9 @@ jobs:
           python -m ruff check --select E9,F63,F7,F82 .
       - name: Offline regression (19 hero + 36 trinket offers)
         run: python tests/test_regression.py
+      # The update channel, entirely offline: a manifest server on loopback and
+      # every way a check can go wrong. It runs here because the failures that
+      # matter are silent - an updater that quietly stops offering updates, or
+      # one that accepts a zip it should refuse, both look like one that works.
+      - name: Update channel failure modes
+        run: python update.py --selftest

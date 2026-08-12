@@ -15,7 +15,8 @@ token or a brand-new card was among them - which is most Dark Gifts.
 
 from __future__ import annotations
 
-from .base import ACCENT, DIM, F_SUB, SOFT, STAR_COLOR, TEXT, BaseWindow
+from .base import (ACCENT, DIM, F_STARS, F_SUB, SOFT, STAR_COLOR, TEXT,
+                   BaseWindow)
 
 
 class DiscoverWindow(BaseWindow):
@@ -66,7 +67,7 @@ class DiscoverWindow(BaseWindow):
             if ic is not None:
                 c.create_image(20, y + 11, image=ic, anchor="w")
             c.create_text(46, y + 11, text="★" * s, anchor="w",
-                          fill=STAR_COLOR.get(s, DIM), font=("Segoe UI", 8))
+                          fill=STAR_COLOR.get(s, DIM), font=F_STARS)
             c.create_text(92, y + 11, text=r["name"][:16], anchor="w",
                           fill=TEXT if r.get("mine") else SOFT, font=F_SUB)
             if r.get("mine"):

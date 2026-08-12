@@ -230,3 +230,70 @@ draws through Win32 calls to find and follow the Hearthstone window, and the log
 Windows install path. A Mac port means a new window layer and a new path lookup. It is open
 source and the parsing half would carry over, but I am not writing that port myself in the
 near term.
+
+## EDIT 5 (DRAFT, NOT POSTED)
+
+Hold this until v0.3.0 is actually on the Releases page. Duos, MMR brackets, the other
+players window and the hero tips are all on `main` but are NOT in the v0.2.0-alpha zip, so
+posting this before a build ships would point people at a download that does not contain
+the things it announces. One edit, after one release, is also less noisy than two.
+
+It answers six people in the thread by name, which is the point of it.
+
+---
+
+EDIT 5: v0.3.0, AND THE THREAD'S REQUESTS ARE IN
+
+Most of this edit is other people's ideas from this thread. Named, because they earned it.
+
+u/Joshs424 said the text was too small at 4K. There is now a settings panel with a UI scale
+you can drag, and the badges over the cards size themselves off the game window, so a 4K
+client gets 4K badges instead of 1080p ones sitting in the right place at half size.
+
+u/l337hackzor asked for Duos and for finer MMR filtering than the two bands HSReplay gives
+you. Duos is now its own dataset, not a filter: a Duos lobby is four teams finishing 1st to
+4th and a solo lobby is eight players finishing 1st to 8th, so pooling them would describe
+neither. Nothing falls back to solo numbers. There are five MMR brackets, and a bracket only
+appears once it holds enough games. Until then the tool reads the all players file and says
+so on screen instead of labelling the whole pool top 1%.
+
+u/Ok-Acanthisitta7190 asked for the last players board, "even if it's only a screenshot". It
+is better than a screenshot. There is a window listing every other player with their hero,
+tier and health, and for anyone you have fought, the board they were last seen holding with
+the round it was seen in and how long ago. A player you have not fought shows no board at
+all, not a guess. This one needs the optional memory reader, because the log genuinely never
+states another player's board while you are shopping.
+
+u/Deep-Sky-3365 and u/Taverntrainer asked for per hero strategy lines. 111 of the 121 heroes
+now carry one at the draft. Every line was written from that hero's own printed hero power
+text, not copied from anyone's guide, and the ten without a line are the ones whose power
+names a reward the card never describes. They live in a plain file in the repo, so anyone can
+fix one with a pull request. The upvote and downvote system for these is still to come.
+
+u/Deathoftheages asked about keeping up with patches. It now checks for updates itself and
+tells you when there is one. It never installs anything behind your back.
+
+Also in this build: a settings panel that opens on start, where the data sharing opt in
+lives (still off by default, still anonymised, still free forever), along with which windows
+you want on screen at all.
+
+ON THE COMBAT ODDS, since people asked how accurate it really is
+
+86% winner accuracy over 343 of my own logged fights. Be careful reading that against the
+82.5% in the last edit: most of that jump is the sample growing from 251 fights to 343, not
+the code getting better. The same unchanged code scores 85.7% on the bigger sample. Six more
+cards got scripted and that bought exactly one extra correct fight out of 343. Saying so
+because the honest number is more useful than the flattering one.
+
+Something surprising came out of that work. Dark Gifts sound like they should be the hard
+part, and they are not. There are 40 of them. 24 only grant stats or keywords, which are
+already sitting on the minion by the time the board is read, so modelling them again would
+make the sim worse rather than better. 9 change your cards rather than the fight. 6 fire
+during combat and are modelled. 1 cannot be offered any more. The gap is zero.
+
+The pool minions are the same story. Of 274 minions only 39 do anything during a fight at
+all. 141 have already finished their work before the boards are read, and 94 do nothing in
+combat. So the remaining work is 33 cards, not 274. That list is generated from the live card
+database and is in the repo, so it stays right when the patch changes.
+
+Still Windows only. Still free, no ads, no account, no paywall, and your games stay yours.

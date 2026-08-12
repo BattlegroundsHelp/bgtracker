@@ -55,6 +55,10 @@ HERO_RE = re.compile(r"^(BG[A-Z0-9]*_HERO_\d+|TB_BaconShop_HERO_\d+)$")
 CARD_RE = re.compile(r"^[A-Za-z0-9_]{1,64}$")
 DATE_RE = re.compile(r"^\d{4}[-_]\d{2}[-_]\d{2}$")
 UID_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
+# The client's own version string, e.g. "0.3.0-alpha". Stored so a strange
+# looking week in the numbers can be checked against "which builds sent this"
+# before anyone concludes the meta moved. Says nothing about the person.
+CVER_RE = re.compile(r"^[0-9A-Za-z.+-]{1,32}$")
 # Tribe names exactly as Hearthstone writes them to the log (CARDRACE value=...),
 # which is what collect.py uploads. MECHANICAL is spelled out, not "MECH".
 RACES = {"MURLOC", "DEMON", "MECHANICAL", "ELEMENTAL", "BEAST", "PIRATE", "DRAGON",
@@ -74,7 +78,8 @@ CREATE TABLE IF NOT EXISTS games (
     offered_trinkets TEXT,
     picked_trinkets  TEXT,
     final_board      TEXT,               -- json array of cardIds (card stats)
-    client           TEXT                -- opaque client tag, for rate/abuse only
+    client           TEXT,               -- opaque client tag, for rate/abuse only
+    cver             TEXT                -- which client version sent it
 );
 CREATE INDEX IF NOT EXISTS games_date ON games(date);
 """
@@ -95,7 +100,7 @@ def migrate(conn):
     knows whether they were solo or duos, and the aggregator counts them in
     neither feed rather than guess."""
     have = {r[1] for r in conn.execute("PRAGMA table_info(games)")}
-    for col, decl in (("duo", "INTEGER"),):
+    for col, decl in (("duo", "INTEGER"), ("cver", "TEXT")):
         if col not in have:
             conn.execute(f"ALTER TABLE games ADD COLUMN {col} {decl}")
 
@@ -157,6 +162,10 @@ def validate(rec):
 
     oh, ot, pt = _clean_ids(rec.get("offered_heroes")), _clean_ids(rec.get("offered_trinkets")), _clean_ids(rec.get("picked_trinkets"))
     fb = _clean_ids(rec.get("final_board"), limit=14)
+    # An extra, so anything unusable falls to null instead of rejecting a real
+    # game: the version is useful, the game is the point.
+    cver = rec.get("v")
+    cver = cver if isinstance(cver, str) and CVER_RE.match(cver) else None
     return {
         "uid": uid, "ts": int(time.time()), "date": date, "hero": hero,
         "place": place, "duo": None if duo is None else int(duo), "mmr": mmr,
@@ -166,11 +175,13 @@ def validate(rec):
         "picked_trinkets": json.dumps(pt) if pt else None,
         "final_board": json.dumps(fb) if fb else None,
         "client": (rec.get("client") or "")[:64] or None,
+        "cver": cver,
     }
 
 
 COLS = ("uid", "ts", "date", "hero", "place", "duo", "mmr", "tribes",
-        "offered_heroes", "offered_trinkets", "picked_trinkets", "final_board", "client")
+        "offered_heroes", "offered_trinkets", "picked_trinkets", "final_board",
+        "client", "cver")
 INSERT = f"INSERT OR IGNORE INTO games ({','.join(COLS)}) VALUES ({','.join('?' * len(COLS))})"
 # Fills a gap; never rewrites a classification. Games stored before the client
 # could tell solo from duos sit here with duo IS NULL and count in neither feed.
@@ -224,8 +235,15 @@ class Handler(BaseHTTPRequestHandler):
                     # the DB: unclassified games are the ones in neither feed.
                     by = dict(c.execute(
                         "SELECT duo, COUNT(*) FROM games GROUP BY duo").fetchall())
+                    # Which client versions are in the wild, straight off the
+                    # rows. Rows stored before the client sent one read
+                    # "unknown" rather than being guessed into a version.
+                    vers = {(v or "unknown"): k for v, k in c.execute(
+                        "SELECT cver, COUNT(*) FROM games GROUP BY cver "
+                        "ORDER BY COUNT(*) DESC LIMIT 20").fetchall()}
                 self._send(200, {"ok": True, "games": n, "solo": by.get(0, 0),
-                                 "duo": by.get(1, 0), "unclassified": by.get(None, 0)})
+                                 "duo": by.get(1, 0), "unclassified": by.get(None, 0),
+                                 "versions": vers})
             except Exception as e:
                 self._send(500, {"ok": False, "error": str(e)})
         else:

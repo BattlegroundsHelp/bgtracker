@@ -9,16 +9,21 @@ __pycache__/
 build/
 dist/
 *.spec
+# ...except OUR spec, which is authored, not generated: it is the build's
+# source of truth (what gets bundled, which data files must exist), and
+# without it in the repo nobody else can build the release at all.
+!bgtracker.spec
 *.manifest
 *.whl
 .cache/
 # data/ is runtime state (your collected games, your generated feed) and stays
-# out - EXCEPT the community hero tips, which are written text that ships with
-# the tool. Written as data/* so the two files below can be un-ignored: git
-# never looks inside a directory that is itself excluded.
+# out - EXCEPT the community hero tips and the comp roles, which are written
+# text that ships with the tool. Written as data/* so the files below can be
+# un-ignored: git never looks inside a directory that is itself excluded.
 data/*
 !data/hero_tips.json
 !data/hero_tips.schema.json
+!data/comp_roles.json
 tests/.livetest/
 .overlay.json
 overlay_out.log
@@ -40,6 +45,10 @@ launch_err.log
 
 # your personal stats configuration - never committed
 sources.json
+
+# your settings panel choices (scale, what to show, the data opt-in). Runtime
+# state, and it can hold the address of a feed you run yourself.
+settings.json
 
 # aggregator runtime state (server/) - the DB, the generated feed, the secret.
 # server/data is already covered by data/ above; listed here for clarity.

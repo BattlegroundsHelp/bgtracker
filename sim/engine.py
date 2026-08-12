@@ -48,7 +48,8 @@ SCRIPTS maps cardId -> a dict of hooks. Recognised keys:
   "on_summon":       fn(m, token, own, enemy, rng)
   "on_damage":       fn(m, source, own, enemy, rng)
   "on_death":        fn(m, own, enemy, rng)             imperative deathrattle
-  "overkill":        True                               excess damage splashes
+  "overkill":        True | "both"    excess damage splashes one neighbour
+                                      ("both": both of them - golden Wildfire)
   "immune_attack":   True                               takes no counterattack
   "reborn_full":     True                               reborn keeps full health
 
@@ -75,8 +76,8 @@ Derived scripts: the CURRENT Battlegrounds pool is fetched from
 hearthstonejson (cached a day in .cache/simscripts.json). Every pool
 deathrattle whose text matches 'Deathrattle: Summon a/two/three ... X/Y ...'
 becomes a token-summon script (Taunt / Reborn on the token detected, and the
-token's tribe resolved from its name); cleave text ("...minions next to...")
-becomes the cleave flag; the BACON_RALLY mechanic becomes the rally flag so
+token's tribe resolved from its name); cleave text ("...minions/enemies next
+to...") becomes the cleave flag; the BACON_RALLY mechanic becomes the rally flag so
 "after a friendly Rally minion attacks" watchers work even next to a rally
 minion we do not script. A GOLDEN variant is read off the GOLDEN card's own
 text, never guessed by doubling the base: measured over the live pool, 6 of
@@ -100,12 +101,25 @@ Usage:
     python sim/engine.py --log <Power.log> [--n 500] [--min-round N]
         predict every complete combat in a real log, score vs the outcome
 API:
-    simulate(board_a, board_b, n=3000, seed=None, scripts=None, calibrate=True)
+    simulate(board_a, board_b, n=3000, seed=None, scripts=None,
+             calibrate=True, heroes=None)
       -> {"win","tie","loss","avg_damage","avg_damage_taken","n",
-          "raw_win","raw_tie","raw_loss","eps","unmodelled"}
+          "raw_win","raw_tie","raw_loss","eps","unmodelled",
+          "dmg_dealt","dmg_taken","lethal","kill","raw_lethal","raw_kill"}
     win/tie/loss are fractions of rollouts; avg_damage is the mean tier-sum
     dealt to the enemy hero across winning rollouts (avg_damage_taken the
     mirror for losses).
+    heroes: the snapshot's heroes dict from sim/boards.py
+    ({"friendly": {tier, health, armor, damage}, "enemy": {...}}). When given,
+    dmg_dealt / dmg_taken {"mean","q25","q75"} include the winning HERO's
+    tavern tier (real BG face damage); lethal = P(we die this fight) and
+    kill = P(they die), each widened by the same eps mixture as win/loss so
+    they never print 0% or 100% on a board with unmodelled cards. Without
+    heroes the dmg bands are minion-tier sums only and lethal/kill are None
+    (measured 2026-08-12 over the 6 cached logs: tier and friendly health
+    were present in 339/339 pre-attack snapshots, enemy health in 322 - the
+    17 misses are Kel'Thuzad ghost fights where the dead owner's remaining
+    health is honestly 0, so kill stays None against a ghost).
 """
 
 from __future__ import annotations
@@ -130,13 +144,13 @@ CARDS_URL = "https://api.hearthstonejson.com/v1/latest/enUS/cards.json"
 CACHE_DIR = APP_DIR / ".cache"
 SCRIPTS_CACHE = CACHE_DIR / "simscripts.json"
 CACHE_TTL = 86400
-DERIVED_VERSION = 5
+DERIVED_VERSION = 7
 
 MAX_BOARD = 7
 MAX_ATTACKS = 1000
 
 # Calibration. The prior is deliberately SYMMETRIC - it encodes only "ties
-# happen ~9% of the time" (7.6% - 26 of the 343 real logged fights measured;
+# happen ~9% of the time" (7.7% - 26 of the 339 cached real fights measured;
 # the wider 9% from the earlier 251-fight sample is kept on purpose) and no
 # side bias, so shrinking toward it never invents an advantage for either
 # player. eps is the weight given to the prior.
@@ -164,12 +178,21 @@ def _fetch(url: str):
     return json.loads(raw)
 
 
-_WORD_N = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+# "six" earns its place: Cadaver Caretaker's golden prints "Summon six 1/1
+# Skeletons", and without the word here the derivation missed and the
+# doubled-base fallback guessed [3,2,2] instead of the printed [6,1,1].
+# seven/eight cost nothing and stop the same miss on a future card.
+_WORD_N = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+           "six": 6, "seven": 7, "eight": 8}
 _TAG_RE = re.compile(r"<[^>]+>")
 _SUMMON_RE = re.compile(
-    r"Summons? (a|an|one|two|three|four|five) (\d+)/(\d+) ([A-Za-z'’-]+)"
+    r"Summons? (a|an|one|two|three|four|five|six|seven|eight) (\d+)/(\d+) ([A-Za-z'’-]+)"
 )
-_CLEAVE_RE = re.compile(r"minions next to", re.I)
+# "Also damages the minions next to whomever it attacks" (Foe Reaper, Cave
+# Hydra) - but the live pool's only cleave minion, Blade Collector BG26_817,
+# prints "the ENEMIES next to", so matching only "minions" derived 0 cleave
+# minions from the current pool.
+_CLEAVE_RE = re.compile(r"(?:minions|enemies) next to", re.I)
 
 TRIBES = {
     "BEAST", "DEMON", "DRAGON", "ELEMENTAL", "MECHANICAL", "MURLOC",
@@ -349,11 +372,11 @@ def load_scripts(refresh: bool = False) -> dict:
 
 class Minion:
     __slots__ = (
-        "cid", "atk", "hp", "max_hp", "base_atk", "taunt", "ds", "poison",
-        "venom", "wf", "reborn", "stealth", "cleave", "summon", "soc",
-        "on_atk", "f_atk", "f_death", "on_reborn", "on_summon", "on_dmg", "od",
-        "dr_buff", "gained", "dr_rep", "overkill", "immune", "reborn_full",
-        "rally", "races", "tname", "tier",
+        "cid", "atk", "hp", "max_hp", "base_atk", "base_hp", "taunt", "ds",
+        "poison", "venom", "wf", "reborn", "stealth", "cleave", "summon",
+        "soc", "on_atk", "f_atk", "f_death", "on_reborn", "on_summon",
+        "on_dmg", "od", "dr_buff", "gained", "dr_rep", "overkill", "immune",
+        "reborn_full", "rally", "races", "tname", "tier", "killer",
     )
 
     def __init__(
@@ -371,6 +394,7 @@ class Minion:
         self.hp = hp
         self.max_hp = hp
         self.base_atk = atk
+        self.base_hp = hp
         self.taunt = taunt
         self.ds = int(ds)
         self.poison = poison
@@ -401,6 +425,12 @@ class Minion:
         self.races = races
         self.tname = tname
         self.tier = tier
+        # The minion whose hit killed this one, written by _hit when hp drops
+        # to 0. Read by Leeroy the Reckless ("Destroy the minion that killed
+        # this"). Plain _damage (splash, script damage) leaves it alone - the
+        # game credits those kills to a minion too, but they are rare and a
+        # missed destroy is the safe (under-counting) direction.
+        self.killer = None
 
     def clone(self) -> "Minion":
         m = Minion.__new__(Minion)
@@ -417,7 +447,8 @@ class Side:
     plus the side-wide state that combat triggers accumulate."""
 
     __slots__ = ("ms", "ptr", "w_atk", "w_death", "w_reborn", "w_summon",
-                 "w_dmg", "w_rep", "beetle_a", "beetle_h", "undead_atk")
+                 "w_dmg", "w_rep", "beetle_a", "beetle_h", "undead_atk",
+                 "dead_mechs", "knight_deaths")
 
     def __init__(self, ms: list):
         self.ms = ms
@@ -425,6 +456,12 @@ class Side:
         self.beetle_a = 0
         self.beetle_h = 0
         self.undead_atk = 0
+        # Died-this-fight memories, as cheap as the counters above. dead_mechs
+        # is only ever appended to by Kangor's Apprentice's watcher (capped at
+        # the 4 its golden card reads); knight_deaths counts friendly Eternal
+        # Knight deaths for Eternal Summoner's floor.
+        self.dead_mechs = []
+        self.knight_deaths = 0
         self.refresh_watchers()
 
     def refresh_watchers(self):
@@ -484,6 +521,16 @@ def _chain(a, b):
 
 _SUMMON_PAD = (False, False, (), "")
 
+# The Beetle token's own card id. A Beetle standing on the CAPTURED board
+# arrives as a plain row (cardId BG28_603t, tname "") while one born during
+# the fight is a script token carrying tname "Beetle" - side-wide Beetle
+# buffs have to recognise both.
+_BEETLE_ID = "BG28_603t"
+
+
+def _is_beetle(m: Minion) -> bool:
+    return m.tname == "Beetle" or _strip_golden(m.cid) == _BEETLE_ID
+
 
 def _from_row(row: dict, reg: dict, tiers: dict, races: dict | None = None,
               stats: dict | None = None) -> Minion:
@@ -530,7 +577,7 @@ def _from_row(row: dict, reg: dict, tiers: dict, races: dict | None = None,
         od=sc.get("on_death"),
         dr_buff=sc.get("deathrattle_buff"),
         dr_rep=(sc.get("aura") or {}).get("deathrattle_repeats", 0),
-        overkill=bool(sc.get("overkill")),
+        overkill=sc.get("overkill") or False,
         immune=bool(sc.get("immune_attack")),
         reborn_full=bool(sc.get("reborn_full")),
         rally=bool(sc.get("rally")),
@@ -540,6 +587,7 @@ def _from_row(row: dict, reg: dict, tiers: dict, races: dict | None = None,
     m.max_hp = row.get("health", 1)
     st = (stats or {}).get(cid) or (stats or {}).get(base)
     m.base_atk = st[0] if st else m.atk
+    m.base_hp = st[1] if st else row.get("health", 1)
     # A Dark Gift whose effect is a TRIGGER reaches the board only as a
     # reference; boards.py resolves that reference to the gift's card id.
     gift = SCRIPTS.get(row.get("dark_gift") or "")
@@ -583,6 +631,8 @@ def _hit(src: Minion, dst: Minion) -> int:
         dst.hp = 0
     if src.venom and dst.hp <= 0:
         src.venom = False
+    if dst.hp <= 0:
+        dst.killer = src
     return a - before if before < a else 0
 
 
@@ -605,7 +655,7 @@ def _summon(side: Side, i: int, tok: Minion, other: Side, rng: random.Random,
     """Insert a summoned token, respecting the cap, and fire summon watchers."""
     if len(side.ms) >= MAX_BOARD:
         return i
-    if tok.tname == "Beetle":
+    if _is_beetle(tok):
         _buff(tok, side.beetle_a, side.beetle_h)
     if tok.has_race("UNDEAD"):
         tok.atk += side.undead_atk
@@ -776,7 +826,13 @@ def _attack(att: Minion, aside: Side, dside: Side, rng: random.Random, trk=None)
             if di + 1 < len(dside.ms):
                 nb.append(dside.ms[di + 1])
             if nb:
-                _damage(nb[rng.randrange(len(nb))], excess)
+                # Base Wildfire: "deal excess damage to an adjacent enemy";
+                # the golden card prints "to both adjacent enemies".
+                if att.overkill == "both":
+                    for v in nb:
+                        _damage(v, excess)
+                else:
+                    _damage(nb[rng.randrange(len(nb))], excess)
         if not att.immune:
             _hit(dfn, att)
         if dside.w_dmg and dfn.on_dmg:
@@ -825,11 +881,20 @@ def fight(ta: list, tb: list, rng: random.Random, trk=None) -> tuple[int, int]:
 
 # --------------------------------------------------------------- card scripts
 
-def _reg(cid: str, entry: dict, golden: dict | None = None):
+def _reg(cid: str, entry: dict, golden: dict | None = None,
+         gid: str | None = None):
     """Register a manual script. The golden entry carries the numbers printed
-    on the GOLDEN card, never a guessed doubling."""
+    on the GOLDEN card, never a guessed doubling.
+
+    gid: pre-BG25 goldens live under a TB_BaconUps_* id, not <id>_G (Goldrinn
+    TB_BaconUps_085, Deflect-o-Bot TB_BaconUps_123, Wildfire TB_BaconUps_166).
+    Registering only <id>_G left those real logged ids scriptless. The gid
+    entry is marked golden so _from_row never re-doubles a summon on it."""
     SCRIPTS[cid] = entry
-    SCRIPTS[cid + "_G"] = golden if golden is not None else entry
+    g = golden if golden is not None else entry
+    SCRIPTS[cid + "_G"] = g
+    if gid:
+        SCRIPTS[gid] = {**g, "golden": True}
 
 
 def _others(m: Minion, side: Side) -> list:
@@ -972,13 +1037,114 @@ def _phantom(mult: int):
 
 def _eternal_knight(m, own, enemy, rng):
     """Every friendly Eternal Knight grows when one of them dies; the amount is
-    printed on the RECEIVER's card, so a golden knight gains more."""
+    printed on the RECEIVER's card, so a golden knight gains more. The death
+    also feeds Side.knight_deaths, which Eternal Summoner's floor reads."""
+    own.knight_deaths += 1
     for x in own.ms:
         if _strip_golden(x.cid) == "BG25_008" and x.hp > 0:
             if x.cid.endswith("_G"):
                 _buff(x, 8, 4)
             else:
                 _buff(x, 4, 2)
+
+
+def _eternal_summoner(golden: bool):
+    """Eternal Summoner - "Deathrattle: Summon 1 Eternal Knight" (the golden
+    card summons a Golden one). The knight's printed text is an aura, "+4/+2
+    for each friendly Eternal Knight that died this game" (golden +8/+4), and
+    the game-long death count is hidden from a combat snapshot. The knight is
+    summoned at printed stats plus the deaths seen THIS FIGHT - a board-visible
+    floor exactly like Forest Rover's Beetle counter - and BG25_009 stays in
+    UNMODELLED so the invisible earlier deaths keep widening the odds."""
+    per_a, per_h = (8, 4) if golden else (4, 2)
+
+    def fn(m, own, enemy, rng):
+        n = own.knight_deaths
+        _summon(own, len(own.ms), Minion(
+            cid="BG25_008_G" if golden else "BG25_008",
+            atk=per_a * (1 + n), hp=per_h * (1 + n),
+            races=("UNDEAD",), tname="Eternal Knight", tier=2,
+            od=_eternal_knight,
+        ), enemy, rng)
+    return fn
+
+
+def _sewer_lord(golden: bool):
+    """Sewer Lord - "Deathrattle: Summon two Sewer Rats that summon 2/3
+    Turtles with Taunt." (the golden card summons two GOLDEN Rats whose
+    Turtles are 4/6). A nested summon: each Rat is a real token carrying the
+    Rat card's own printed deathrattle (BG19_010 / BG19_010_G), so Titus,
+    Fish of N'Zoth and summon watchers all see it like any other token."""
+    rat_cid = "BG19_010_G" if golden else "BG19_010"
+    r_atk, r_hp = (6, 4) if golden else (3, 2)
+    t_sum = ((1, 4, 6, True, False, ("BEAST",), "Turtle") if golden
+             else (1, 2, 3, True, False, ("BEAST",), "Turtle"))
+
+    def fn(m, own, enemy, rng):
+        for _ in range(2):
+            if len(own.ms) >= MAX_BOARD:
+                break
+            _summon(own, len(own.ms), Minion(
+                cid=rat_cid, atk=r_atk, hp=r_hp, races=("BEAST",),
+                tname="Sewer Rat", tier=2, summon=t_sum,
+            ), enemy, rng)
+    return fn
+
+
+def _kangor_watch(m, dead, own, enemy, rng):
+    """Kangor's Apprentice's memory: the first Mechs that died this combat.
+    Capped at the 4 the GOLDEN card reads (the base card takes the first 2 of
+    them). The identity check keeps a second Apprentice's watcher from
+    recording the same death twice."""
+    if (dead.has_race("MECHANICAL") and len(own.dead_mechs) < 4
+            and all(x is not dead for x in own.dead_mechs)):
+        own.dead_mechs.append(dead)
+
+
+def _kangor(count: int):
+    """Kangor's Apprentice - "Deathrattle: Summon plain copies of your first
+    2 Mechs that died this combat." (its golden card, TB_BaconUps_087, prints
+    "first 4"). A plain copy is the printed card: printed attack and health
+    (base_atk / base_hp) with no gained deathrattles. Printed KEYWORDS are not
+    recoverable from the dying minion - flags are taken as they stood at its
+    death, which under-counts a spent Divine Shield; the safe direction."""
+    def fn(m, own, enemy, rng):
+        for dead in own.dead_mechs[:count]:
+            if len(own.ms) >= MAX_BOARD:
+                break
+            c = dead.clone()
+            c.atk = c.base_atk
+            c.hp = c.base_hp
+            c.max_hp = c.base_hp
+            c.gained = ()
+            c.killer = None
+            _summon(own, len(own.ms), c, enemy, rng)
+    return fn
+
+
+def _leeroy(m, own, enemy, rng):
+    """Leeroy the Reckless - "Deathrattle: Destroy the minion that killed
+    this." (the golden card prints the same effect). Destroy goes through
+    Divine Shield, so the killer's hp is set to 0 directly; its own
+    deathrattles still run in the normal death loop."""
+    k = m.killer
+    if k is not None and k.hp > 0:
+        k.hp = 0
+
+
+_PHALANX_TRIBES = tuple(sorted(TRIBES - {"ALL"}))
+
+
+def _phalanx(atk: int, hp: int):
+    """Motley Phalanx - "Deathrattle: Give a friendly minion of each type
+    +2/+2 permanently." (golden +4/+4). One random friendly per tribe; an
+    ALL-tribe minion can be picked once per tribe, as in the real game."""
+    def fn(m, own, enemy, rng):
+        for race in _PHALANX_TRIBES:
+            cands = [x for x in own.ms if x.hp > 0 and x.has_race(race)]
+            if cands:
+                _buff(cands[rng.randrange(len(cands))], atk, hp)
+    return fn
 
 
 def _deathstrider(times: int):
@@ -1001,15 +1167,35 @@ def _scorpid(atk: int, hp: int):
         own.beetle_a += atk
         own.beetle_h += hp
         for x in own.ms:
-            if x.tname == "Beetle":
+            if _is_beetle(x):
                 _buff(x, atk, hp)
     return fn
 
 
-def _deflect(m, tok, own, enemy, rng):
-    if tok.has_race("MECHANICAL"):
-        m.atk += 2
-        m.ds += 1
+def _beetles_now(atk: int, hp: int):
+    """'Your Beetles have +X/+Y this game' granted by a DEATH INSIDE the fight
+    (Turquoise Skitterer): buff every Beetle on the board now and seed the
+    side counter so Beetles born later in this fight carry it too. A Skitterer
+    that died in an EARLIER combat already shows on the captured Beetles'
+    stats, but its share of the counter for fight-born Beetles is invisible -
+    same floor/ceiling split as Forest Rover, so the card stays UNMODELLED."""
+    def fn(m, own, enemy, rng):
+        own.beetle_a += atk
+        own.beetle_h += hp
+        for x in own.ms:
+            if _is_beetle(x):
+                _buff(x, atk, hp)
+    return fn
+
+
+def _deflect(atk: int):
+    """Deflect-o-Bot - 'Whenever you summon a Mech during combat, gain
+    +2 Attack and Divine Shield.' The golden card prints +4."""
+    def fn(m, tok, own, enemy, rng):
+        if tok.has_race("MECHANICAL"):
+            m.atk += atk
+            m.ds += 1
+    return fn
 
 
 def _gift_golem(m, own, enemy, rng):
@@ -1037,9 +1223,12 @@ def _register_scripts():
     Every value is read off the card's own text (golden values off the golden
     card's own text) - nothing is doubled by assumption."""
     # --- deathrattle buffs -------------------------------------------------
-    _reg("BGS_018",  # Goldrinn - worst mean error of any card in the logs
+    # Goldrinn - worst mean error of any card in the logs. "Deathrattle:
+    # Your Beasts have +8/+8 until next turn."; golden card prints +16/+16.
+    _reg("BGS_018",
          {"deathrattle_buff": {"atk": 8, "hp": 8, "race": "BEAST"}},
-         {"deathrattle_buff": {"atk": 16, "hp": 16, "race": "BEAST"}})
+         {"deathrattle_buff": {"atk": 16, "hp": 16, "race": "BEAST"}},
+         gid="TB_BaconUps_085")
     _reg("BG36_202",  # Tasty Lobster (printed value; its upgrade is not logged)
          {"deathrattle_buff": {"atk": 1, "hp": 1, "race": "BEAST", "count": 2}},
          {"deathrattle_buff": {"atk": 2, "hp": 2, "race": "BEAST", "count": 2}})
@@ -1049,12 +1238,68 @@ def _register_scripts():
          {"deathrattle_buff": {"keywords": ["reborn"], "race": "UNDEAD",
                                "count": 2}})
     _reg("BG25_008", {"on_death": _eternal_knight})  # Eternal Knight
+    _reg("BG25_022",  # Scarlet Skull
+         {"deathrattle_buff": {"atk": 1, "hp": 2, "race": "UNDEAD",
+                               "count": 1}},
+         {"deathrattle_buff": {"atk": 2, "hp": 4, "race": "UNDEAD",
+                               "count": 1}})
+    # Showy Cyclist - "Deathrattle: Give your Naga +2/+2. (Improved by every
+    # 4 spells you've cast this game!)" (golden prints +4/+4). The spell count
+    # is a hidden this-game counter, so the printed number is a FLOOR - the
+    # Forest Rover pattern - and BG31_925 stays in UNMODELLED for the
+    # invisible improvement.
+    _reg("BG31_925",
+         {"deathrattle_buff": {"atk": 2, "hp": 2, "race": "NAGA"}},
+         {"deathrattle_buff": {"atk": 4, "hp": 4, "race": "NAGA"}})
+    # Motley Phalanx - one random friendly of each type, +2/+2 (golden +4/+4).
+    _reg("BG27_080", {"on_death": _phalanx(2, 2)},
+         {"on_death": _phalanx(4, 4)})
     # Plaguerunner - "Deathrattle: Your Undead have +2 Attack this game,
     # wherever they are. (+4 if triggered outside combat!)". A death INSIDE the
     # fight is the only one this sim sees, so it takes the in-combat +2; the
     # golden card prints +4 (its own +8 is likewise the outside-combat number).
     _reg("BG34_690", {"on_death": _dr_race_atk("UNDEAD", 2)},
          {"on_death": _dr_race_atk("UNDEAD", 4)})
+    # --- imperative deathrattles (summons, destroys, nested tokens) ---------
+    # Sewer Lord - two Rats that each rattle a Taunt Turtle; golden values are
+    # the golden card's own ("two Golden Sewer Rats ... 4/6 Turtles").
+    _reg("BG35_604", {"on_death": _sewer_lord(False)},
+         {"on_death": _sewer_lord(True)})
+    # Eternal Summoner - knight at printed stats + this fight's knight deaths
+    # (floor; see _eternal_summoner). Golden card: "Summon a Golden Eternal
+    # Knight."
+    _reg("BG25_009", {"on_death": _eternal_summoner(False)},
+         {"on_death": _eternal_summoner(True)})
+    # Kangor's Apprentice - plain copies of the first 2 Mechs that died this
+    # combat; its golden lives under TB_BaconUps_087 and prints "first 4".
+    _reg("BGS_012",
+         {"on_friendly_death": _kangor_watch, "on_death": _kangor(2)},
+         {"on_friendly_death": _kangor_watch, "on_death": _kangor(4)},
+         gid="TB_BaconUps_087")
+    # Leeroy the Reckless - destroy the killer (golden card: same text).
+    _reg("BG23_318", {"on_death": _leeroy})
+    # Turquoise Skitterer - "Your Beetles have +5/+5 this game" fired by the
+    # death itself (golden +10/+10); the printed Beetle summon ("a" / "two"
+    # 2/2) comes from the derived script and survives the per-key merge.
+    _reg("BG31_809", {"on_death": _beetles_now(5, 5)},
+         {"on_death": _beetles_now(10, 10)})
+    # Sly Raptor - "Summon a random Beast. Set its stats to 6/6." (golden
+    # 12/12). The stats are printed; the IDENTITY is a random pull whose own
+    # text we cannot know, so a vanilla Beast is the floor and BG25_806 stays
+    # in UNMODELLED. The golden entry carries the golden card's own numbers,
+    # hence the marker that stops _from_row re-doubling them.
+    _reg("BG25_806",
+         {"summon": [1, 6, 6, False, False, ["BEAST"], "Beast"]},
+         {"summon": [1, 12, 12, False, False, ["BEAST"], "Beast"],
+          "golden": True})
+    # Auto Assembler - summons Ancestral Automaton at its PRINTED 3/4 (golden
+    # card: a Golden one, 6/8). The Automaton's real stats grow with a hidden
+    # this-game summon counter, so printed stats are the floor and BG32_172
+    # stays in UNMODELLED beside BG_TTN_401 itself.
+    _reg("BG32_172",
+         {"summon": [1, 3, 4, False, False, ["MECHANICAL"], "Automaton"]},
+         {"summon": [1, 6, 8, False, False, ["MECHANICAL"], "Automaton"],
+          "golden": True})
     # --- rally (on-attack, every attack) -----------------------------------
     _reg("BG29_888", {"on_attack": _rally_self_atk(2), "rally": True},
          {"on_attack": _rally_self_atk(4), "rally": True})  # Glim Guardian
@@ -1094,8 +1339,14 @@ def _register_scripts():
     SCRIPTS["TB_BaconShop_HP_105t"] = {"on_friendly_death": _fish(1)}
     SCRIPTS["TB_BaconUps_307"] = {"on_friendly_death": _fish(2), "golden": True}
     # --- summon watcher / overkill -----------------------------------------
-    _reg("BGS_071", {"on_summon": _deflect})  # Deflect-o-Bot
-    _reg("BGS_126", {"overkill": True})  # Wildfire Elemental
+    # Deflect-o-Bot - "Whenever you summon a Mech during combat, gain
+    # +2 Attack and Divine Shield."; the golden card prints +4.
+    _reg("BGS_071", {"on_summon": _deflect(2)},
+         {"on_summon": _deflect(4)}, gid="TB_BaconUps_123")
+    # Wildfire Elemental - "After this attacks and kills a minion, deal
+    # excess damage to an adjacent enemy."; golden: "to both adjacent enemies".
+    _reg("BGS_126", {"overkill": True},
+         {"overkill": "both"}, gid="TB_BaconUps_166")
     # --- 'this game' counters seeded at the start of the fight --------------
     # Forest Rover - "Battlecry: Your Beetles have +2/+1 this game" (golden
     # +4/+2). The Battlecry itself resolved in the tavern and is already in the
@@ -1121,21 +1372,45 @@ _register_scripts()
 # already resolved into the snapshot (start of combat, tavern, battlecry) are
 # NOT here - for those the sim is not missing anything.
 UNMODELLED = frozenset({
-    # Blood Gem effects: the gem's size is a hidden player enchantment.
-    "BG20_101", "BG20_104", "BG33_886", "BG33_883", "BG33_430",
-    "BG34_682", "BG31_320", "BG34_684",
-    # Summons/gets that depend on hand contents or a random pull.
-    "BG31_835", "BG34_140", "BG34_319", "BG25_009", "BG26_148", "BG25_806",
-    "BG36_204", "BG36_242", "BG33_822", "BG36_331",
+    # Blood Gems PLAYED ON BOARD MINIONS during the fight (gem size is a
+    # hidden player enchantment we cannot read from the snapshot).
+    "BG20_104", "BG33_886", "BG33_883", "BG33_430",
+    # Summons that depend on hand contents or a random pull. BG25_009
+    # (Eternal Summoner) and BG25_806 (Sly Raptor) stay here even though a
+    # FLOOR is now scripted: the Summoner's knight misses the game-long
+    # knight-death count and the Raptor's random Beast has text of its own.
+    "BG31_835", "BG34_140", "BG25_009", "BG25_806",
     # Hidden this-game counters we cannot read from a combat snapshot.
     # BG31_801 (Forest Rover) stays here on purpose even though it is now
     # scripted: only the Rovers still ON the board can seed the Beetle
-    # counter, so a Rover played and sold earlier is still unmodelled.
-    "BG31_801", "BG_TTN_401", "BG25_011", "BG36_351", "BG33_924",
-    # Spell casts and hand-targeting triggers during combat.
-    "BG36_241", "BG34_925", "BG34_320", "BG29_300", "BG35_814",
-    "BG26_174", "BG32_873",
+    # counter, so a Rover played and sold earlier is still unmodelled. The
+    # same floor-plus-widening applies to BG31_809 (Turquoise Skitterer,
+    # earlier deaths' Beetle counter share), BG31_925 (Showy Cyclist, spells
+    # cast this game) and BG32_172 (Auto Assembler, whose Automaton token is
+    # summoned at printed stats while its real stats grow with a hidden
+    # summon counter, like BG_TTN_401 itself).
+    "BG31_801", "BG_TTN_401", "BG25_011", "BG36_351",
+    "BG31_809", "BG31_925", "BG32_172",
+    # Spell casts and self-buffs that land on the combat board.
+    "BG36_241", "BG34_925", "BG34_320", "BG35_814",
 })
+# Removed from UNMODELLED (their text names no effect on THIS fight's board,
+# so widening the odds for them claimed less certainty than the sim earned):
+#   BG20_101 Roadboar          "Rally: Get a Blood Gem" - to hand
+#   BG34_682 Razorfen Flapper  "Deathrattle: Get a Blood Gem Barrage" - hand
+#   BG31_320 Crater Miner      "Choose One - Get 2 Blood Gems; or ..." - hand,
+#                              and it resolves when played (tavern)
+#   BG34_684 Trench Fighter    "At the end of your turn ..." - tavern trigger
+#   BG34_319 Highkeeper Ra     "... Get a random Tier 6 minion" - to hand
+#   BG26_148 Scrap Scraper     "Deathrattle: Get a random Magnetic Mech" - hand
+#   BG36_204 Headhunter Gryphon "Rally: Get a random Beast" - to hand
+#   BG36_242 Bronze Timewalker "Rally: Get a random Chromadrake" - to hand
+#   BG33_822 Bigwig Bandit     "Rally: Get a random Bounty" - to hand
+#   BG36_331 Bramble Tunneler  "Rally: Get a random Choose One card" - hand
+#   BG29_300 Winterfinner      "... give a minion in your hand +2/+1" - hand
+#   BG33_924 Blue Whelp        "Tavern spells give an extra +1 Health" - tavern
+#   BG26_174 Soul Rewinder     hero-damage rewind - never changes win/tie/loss
+#   BG32_873 Ashen Corruptor   "give minions in the Tavern +1/+1" - tavern
 
 
 def merged_scripts(data: dict | None = None) -> dict:
@@ -1165,9 +1440,37 @@ def _count_unmodelled(rows_a: list, rows_b: list) -> int:
 
 # ---------------------------------------------------------------- Monte Carlo
 
+def _hero_facts(hero: dict | None) -> tuple:
+    """(tavern tier, remaining life) from one snapshot hero row, each None
+    when the log did not prove it. Remaining life = health - damage + armor;
+    a value <= 0 is a ghost fight's dead owner, honestly unusable as a kill
+    target, so it comes back None."""
+    if not hero:
+        return None, None
+    tier = hero.get("tier") or 0
+    tier = tier if 1 <= tier <= 7 else None
+    hp = (hero.get("health") or 0) - (hero.get("damage") or 0) + (hero.get("armor") or 0)
+    return tier, (hp if hp > 0 else None)
+
+
+def _band(vals: list, extra: int) -> dict | None:
+    """mean / 25th / 75th percentile of one damage sample, plus the winner's
+    hero tier when known (nearest-rank quantiles; vals is unsorted)."""
+    if not vals:
+        return None
+    vals = sorted(vals)
+    k = len(vals)
+    return {
+        "mean": round(sum(vals) / k + extra, 2),
+        "q25": vals[(k - 1) // 4] + extra,
+        "q75": vals[(3 * (k - 1)) // 4] + extra,
+    }
+
+
 def simulate(
     board_a: list, board_b: list, n: int = 3000, seed=None,
     scripts: dict | None = None, calibrate: bool = True,
+    heroes: dict | None = None,
 ) -> dict:
     """Monte Carlo the fight n times.
 
@@ -1178,8 +1481,13 @@ def simulate(
     calibrate: shrink the result toward a neutral prior so the sim never
     reports a certainty its unmodelled cards cannot support. The raw rollout
     fractions are still returned as raw_win / raw_tie / raw_loss.
-    Returns fractions plus avg hero damage on wins/losses (hero tavern tier
-    NOT included - the caller adds it).
+    heroes: the snapshot's heroes dict ({"friendly": {tier, health, armor,
+    damage}, "enemy": {...}}) - unlocks true face damage and lethal/kill,
+    see the module docstring.
+    Returns fractions plus avg hero damage on wins/losses (avg_damage /
+    avg_damage_taken stay minion-tier-only for compatibility - the caller
+    adds the hero tier; dmg_dealt / dmg_taken already include it when heroes
+    is given).
     """
     if scripts is None:
         data = load_scripts()
@@ -1196,15 +1504,16 @@ def simulate(
     tb = [_from_row(r, reg, tiers, races, stats) for r in board_b]
     rng = random.Random(seed)
     w = t = loss = 0
-    dmg_w = dmg_l = 0
+    dealt: list[int] = []   # minion tier-sum per WINNING rollout
+    taken: list[int] = []   # minion tier-sum per LOSING rollout
     for _ in range(n):
         res, dmg = fight(ta, tb, rng)
         if res > 0:
             w += 1
-            dmg_w += dmg
+            dealt.append(dmg)
         elif res < 0:
             loss += 1
-            dmg_l += dmg
+            taken.append(dmg)
         else:
             t += 1
     rw, rt, rl = w / n, t / n, loss / n
@@ -1212,6 +1521,24 @@ def simulate(
     eps = (
         min(EPS_MAX, EPS_BASE + EPS_PER_UNMODELLED * unmod) if calibrate else 0.0
     )
+    heroes = heroes or {}
+    tier_a, hp_a = _hero_facts(heroes.get("friendly"))
+    tier_b, hp_b = _hero_facts(heroes.get("enemy"))
+    # Real BG face damage = winner's hero tavern tier + survivors' tiers.
+    # lethal ("we die") needs THEIR tier and OUR life; kill the mirror. The
+    # eps mixture matches win/loss: with weight eps the fight is scored from
+    # the neutral prior, under which a loss (mass PRIOR[2]) is taken to be
+    # lethal half the time - so lethal can never print 0% or 100%, and by
+    # construction lethal <= loss and kill <= win as shown.
+    lethal = kill = raw_lethal = raw_kill = None
+    if tier_b is not None and hp_a is not None:
+        rlth = sum(1 for d in taken if d + tier_b >= hp_a) / n
+        raw_lethal = round(rlth, 4)
+        lethal = round((1 - eps) * rlth + eps * PRIOR[2] * 0.5, 4)
+    if tier_a is not None and hp_b is not None:
+        rk = sum(1 for d in dealt if d + tier_a >= hp_b) / n
+        raw_kill = round(rk, 4)
+        kill = round((1 - eps) * rk + eps * PRIOR[0] * 0.5, 4)
     return {
         "win": round((1 - eps) * rw + eps * PRIOR[0], 4),
         "tie": round((1 - eps) * rt + eps * PRIOR[1], 4),
@@ -1221,8 +1548,14 @@ def simulate(
         "raw_loss": round(rl, 4),
         "eps": round(eps, 4),
         "unmodelled": unmod,
-        "avg_damage": round(dmg_w / w, 2) if w else 0.0,
-        "avg_damage_taken": round(dmg_l / loss, 2) if loss else 0.0,
+        "avg_damage": round(sum(dealt) / w, 2) if w else 0.0,
+        "avg_damage_taken": round(sum(taken) / loss, 2) if loss else 0.0,
+        "dmg_dealt": _band(dealt, tier_a or 0),
+        "dmg_taken": _band(taken, tier_b or 0),
+        "lethal": lethal,
+        "kill": kill,
+        "raw_lethal": raw_lethal,
+        "raw_kill": raw_kill,
         "n": n,
     }
 
@@ -1232,7 +1565,7 @@ def simulate_combat(combat: dict, n: int = 3000, seed=None,
     """Convenience: run simulate() straight off a sim/boards.py combat dict."""
     b = combat.get("boards_pre_attack") or {"friendly": [], "enemy": []}
     return simulate(b["friendly"], b["enemy"], n=n, seed=seed,
-                    calibrate=calibrate)
+                    calibrate=calibrate, heroes=b.get("heroes"))
 
 
 # ------------------------------------------------------------- log validation
@@ -1637,6 +1970,26 @@ def _run_tests() -> int:
         f"token {fb[:3]} (expected [1, 2, 2])",
     )
 
+    # 16b. Count words above five parse. Cadaver Caretaker's golden prints
+    # "Summon six 1/1 Skeletons"; before "six" entered _WORD_N the derivation
+    # missed and the doubled-base fallback guessed [3,2,2].
+    six = _derive([
+        {"id": "T_C", "dbfId": 5, "name": "Caretaker", "type": "MINION",
+         "techLevel": 3, "isBattlegroundsPoolMinion": True, "attack": 2,
+         "health": 2, "races": ["UNDEAD"], "mechanics": ["DEATHRATTLE"],
+         "text": "<b>Deathrattle:</b> Summon three 1/1 Skeletons."},
+        {"id": "T_C_G", "dbfId": 6, "name": "Caretaker", "type": "MINION",
+         "attack": 4, "health": 4, "races": ["UNDEAD"],
+         "battlegroundsNormalDbfId": 5, "mechanics": ["DEATHRATTLE"],
+         "text": "<b>Deathrattle:</b> Summon six 1/1 Skeletons."},
+    ])["scripts"]["T_C_G"]["summon"]
+    check(
+        "count words above five derive from the printed text",
+        six[:3] == [6, 1, 1],
+        f"'Summon six 1/1 Skeletons' -> {six[:3]} (expected [6, 1, 1], "
+        f"NOT the doubled-base [3, 2, 2])",
+    )
+
     # 17. A manual entry adds to the derived one instead of erasing it.
     fake_data = {"scripts": {
         "BG36_209": {"summon": [1, 2, 2, False, False, ["BEAST"], "Beetle"]},
@@ -1651,6 +2004,277 @@ def _run_tests() -> int:
         and "start_of_combat" in merged["BG31_801"],
         "Ravaging Scorpid keeps its Beetle deathrattle beside its Rally hook, "
         "Forest Rover keeps its Beetle beside the this-game counter",
+    )
+
+    # 18. Cleave derives from BOTH printed wordings - Blade Collector says
+    #     "the enemies next to", the older cards say "the minions next to".
+    fake_cleave = [
+        {"id": "T_C1", "dbfId": 10, "name": "Collector", "type": "MINION",
+         "techLevel": 4, "isBattlegroundsPoolMinion": True, "attack": 5,
+         "health": 4, "races": [], "mechanics": [],
+         "text": "Also damages the enemies next to whomever this attacks."},
+        {"id": "T_C2", "dbfId": 11, "name": "Hydra", "type": "MINION",
+         "techLevel": 4, "isBattlegroundsPoolMinion": True, "attack": 2,
+         "health": 4, "races": ["BEAST"], "mechanics": [],
+         "text": "Also damages the minions next to whomever this attacks."},
+    ]
+    dc = _derive(fake_cleave)["scripts"]
+    check(
+        "cleave regex matches 'enemies next to' and 'minions next to'",
+        dc.get("T_C1", {}).get("cleave") and dc.get("T_C2", {}).get("cleave"),
+        f"Collector wording -> {dc.get('T_C1')}, Hydra wording -> "
+        f"{dc.get('T_C2')} (both expected cleave)",
+    )
+
+    # 19. Pre-BG25 goldens resolve under their real TB_BaconUps_* ids, with
+    #     the GOLDEN card's own numbers (Deflect golden gains +4, not +2).
+    reg = {"DG": SCRIPTS["TB_BaconUps_123"],
+           "S": {"summon": [1, 1, 1, False, False, ["MECHANICAL"], "Bot"]}}
+    side = Side([
+        _from_row({"cardId": "DG", "atk": 6, "health": 4, "golden": True},
+                  reg, {}),
+        _from_row({"cardId": "S", "atk": 1, "health": 1, "damage": 1},
+                  reg, {}),
+    ])
+    _resolve_deaths(side, Side([]), random.Random(9))
+    dbot = side.ms[0]
+    ids_ok = all(k in SCRIPTS for k in
+                 ("TB_BaconUps_085", "TB_BaconUps_123", "TB_BaconUps_166"))
+    g085 = SCRIPTS["TB_BaconUps_085"].get("deathrattle_buff", {})
+    check(
+        "TB_BaconUps golden ids resolve with the golden card's numbers",
+        ids_ok and dbot.atk == 10 and dbot.ds == 1
+        and g085.get("atk") == 16 and g085.get("hp") == 16,
+        f"ids registered {ids_ok}; golden Deflect after 1 Mech summon "
+        f"{dbot.atk} atk / {dbot.ds} ds (expected 10/1); golden Goldrinn "
+        f"buff {g085} (expected 16/16)",
+    )
+
+    # 20. Overkill: base Wildfire splashes ONE neighbour, the golden card
+    #     ("to both adjacent enemies") splashes both.
+    def wildfire_run(cid, sc):
+        aside = Side([_from_row({"cardId": cid, "atk": 10, "health": 99},
+                                {cid: sc}, {})])
+        dside = Side([_from_row(_row(0, 9), {}, {}),
+                      _from_row(_row(0, 2), {}, {}),
+                      _from_row(_row(0, 9), {}, {})])
+        # force the middle 0/2 minion to be the defender: kill = 8 excess
+        dside.ms[0].stealth = True
+        dside.ms[2].stealth = True
+        _attack(aside.ms[0], aside, dside, random.Random(10))
+        return sorted(m.hp for m in dside.ms)
+
+    base_hp = wildfire_run("WF", SCRIPTS["BGS_126"])
+    gold_hp = wildfire_run("WFG", SCRIPTS["TB_BaconUps_166"])
+    check(
+        "overkill: base splashes one neighbour, golden both",
+        base_hp == [1, 9] and gold_hp == [1, 1],
+        f"survivor hp after base overkill {base_hp} (expected [1, 9]), "
+        f"after golden {gold_hp} (expected [1, 1])",
+    )
+
+    # 21. Kangor's Apprentice: plain copies of the first N Mechs that died -
+    #     printed stats, buffs stripped, non-Mech deaths ignored; base takes
+    #     2, the golden (TB_BaconUps_087) takes 4.
+    kreg = {"K": SCRIPTS["BGS_012"], "KG": SCRIPTS["TB_BaconUps_087"]}
+    kraces = {"M1": ["MECHANICAL"], "M2": ["MECHANICAL"],
+              "M3": ["MECHANICAL"], "M4": ["MECHANICAL"]}
+    kstats = {"M1": [2, 3], "M2": [4, 5], "M3": [1, 1], "M4": [1, 1]}
+
+    def kangor_run(cid):
+        s = Side(
+            [_from_row({"cardId": cid, "atk": 3, "health": 6}, kreg, {})]
+            + [_from_row({"cardId": f"M{i}", "atk": 10, "health": 10,
+                          "damage": 10}, kreg, {}, kraces, kstats)
+               for i in (1, 2, 3, 4)]
+            + [_from_row({"cardId": "N", "atk": 5, "health": 5, "damage": 5},
+                         kreg, {})]
+        )
+        _resolve_deaths(s, Side([]), random.Random(13))
+        recorded = len(s.dead_mechs)
+        s.ms[0].hp = 0
+        _resolve_deaths(s, Side([]), random.Random(13))
+        return recorded, [(m.cid, m.atk, m.hp) for m in s.ms]
+
+    rec_b, copies_b = kangor_run("K")
+    rec_g, copies_g = kangor_run("KG")
+    check(
+        "Kangor's Apprentice: plain copies of the first dead Mechs",
+        rec_b == 4 and copies_b == [("M1", 2, 3), ("M2", 4, 5)]
+        and copies_g == [("M1", 2, 3), ("M2", 4, 5), ("M3", 1, 1),
+                         ("M4", 1, 1)],
+        f"memory held {rec_b} Mechs (expected 4, non-Mech skipped); base "
+        f"summoned {copies_b} (expected printed M1 2/3 and M2 4/5, buffed "
+        f"10/10 stripped); golden summoned {len(copies_g)} (expected 4)",
+    )
+
+    # 22. Sewer Lord: nested summon - Rats that rattle Taunt Turtles, golden
+    #     values off the golden card's own text.
+    def sewer_run(cid):
+        s = Side([_from_row({"cardId": cid, "atk": 4, "health": 6,
+                             "damage": 6}, {cid: SCRIPTS[cid]}, {})])
+        _resolve_deaths(s, Side([]), random.Random(14))
+        rats = [(m.atk, m.hp) for m in s.ms]
+        for m in s.ms:
+            m.hp = 0
+        _resolve_deaths(s, Side([]), random.Random(14))
+        return rats, [(m.atk, m.hp, m.taunt, m.tname) for m in s.ms]
+
+    rats_b, turt_b = sewer_run("BG35_604")
+    rats_g, turt_g = sewer_run("BG35_604_G")
+    check(
+        "Sewer Lord: two Rats, each rattling a Taunt Turtle",
+        rats_b == [(3, 2), (3, 2)]
+        and turt_b == [(2, 3, True, "Turtle"), (2, 3, True, "Turtle")]
+        and rats_g == [(6, 4), (6, 4)]
+        and turt_g == [(4, 6, True, "Turtle"), (4, 6, True, "Turtle")],
+        f"base rats {rats_b} -> turtles {turt_b} (expected two 3/2 -> two "
+        f"2/3 Taunt); golden rats {rats_g} -> turtles {turt_g} (expected "
+        f"two 6/4 -> two 4/6 Taunt)",
+    )
+
+    # 23. Eternal Summoner floor: the knight lands at printed stats plus this
+    #     fight's knight deaths; the golden summoner makes a Golden knight.
+    ereg = {"EK": SCRIPTS["BG25_008"], "ES": SCRIPTS["BG25_009"],
+            "ESG": SCRIPTS["BG25_009_G"]}
+    s = Side([
+        _from_row({"cardId": "BG25_008", "atk": 4, "health": 2, "damage": 2},
+                  {"BG25_008": SCRIPTS["BG25_008"]}, {}),
+        _from_row({"cardId": "ES", "atk": 8, "health": 1, "damage": 1},
+                  ereg, {}),
+    ])
+    _resolve_deaths(s, Side([]), random.Random(15))
+    knight = s.ms[0]
+    sg = Side([_from_row({"cardId": "ESG", "atk": 16, "health": 2,
+                          "damage": 2}, ereg, {})])
+    _resolve_deaths(sg, Side([]), random.Random(15))
+    gknight = sg.ms[0]
+    check(
+        "Eternal Summoner: knight floor counts this fight's knight deaths",
+        (knight.cid, knight.atk, knight.hp) == ("BG25_008", 8, 4)
+        and s.knight_deaths == 1
+        and (gknight.cid, gknight.atk, gknight.hp) == ("BG25_008_G", 8, 4),
+        f"after one knight death the summoned knight is {knight.atk}/"
+        f"{knight.hp} (expected 8/4: printed 4/2 + 4/2), knight_deaths "
+        f"{s.knight_deaths} (expected 1); golden summoner made "
+        f"{gknight.cid} {gknight.atk}/{gknight.hp} (expected 8/4)",
+    )
+
+    # 24. Leeroy the Reckless: the minion that lands the killing hit is
+    #     destroyed, straight through its remaining health.
+    lreg = {"L": SCRIPTS["BG23_318"]}
+    aside = Side([_from_row({"cardId": "A", "atk": 3, "health": 20}, {}, {})])
+    dside = Side([_from_row({"cardId": "L", "atk": 6, "health": 2},
+                            lreg, {})])
+    _attack(aside.ms[0], aside, dside, random.Random(16))
+    check(
+        "Leeroy: destroys the minion that killed it",
+        not dside.ms and not aside.ms,
+        f"boards after the trade: attacker side {len(aside.ms)} (expected 0 -"
+        f" 17 hp left but destroyed), Leeroy side {len(dside.ms)} (expected 0)",
+    )
+
+    # 25. Turquoise Skitterer: board Beetles (captured rows, cid BG28_603t)
+    #     and the freshly rattled token all get the this-game +5/+5, and the
+    #     side counter is seeded for Beetles born later.
+    ts = dict(SCRIPTS["BG31_809"])
+    ts["summon"] = [1, 2, 2, False, False, ["BEAST"], "Beetle"]
+    tsg = dict(SCRIPTS["BG31_809_G"])
+    tsg["summon"] = [2, 2, 2, False, False, ["BEAST"], "Beetle"]
+    tsg["golden"] = True
+    treg = {"TS": ts, "TSG": tsg}
+
+    def skitter_run(cid):
+        s = Side([
+            _from_row({"cardId": cid, "atk": 5, "health": 5, "damage": 5},
+                      treg, {}),
+            _from_row({"cardId": "BG28_603t", "atk": 2, "health": 2},
+                      treg, {}),
+        ])
+        _resolve_deaths(s, Side([]), random.Random(17))
+        return (s.beetle_a, s.beetle_h), sorted(
+            (m.atk, m.hp) for m in s.ms)
+
+    cnt_b, bees_b = skitter_run("TS")
+    cnt_g, bees_g = skitter_run("TSG")
+    check(
+        "Turquoise Skitterer: +5/+5 to every Beetle, counter seeded",
+        cnt_b == (5, 5) and bees_b == [(7, 7), (7, 7)]
+        and cnt_g == (10, 10) and bees_g == [(12, 12), (12, 12), (12, 12)],
+        f"base counter {cnt_b} beetles {bees_b} (expected (5,5) and two 7/7:"
+        f" the captured 2/2 row and the 2/2 token); golden counter {cnt_g} "
+        f"beetles {bees_g} (expected (10,10) and three 12/12)",
+    )
+
+    # 26. Motley Phalanx picks one friendly per type; Scarlet Skull gives one
+    #     friendly Undead +1/+2.
+    preg = {"P": SCRIPTS["BG27_080"], "SS": SCRIPTS["BG25_022"]}
+    praces = {"B": ["BEAST"], "M": ["MECHANICAL"], "U": ["UNDEAD"]}
+    s = Side([
+        _from_row({"cardId": "P", "atk": 2, "health": 2, "damage": 2},
+                  preg, {}),
+        _from_row({"cardId": "B", "atk": 1, "health": 1}, preg, {}, praces),
+        _from_row({"cardId": "M", "atk": 1, "health": 1}, preg, {}, praces),
+        _from_row({"cardId": "N", "atk": 1, "health": 1}, preg, {}),
+    ])
+    _resolve_deaths(s, Side([]), random.Random(18))
+    beast, mech, plain = s.ms[0], s.ms[1], s.ms[2]
+    s2 = Side([
+        _from_row({"cardId": "SS", "atk": 2, "health": 1, "damage": 1},
+                  preg, {}),
+        _from_row({"cardId": "U", "atk": 2, "health": 2}, preg, {}, praces),
+        _from_row({"cardId": "N", "atk": 2, "health": 2}, preg, {}),
+    ])
+    _resolve_deaths(s2, Side([]), random.Random(18))
+    undead = [m for m in s2.ms if m.cid == "U"][0]
+    plain2 = [m for m in s2.ms if m.cid == "N"][0]
+    check(
+        "Motley Phalanx buffs one friendly per type; Scarlet Skull +1/+2",
+        (beast.atk, beast.hp) == (3, 3) and (mech.atk, mech.hp) == (3, 3)
+        and (plain.atk, plain.hp) == (1, 1)
+        and (undead.atk, undead.hp) == (3, 4)
+        and (plain2.atk, plain2.hp) == (2, 2),
+        f"beast {beast.atk}/{beast.hp}, mech {mech.atk}/{mech.hp} (both "
+        f"expected 3/3), tribeless {plain.atk}/{plain.hp} (expected 1/1); "
+        f"undead {undead.atk}/{undead.hp} (expected 3/4), non-undead "
+        f"{plain2.atk}/{plain2.hp} (expected 2/2)",
+    )
+
+    # 27. Face-damage bands and lethal/kill: hero tier rides the band, lethal
+    #     and kill are eps-widened (never 0%/100%) and can never exceed the
+    #     shown loss / win.
+    hs = {"friendly": {"tier": 6, "health": 30, "armor": 0, "damage": 20},
+          "enemy": {"tier": 5, "health": 12, "armor": 3, "damage": 10}}
+    r = simulate([_row(50, 50)], [_row(1, 1)], n=300, seed=19, heroes=hs)
+    # a lone TEST minion is tier 1, so every winning rollout deals 1 + 6 = 7
+    band_ok = r["dmg_dealt"] == {"mean": 7.0, "q25": 7, "q75": 7}
+    kill_ok = (r["raw_kill"] == 1.0 and 0.9 < r["kill"] < 1.0
+               and r["kill"] <= r["win"])
+    lethal_ok = (r["raw_lethal"] == 0.0 and 0.0 < r["lethal"] <= r["loss"])
+    check(
+        "face damage carries the hero tier; lethal/kill never claim certainty",
+        band_ok and kill_ok and lethal_ok and r["dmg_taken"] is None,
+        f"dmg_dealt {r['dmg_dealt']} (expected mean 7 = tier-1 minion + tier-6"
+        f" hero), kill {r['kill']} of win {r['win']} (raw 1.0), lethal "
+        f"{r['lethal']} of loss {r['loss']} (raw 0.0), dmg_taken "
+        f"{r['dmg_taken']} (expected None - no losing rollouts)",
+    )
+
+    # 28. Without hero facts (or against a ghost's 0 remaining health) the
+    #     sim says None instead of inventing a lethal number.
+    r = simulate([_row(10, 10)], [_row(1, 1)], n=200, seed=20)
+    ghost = {"friendly": {"tier": 4, "health": 25, "armor": 0, "damage": 5},
+             "enemy": {"tier": 5, "health": 30, "armor": 0, "damage": 30}}
+    rg = simulate([_row(10, 10)], [_row(1, 1)], n=200, seed=20, heroes=ghost)
+    check(
+        "no hero facts -> lethal/kill None; ghost enemy -> kill None",
+        r["lethal"] is None and r["kill"] is None
+        and rg["kill"] is None and rg["lethal"] is not None
+        and rg["dmg_dealt"]["mean"] > r["dmg_dealt"]["mean"],
+        f"bare lethal/kill {r['lethal']}/{r['kill']} (expected None/None); "
+        f"ghost kill {rg['kill']} (expected None), lethal {rg['lethal']} "
+        f"(their tier is real, our life is real); band with hero tier "
+        f"{rg['dmg_dealt']['mean']} > bare {r['dmg_dealt']['mean']}",
     )
 
     failed = [x for x in results if not x["pass"]]

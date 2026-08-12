@@ -7,6 +7,24 @@ r/BobsTavern thread.
 
 ### Added
 
+- **A settings panel, and it opens when the tool starts.** A normal window you
+  can move, scroll and close, not one of the click-through overlay surfaces.
+  Four sections. DISPLAY: one UI scale for everything, automatic from the game
+  window or a slider you drag, applied while you drag it rather than on the next
+  start, plus a nudge for the badges printed on the cards. That is the fix for a
+  4K screen, where the whole overlay used to draw at half the size it should.
+  DATA: the sharing opt-in, off by default, with one line saying exactly what
+  leaves the machine and that the pooled numbers stay free; which feed the
+  numbers come from; the MMR bracket, the period, and Duos. WHAT TO SHOW: one
+  switch per overlay window, generated from the window registry so a window
+  added later appears on its own. A window switched off is not built at all: no
+  panel, no badges, nothing routed to it, and switching it back on is live.
+  UPDATES: the version, when it was last checked, check now, and what changed
+  plus install when there is something newer. Rows that cannot take effect until
+  the next start say so. Choices live in `settings.json` beside `sources.json`;
+  a flag on the command line beats the file for that run and is never written
+  back to it. `--no-panel` starts without it, and the gear in the bgtracker
+  window's header reopens it.
 - **OTHER PLAYERS window.** Every other player in place order with hero, tavern
   tier and health. For anyone you have fought, the board they were last seen
   holding, stamped with the round and how long ago. Click a player to open it.
@@ -25,11 +43,27 @@ r/BobsTavern thread.
   then the client reads the all players file and says so instead of labelling
   the whole pool "top 1%". Old file names still written, so existing
   `sources.json` files keep working.
+- **It can tell you there is a new version.** On start it fetches a 200 byte
+  manifest from the stats server, on its own thread, and prints one line if
+  there is a newer build. It never installs anything on its own: the build is
+  unsigned, and swapping out a folder somebody extracted by hand without asking
+  is not on. Downloading and installing happen when you ask, and the download is
+  refused unless its SHA-256 and its size both match what was published. Your
+  collected games, card art, window positions and `sources.json` are carried
+  across, and the previous install is kept until the new one has run once.
+  `--no-update-check` turns the check off; `BGTRACKER_NO_UPDATE_CHECK=1` and
+  `{"check_on_start": false}` in `data/update.json` do it permanently. Details
+  in [docs/USAGE.md](docs/USAGE.md) section 2c.
+- **The version now exists as a number the program knows.** It was only ever a
+  CHANGELOG heading and a git tag before. `--diag` prints it, uploads carry it
+  so the server can tell which builds are in the wild, and the build writes it
+  into `version.txt` inside itself so a release manifest cannot describe a
+  different build than the one it points at.
 - **Card effects catalogue.** `python tools/catalog.py` generates
   [`docs/CARD_EFFECTS.md`](docs/CARD_EFFECTS.md) from the live card database,
   so it is always this patch's pool. Of 274 pool minions, 39 act during combat,
   141 have already resolved before both boards are read, 94 do nothing in a
-  fight. The 141 are listed as do-not-script. Work queue: 33 cards.
+  fight. The 141 are listed as do-not-script. Work queue: 18 cards.
 
 ### Changed
 
@@ -43,6 +77,19 @@ r/BobsTavern thread.
   merging with derived ones per hook instead of replacing them. **Measured
   worth: one extra correct fight out of 343.** Accuracy 85.7% to 86.0%, Brier
   0.0784 to 0.0771. A null result on accuracy, a small calibration gain.
+- Nine more in-combat scripts, each read off the card's own text: Kangor's
+  Apprentice, Sewer Lord, Leeroy the Reckless, Motley Phalanx, Scarlet Skull,
+  Eternal Summoner (a board-visible floor, like Forest Rover), Turquoise
+  Skitterer, golden Wildfire Elemental splashing both neighbours, golden
+  Deflect-o-Bot gaining +4. Pre-BG25 goldens now resolve under their real
+  `TB_BaconUps_*` ids instead of only `_G`, and cleave is derived from both
+  printed wordings. The sim can now also say how hard a fight hits: damage
+  bands that include the hero's tavern tier, plus the chance this fight kills
+  you (or them), widened the same way as the odds so they never print 0% or
+  100%. Measured on the same 339-fight harness, identical seeds: Brier 0.0752
+  to 0.0720, MAE 13.8pp to 13.2pp, accuracy 86.1% to 85.8% (one net fight,
+  two gained and three lost). Same lesson as last time: scripts buy
+  calibration, not accuracy.
 - **Dark Gifts are complete.** All 40 accounted for: 24 grant only stats or
   keywords (already on the minion when the board is read, so modelling them
   again would make the sim worse), 9 change your cards not the fight, 6 fire
@@ -53,6 +100,10 @@ r/BobsTavern thread.
 - The Dark Gift miner looked for `tag=ATTACHED` and found nothing across 1.3 GB
   of logs. The signal is `DARK_GIFT_ENTITY`, which `sim/boards.py` was already
   reading correctly.
+- The card effects catalogue counted only hand-written scripts, so five cards
+  whose printed text already derives a working script (token summons, cleave)
+  sat in the work queue as if they were missing. With those counted and this
+  batch's new scripts, the queue stands at 18 cards, down from 33.
 - The stats cache key ignored which source a table came from, so pointing
   `sources.json` at a different server kept serving the old server's numbers for
   up to an hour.

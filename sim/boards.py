@@ -221,10 +221,40 @@ class GameLogParser:
         rows.sort(key=lambda r: r["pos"])
         return rows
 
+    def _hero_row(self, ctrl: int) -> dict | None:
+        """The hero standing in PLAY for one controller, with the tags an odds
+        display needs. PLAYER_TECH_LEVEL is written on hero entities (our own
+        hero keeps it all game; the enemy combat copy receives it by
+        TAG_CHANGE during combat setup, before the first attack - verified in
+        real 2026-08 logs). HEALTH / ARMOR / DAMAGE ride the same entity, so
+        remaining life = health - damage + armor."""
+        for e in self.entities.values():
+            if (
+                e.tags.get("CARDTYPE") == "HERO"
+                and e.tags.get("ZONE") == "PLAY"
+                and e.num("CONTROLLER") == ctrl
+                and e.card_id not in BOB_CARD_IDS
+                and e.card_id
+            ):
+                return {
+                    "cardId": e.card_id,
+                    "tier": e.num("PLAYER_TECH_LEVEL"),
+                    "health": e.num("HEALTH"),
+                    "armor": e.num("ARMOR"),
+                    "damage": e.num("DAMAGE"),
+                }
+        return None
+
     def _snapshot(self) -> dict:
         ours = self._board(self.local_ctrl) if self.local_ctrl is not None else []
         theirs = self._board(self.ai_ctrl) if self.ai_ctrl is not None else []
-        return {"friendly": ours, "enemy": theirs}
+        heroes = {
+            "friendly": self._hero_row(self.local_ctrl)
+            if self.local_ctrl is not None else None,
+            "enemy": self._hero_row(self.ai_ctrl)
+            if self.ai_ctrl is not None else None,
+        }
+        return {"friendly": ours, "enemy": theirs, "heroes": heroes}
 
     # -- combat lifecycle ---------------------------------------------------
     def _combat_start(self, ts: str, lineno: int, first_value: int):

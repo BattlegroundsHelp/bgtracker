@@ -17,7 +17,9 @@ contributing your games to the community dataset is a strict opt-in.
 
 **Get it:** download
 [`bgtracker-windows.zip`](https://github.com/BattlegroundsHelp/bgtracker/releases),
-unzip, run `bgtracker.exe`. No Python, no install, Windows only.
+unzip, run `bgtracker.exe`. No Python, no install, Windows only. It tells you
+when a newer build exists and never installs one behind your back
+([how updates work](docs/USAGE.md#2c-new-versions)).
 
 **New here? Start with [docs/USAGE.md](docs/USAGE.md)** — what you need, the
 three steps to running it, what each window shows on the first run, how to get
@@ -119,6 +121,14 @@ git clone https://github.com/BattlegroundsHelp/bgtracker.git
 cd bgtracker
 python overlay.py
 ```
+
+A **settings panel** opens with it, and that one is a normal window you can
+move, scroll and close: the scale for the whole overlay (drag it and watch it
+resize, which is the fix for a 4K screen), a switch for each of the windows
+below, whether to share your games, and whether there is a new version. The
+gear in the bgtracker window's header opens it again later, `--no-panel` starts
+without it, and the tool works exactly the same if you never open it.
+[More](docs/USAGE.md#3b-the-settings-panel).
 
 There is no one big data window: the overlay
 is **a set of small windows, one per thing you might want to know**, and each
@@ -403,7 +413,7 @@ HDT is the incumbent. It is free, it is fine, and it does things this does not.
 
 | | HDT / Tier7 | this |
 |---|---|---|
-| Combat odds (Bob's Buddy) | free, mature | **beta** — log-only, clearly flagged, about 86% of fights called correctly over 343 real logged fights; run Bob's Buddy alongside if you want the mature one |
+| Combat odds (Bob's Buddy) | free, mature | **beta** — log-only, clearly flagged, about 86% of fights called correctly over 339 real logged fights; run Bob's Buddy alongside if you want the mature one |
 | Counters (gold, tier price, buffs, tribes) | free | yes |
 | Minion browser | free | yes — the live pool, no stats needed |
 | MMR session tracker | free | yes, with the memory reader for the rating |
@@ -429,7 +439,7 @@ the tribes at turn zero, and that comes out of memory.
   hooking the game.
 - **Combat odds are BETA.** Both warbands come out of the log before the fight
   animates, and a Monte Carlo sim calls the winning side about 86% of the time,
-  measured across 343 real logged fights, using the vanilla rules, derived
+  measured across 339 real logged fights, using the vanilla rules, derived
   deathrattle summons and hand-written scripts for the highest-impact cards
   (Rally attacks, deathrattle buffs, Reborn watchers, Titus). Plenty of cards
   are still unscripted, so when the board holds one the sim deliberately

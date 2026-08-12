@@ -171,8 +171,19 @@ def build():
     try:
         from sim import engine
         scripted = set(engine.SCRIPTS)
+        # Derived scripts count too: a card whose printed text auto-derives a
+        # token summon or cleave IS scripted, and listing it as work made the
+        # queue lie (Buzzing Vermin sat in it with its Beetle fully modelled).
+        # The bare rally flag models nothing by itself - it only marks the
+        # minion for rally watchers - so entries carrying nothing else stay
+        # in the queue.
+        for cid, entry in engine.merged_scripts().items():
+            if set(entry) - {"rally", "golden"}:
+                scripted.add(cid)
+        floors = set(engine.UNMODELLED)
     except Exception:
         scripted = set()
+        floors = set()
 
     rows = []
     for m in pool:
@@ -181,6 +192,7 @@ def build():
             "id": m["id"], "name": m["name"], "tier": m.get("techLevel"),
             "races": m.get("races") or [], "text": (m.get("text") or "").replace("\n", " "),
             "bucket": bucket, "effect": label, "scripted": m["id"] in scripted,
+            "floor": m["id"] in floors,
         })
     rows.sort(key=lambda r: (r["bucket"] != "IN_COMBAT", -(r["tier"] or 0), r["name"]))
 
@@ -231,6 +243,15 @@ def build():
           "| tier | card | effect | text |", "|---|---|---|---|"]
     for r in todo:
         md.append(f"| {r['tier']} | {r['name']} | {r['effect']} | {r['text'][:90]} |")
+    part = [r for r in rows if r["floor"] and r["scripted"]]
+    if part:
+        md += ["", "## Scripted as a FLOOR (a hidden remainder still widens the odds)", "",
+               "The board-visible part is modelled; the invisible part (a this-game",
+               "counter, a random pull's own text, a hand) stays in `engine.UNMODELLED`",
+               "so the sim keeps claiming less certainty on boards that hold these.", "",
+               "| tier | card | text |", "|---|---|---|"]
+        for r in sorted(part, key=lambda r: (-(r["tier"] or 0), r["name"])):
+            md.append(f"| {r['tier']} | {r['name']} | {r['text'][:90]} |")
     md += ["", "## Already resolved before the snapshot (do NOT script)", "",
            "| card | why | text |", "|---|---|---|"]
     for r in (x for x in rows if x["bucket"] == "PRE_SNAPSHOT"):

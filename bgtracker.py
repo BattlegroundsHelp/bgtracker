@@ -672,6 +672,212 @@ def archetype_tribe(archetype: str) -> str | None:
     return None
 
 
+# ------------------------------------------------------------------ comp roles
+
+# data/comp_roles.json: what makes a minion CORE to a family versus an ADD-ON,
+# expressed as ROLES (identity mechanics + text patterns), never card lists -
+# a card list rots every patch, what a card SAYS does not. The file ships with
+# the tool like hero_tips does; roles only DESCRIBE, every card shown still
+# comes out of the live pool.
+_ROLES_CACHE = None
+_POOL_BY_NAME = None
+_DIFF_CACHE: dict = {}
+
+
+def _role(raw) -> dict | None:
+    """One validated role: {'mechanics': set, 'rx': compiled | None}.
+    A role with neither signal can never match and is treated as absent."""
+    if not isinstance(raw, dict):
+        return None
+    mechs = {m for m in (raw.get("mechanics") or []) if isinstance(m, str)}
+    rx = None
+    if isinstance(raw.get("text"), str) and raw["text"]:
+        try:
+            rx = re.compile(raw["text"])
+        except re.error:
+            rx = None
+    if not mechs and rx is None:
+        return None
+    return {"mechanics": mechs, "rx": rx}
+
+
+def comp_roles(refresh: bool = False) -> dict:
+    """archetype -> {'archetype', 'core', 'addons', 'tribes'}, from
+    data/comp_roles.json.
+
+    Read like hero_tips: a user's own copy beside the exe wins over the
+    bundled one (APP_DIR vs BUNDLE_DIR), a missing or malformed file means no
+    roles - the comps window then draws its flat list, never a guessed split -
+    and bad entries are skipped one by one so a single edit cannot take the
+    whole file down.
+    """
+    global _ROLES_CACHE
+    if _ROLES_CACHE is not None and not refresh:
+        return _ROLES_CACHE
+    out = {}
+    for base in (APP_DIR, BUNDLE_DIR):
+        try:
+            doc = json.loads((base / "data" / "comp_roles.json")
+                             .read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for fam in doc.get("families") or []:
+            if not isinstance(fam, dict) or not isinstance(fam.get("archetype"), str):
+                continue
+            core = _role(fam.get("core"))
+            if core is None:
+                continue             # no core role = nothing to split on
+            out[fam["archetype"]] = {
+                "archetype": fam["archetype"],
+                "core": core,
+                "addons": _role(fam.get("addons")),
+                "tribes": [t for t in (fam.get("wants_tribes") or []) if t in TRIBES],
+            }
+        break                        # first file found wins; they are not merged
+    _ROLES_CACHE = out
+    return out
+
+
+def _plain_text(t: str) -> str:
+    """Card text as the player reads it: markup tags and the [x] no-wrap
+    marker dropped, whitespace squeezed, so a role pattern matches words."""
+    return re.sub(r"\s+", " ", re.sub(r"</?[^>]+>|\[x\]", "", t or ""))
+
+
+def _role_hit(minion: dict, role: dict | None) -> bool:
+    """Does this pool minion carry the role? Judged off the card's OWN
+    keywords and text - computed per card, never authored per card."""
+    if not role:
+        return False
+    if role["mechanics"].intersection(minion["mechanics"]):
+        return True
+    return bool(role["rx"] and role["rx"].search(_plain_text(minion["text"])))
+
+
+def comp_roles_for(archetype: str, tribe: str | None) -> dict | None:
+    """The roles entry behind one comp row.
+
+    A curated row names its family directly. A stats feed speaks its own
+    archetype keys ('mech_magnet', 'beast_lobster'), so those map through the
+    row's tribe - each family owns exactly one tribe, which makes this a
+    lookup, not a guess. A tribeless stats archetype maps only when it names
+    menagerie itself; anything else gets None and the window draws the flat
+    list it always drew.
+    """
+    roles = comp_roles()
+    entry = roles.get(archetype)
+    if entry is not None:
+        return entry
+    if tribe is None:
+        return roles.get("menagerie") if "menagerie" in archetype.lower() else None
+    owners = [e for e in roles.values() if e["tribes"] == [tribe]]
+    return owners[0] if len(owners) == 1 else None
+
+
+def pool_by_name(refresh: bool = False) -> dict:
+    """name -> pool minion, for the surfaces that speak names (the comps
+    window's lists come from board data and curated scoring, both by name).
+    Rebuilt only on refresh; the pool itself changes on patches."""
+    global _POOL_BY_NAME
+    if _POOL_BY_NAME is None or refresh:
+        _POOL_BY_NAME = {m["name"]: m for m in bg_pool(refresh)}
+    return _POOL_BY_NAME
+
+
+def comp_difficulty(archetype: str, tribe: str | None) -> dict | None:
+    """How hard a family is to assemble - COMPUTED from the live pool, never
+    hand-graded, because a difficulty grade is editorial work and copying
+    someone else's is theft. data/comp_roles.json _difficulty_inputs is the
+    contract; the three measured inputs are:
+
+      tier    average tavern tier of the pool minions that can serve as core -
+              an engine that lives at tier 5 cannot be assembled early
+      pieces  how many distinct pool minions can serve as core - an engine
+              with one carrier in the pool (murloc poison, 2026-08 pool) is
+              missed by almost every roll, one with sixteen is hit constantly
+      locked  whether the core sits inside a single tribe - a locked engine
+              competes for one tribe's slice of the shop, menagerie shops
+              anywhere
+
+    score = (2 if tier >= 4.5 else 1 if tier >= 3.75 else 0)   late engine
+          + (1 if pieces <= 4 else 0)                          scarce engine
+          + (1 if locked else 0)                               one-tribe shop
+    word  = easy (0-1) / medium (2) / hard (3+)
+
+    The bands are calibration, so the inputs ride along in the result and the
+    window prints them next to the word: a player can disagree with the label
+    and still see the facts. No core piece in this patch's pool -> None, and
+    no difficulty is shown rather than a guessed one.
+    """
+    entry = comp_roles_for(archetype, tribe)
+    if entry is None:
+        return None
+    fam = entry["archetype"]
+    if fam in _DIFF_CACHE:
+        return _DIFF_CACHE[fam]
+    fam_tribe = entry["tribes"][0] if entry["tribes"] else None
+    try:
+        pool = bg_pool()
+    except Exception:
+        return None            # offline with no cache: no number, and no cache
+                               # entry so a later fetch can still answer
+    cores = [m for m in pool
+             if (fam_tribe is None or fam_tribe in m["races"] or "ALL" in m["races"])
+             and _role_hit(m, entry["core"])]
+    if not cores:
+        _DIFF_CACHE[fam] = None
+        return None
+    tier = sum(m["techLevel"] for m in cores) / len(cores)
+    locked = fam_tribe is not None
+    score = ((2 if tier >= 4.5 else 1 if tier >= 3.75 else 0)
+             + (1 if len(cores) <= 4 else 0) + (1 if locked else 0))
+    out = {"word": "easy" if score <= 1 else "medium" if score == 2 else "hard",
+           "tier": tier, "pieces": len(cores), "locked": locked}
+    _DIFF_CACHE[fam] = out
+    return out
+
+
+def comp_role_split(comp: dict) -> dict | None:
+    """One comp row's minions split into the CORE to look for and the ADD-ONS
+    that finish it, plus the computed difficulty.
+
+    CORE is what a card's own text or identity keyword proves against the
+    family's core role; everything else the comp actually runs is by
+    definition an add-on (the file's contract: core = the engine, add-ons =
+    what you layer on once the engine works). An add-on that also matches the
+    family's addon role is flagged, so the window can mark proven support
+    apart from cards that merely show up. Order inside each half is the row's
+    own order - real-board frequency on the stats path, family score on the
+    curated path - because that ordering carries information the split must
+    not destroy.
+
+    None when no roles entry covers this comp, or when nothing in the list
+    matched as core: a split with an empty core is a missed match, not
+    information, so the window draws the flat list it always drew.
+    """
+    entry = comp_roles_for(comp.get("archetype") or "", comp.get("tribe"))
+    if entry is None:
+        return None
+    try:
+        pool = pool_by_name()
+    except Exception:
+        return None                  # offline with no cache yet
+    core, addons = [], []
+    for name in comp.get("key_wide") or comp.get("key") or []:
+        m = pool.get(name)
+        if m is not None and _role_hit(m, entry["core"]):
+            core.append(name)
+        else:
+            # a name the pool no longer carries cannot PROVE core, so it is
+            # support; the flag says whether the addon role vouches for it
+            addons.append((name, bool(m and _role_hit(m, entry["addons"]))))
+    if not core:
+        return None
+    return {"core": core, "addons": addons,
+            "difficulty": comp_difficulty(comp.get("archetype") or "",
+                                          comp.get("tribe"))}
+
+
 def normalize(card_id: str, table: dict) -> str:
     """Hero skins carry a suffix the stats table doesn't use."""
     if card_id in table:

@@ -1,0 +1,82 @@
+{
+  "_comment": "What makes a minion CORE to a comp versus an ADD-ON, per family. Deliberately expressed as ROLES (mechanics and card-text patterns), never as a fixed card list: card lists rot every patch, roles do not. bgtracker matches these against the live card pool, so the cards shown are always this patch's. Nothing here is copied from any other tracker; the roles are read off what the cards themselves say. CORE = the engine the comp cannot run without, usually the piece that generates or multiplies. ADDON = what you layer on once the engine works: scaling, protection, tempo.",
+
+  "_schema": {
+    "archetype": "must match an archetype key in COMP_FAMILIES (bgtracker.py)",
+    "core": "mechanics/text that identify the engine pieces",
+    "addons": "mechanics/text that identify the support pieces",
+    "wants_tribes": "tribes the comp needs in the lobby, informational",
+    "matching": "a card carries a role when its own text matches the role's text pattern OR it has one of the role's mechanics; core mechanics must therefore be identity-grade keywords (MAGNETIC marks 7 of 274 pool minions), never broad ones (BATTLECRY marks 42 - it identifies nothing)"
+  },
+
+  "_difficulty_inputs": "Difficulty is COMPUTED per comp from the live pool, never hand-graded, because a difficulty rating is editorial work and copying someone else's is theft: (1) the average tavern tier of the pool minions that can serve as core, since a comp whose engine lives at tier 5 cannot be assembled early; (2) how many DISTINCT pool minions can serve as core, since an engine with one carrier in the pool is missed by almost every roll while one with sixteen is hit constantly; (3) whether its core is tribe-locked. Reported as Easy / Medium / Hard with the reason attached, so a player can disagree with the label and still see the inputs.",
+
+  "families": [
+    {
+      "archetype": "murloc poison",
+      "core": { "mechanics": ["VENOMOUS"], "text": "[Pp]oison|[Vv]enom" },
+      "addons": { "mechanics": ["DIVINE_SHIELD", "TAUNT"], "text": "[Bb]uff|\\+\\d+/\\+\\d+|[Aa]ttack" },
+      "wants_tribes": ["MURLOC"]
+    },
+    {
+      "archetype": "mech magnetic",
+      "core": { "mechanics": ["MAGNETIC"], "text": "[Mm]agnetic" },
+      "addons": { "mechanics": ["DIVINE_SHIELD", "DEATHRATTLE", "REBORN"], "text": "[Dd]ivine [Ss]hield|[Ss]ummon" },
+      "wants_tribes": ["MECHANICAL"]
+    },
+    {
+      "archetype": "beast summons",
+      "core": { "mechanics": [], "text": "[Ss]ummon" },
+      "addons": { "mechanics": ["DEATHRATTLE"], "text": "[Bb]east|\\+\\d+/\\+\\d+|[Ww]henever" },
+      "wants_tribes": ["BEAST"]
+    },
+    {
+      "archetype": "undead deathrattle",
+      "core": { "mechanics": ["REBORN"], "text": "[Rr]eborn|dies" },
+      "addons": { "mechanics": ["DEATHRATTLE", "TAUNT"], "text": "[Uu]ndead|\\+\\d+/\\+\\d+|[Aa]ttack" },
+      "wants_tribes": ["UNDEAD"]
+    },
+    {
+      "archetype": "elemental scaling",
+      "core": { "mechanics": [], "text": "[Tt]avern|[Rr]efresh|this turn" },
+      "addons": { "mechanics": ["TAUNT", "DIVINE_SHIELD"], "text": "[Ee]lemental|\\+\\d+/\\+\\d+" },
+      "wants_tribes": ["ELEMENTAL"]
+    },
+    {
+      "archetype": "dragon attack",
+      "core": { "mechanics": ["START_OF_COMBAT"], "text": "[Ss]tart of [Cc]ombat" },
+      "addons": { "mechanics": ["DIVINE_SHIELD", "WINDFURY"], "text": "[Dd]ragon|[Aa]ttack|\\+\\d+/\\+\\d+" },
+      "wants_tribes": ["DRAGON"]
+    },
+    {
+      "archetype": "naga spellcraft",
+      "core": { "mechanics": ["BACON_SPELLCRAFT_ID"], "text": "[Ss]pellcraft" },
+      "addons": { "mechanics": ["TAUNT"], "text": "[Ss]pell|[Nn]aga|\\+\\d+/\\+\\d+" },
+      "wants_tribes": ["NAGA"]
+    },
+    {
+      "archetype": "quilboar blood gems",
+      "core": { "mechanics": [], "text": "[Bb]lood [Gg]em" },
+      "addons": { "mechanics": ["TAUNT", "DIVINE_SHIELD"], "text": "[Qq]uilboar|\\+\\d+/\\+\\d+" },
+      "wants_tribes": ["QUILBOAR"]
+    },
+    {
+      "archetype": "pirate economy",
+      "core": { "mechanics": [], "text": "[Gg]old|[Cc]oin|buy|sell" },
+      "addons": { "mechanics": ["WINDFURY", "DIVINE_SHIELD"], "text": "[Pp]irate|\\+\\d+/\\+\\d+" },
+      "wants_tribes": ["PIRATE"]
+    },
+    {
+      "archetype": "demon consume",
+      "core": { "mechanics": [], "text": "[Hh]ealth|[Cc]onsume|your hero" },
+      "addons": { "mechanics": ["TAUNT"], "text": "[Dd]emon|\\+\\d+/\\+\\d+|[Aa]ttack" },
+      "wants_tribes": ["DEMON"]
+    },
+    {
+      "archetype": "menagerie",
+      "core": { "mechanics": [], "text": "minion type|of each type|different" },
+      "addons": { "mechanics": ["TAUNT", "DIVINE_SHIELD"], "text": "\\+\\d+/\\+\\d+|[Aa]ll" },
+      "wants_tribes": []
+    }
+  ]
+}

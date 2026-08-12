@@ -105,7 +105,7 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
   BETA on screen. Both warbands come out of Power.log before the fight
   animates, and a Monte Carlo sim over the vanilla rules, derived deathrattle
   summons and per-card scripts for the highest-impact cards calls the winning
-  side ~86% of the time across 343 real logged fights (MAE 14pp, Brier 0.077).
+  side ~86% of the time across 339 real logged fights (MAE 13pp, Brier 0.072).
   Because plenty of cards are still unscripted, the odds are deliberately
   widened when the board holds one, so a raw 0% or 100% is never printed. No
   odds are shown at all unless both boards were fully recovered. What is still
@@ -114,7 +114,7 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
   encyclopedia of card interactions that needs re-verifying every patch,
   forever. It is a smaller encyclopedia than it sounds, though, and
   [`docs/CARD_EFFECTS.md`](docs/CARD_EFFECTS.md) counts it exactly: of 274
-  pool minions only 39 act during combat at all, 33 of them still unscripted,
+  pool minions only 39 act during combat at all, 18 of them still unscripted,
   because 141 have already resolved into the stats by the time the boards are
   captured. Dark Gifts are finished: all 40 are accounted for and none is
   missing. `sim/validate.py` names the exact cards to script next. If you want
