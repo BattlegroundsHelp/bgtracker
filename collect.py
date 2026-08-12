@@ -345,6 +345,123 @@ def offers(game, pid=None):
     return pid, offered_heroes, offered_trinkets, picked_trinkets
 
 
+# A tribe is PROVEN in the lobby by a minion you could have bought: a real pool
+# minion standing in play. Everything else that carries a CARDRACE tag is not
+# evidence about this lobby at all, and counting it was wrong:
+#
+#   - cards GENERATED into a hand ("Get a random Chromadrake", discovers, Dark
+#     Gift rewards) carry their own tribe from outside the lobby. Measured on a
+#     real game: 9 tribes counted, of which Dragon appeared on 2 log lines and
+#     Pirate on 4, both hand-only, against hundreds of lines for the tribes
+#     really in play.
+#   - TOKENS summoned during a fight (Skeletons, Beetles, Golems, Microbots)
+#     carry a tribe whether or not that tribe is in the lobby.
+#
+# So: zone must be PLAY, and the card must be in the buyable pool. This is the
+# same standard bgtracker.LobbyTracker uses for the live overlay, which is that
+# seeing a minion PROVES its tribe is in while an unseen tribe is only
+# unconfirmed. Exactness still needs the memory reader; the log cannot rule a
+# tribe OUT, and this function does not pretend to.
+_RACE_HEAD = re.compile(
+    r"(?:FULL_ENTITY - Creating ID|SHOW_ENTITY - Updating Entity)=\d+ CardID=(\S+)")
+_RACE_BRACKET = re.compile(
+    r"\[entityName=.+? id=\d+ zone=(\S+) zonePos=\d+ cardId=(\S*)")
+_RACE_TAG = re.compile(r"\(\) - \s*tag=(\w+) value=(\S+)")
+_BOB = re.compile(r"cardId=TB_BaconShopBob player=(\d+)")
+
+
+_POOL_IDS = set()
+
+
+def pool_ids():
+    """Every buyable minion's card id, fetched once per run. Empty when the
+    card database is unreachable, and an empty pool means this run mines no
+    tribes at all rather than mining wrong ones: a re-mine fills them in."""
+    global _POOL_IDS
+    if not _POOL_IDS:
+        try:
+            _POOL_IDS = {m["id"] for m in bg.bg_pool()}
+        except Exception:
+            return set()
+    return _POOL_IDS
+
+
+def lobby_tribes(game):
+    """The tribes this lobby PROVABLY had, from one pass over its lines.
+
+    Never claims a tribe is OUT: an unseen tribe is unconfirmed, exactly as
+    bgtracker.LobbyTracker treats it live. Exactness needs the memory reader.
+
+    Three filters, each measured, in order of how much they were worth:
+
+      zone must be PLAY   - a card generated into a HAND (a Get, a discover, a
+                            Dark Gift reward) carries a tribe from outside the
+                            lobby. This is the big one.
+      the card must be    - a token summoned mid fight (Skeleton, Beetle,
+      a buyable minion      Golem) carries its own tribe regardless.
+      Bob's controller    - where the log names him, this drops a generated
+      where it is known     card that was then PLAYED onto a board.
+
+    Measured over 60 real games: six claimed 9 tribes before, one does now.
+    That last one is honest residual, not a miss to hunt: its four doubtful
+    tribes have 1, 2, 4 and 4 sightings against 42 to 71 for the five real
+    ones, and the log gives nothing that separates a single shop sighting from
+    a single played-from-hand sighting. Counting it IN is the safe direction,
+    because this function's whole contract is that a tribe seen is proven in
+    and an unseen tribe is merely unconfirmed.
+    """
+    pool = pool_ids()
+    # Without Bob (a slice that begins after a reconnect) fall back to minions
+    # in play: looser, but better than a game with no tribes at all.
+    bob = next((m.group(1) for line in game
+                for m in [_BOB.search(line)] if m), None)
+    tribes = set()
+    card = zone = race = ctrl = None
+
+    def keep():
+        # A block states its card up top and its zone, race and controller as
+        # sibling lines, so the verdict is only reachable once the block ends.
+        if race in bg.TRIBES and zone == "PLAY" and (bob is None or ctrl == bob):
+            base = card[:-2] if card and card.endswith("_G") else card
+            if base in pool:
+                tribes.add(race)
+
+    for line in game:
+        h = _RACE_HEAD.search(line)
+        if h:
+            keep()
+            card, zone, race, ctrl = h.group(1), None, None, None
+            continue
+        b = _RACE_BRACKET.search(line)
+        if b:
+            keep()
+            card = zone = race = ctrl = None
+            # The one-line form carries zone and cardId inline but no
+            # controller, so it is only ever board-grade evidence: use it when
+            # there is no shop to key on, ignore it when there is.
+            r = re.search(r"tag=CARDRACE value=([A-Z_]+)", line)
+            if bob is None and r and r.group(1) in bg.TRIBES and b.group(1) == "PLAY":
+                cid = b.group(2)
+                cid = cid[:-2] if cid.endswith("_G") else cid
+                if cid in pool:
+                    tribes.add(r.group(1))
+            continue
+        t = _RACE_TAG.search(line)
+        if t and card is not None:
+            k, v = t.group(1), t.group(2)
+            if k == "ZONE":
+                zone = v
+            elif k == "CARDRACE":
+                race = v
+            elif k == "CONTROLLER":
+                ctrl = v
+            continue
+        keep()
+        card = zone = race = ctrl = None
+    keep()
+    return sorted(tribes)
+
+
 def extract(game, tag):
     """Our final hero, final placement, lobby tribes and the offers we were shown
     - all pinned to the player the hero draft proves is us. `tag` is only a
@@ -382,16 +499,13 @@ def extract(game, tag):
     # whoever's standing happened to print next). The tag updates continuously
     # as the lobby shrinks; the LAST value for our player is the final result.
     place = None
-    tribes = set()
     place_re = re.compile(r"player=" + (pid or r"\0") +
                           r"\] tag=PLAYER_LEADERBOARD_PLACE value=(\d+)")
     for line in game:
         p = place_re.search(line)
         if p:
             place = int(p.group(1))
-        r = re.search(r"CARDRACE value=([A-Z]+)", line)
-        if r and r.group(1) not in ("ALL", "INVALID"):
-            tribes.add(r.group(1))
+    tribes = lobby_tribes(game)
 
     # An offer-only game still carries signal: pick rate needs the options you
     # turned down, not the result. Keep it rather than throw it away.
@@ -431,6 +545,10 @@ def games_in(path):
             "offered_trinkets": off_t,
             "picked_trinkets": pick_t,
             "source_log": path.parent.name,
+            # Which extraction rules produced this record. Local bookkeeping:
+            # upload_records() never sends it, so a bump re-mines without
+            # re-uploading anything whose values did not actually change.
+            "mv": MINER_VERSION,
         }
 
 
@@ -440,6 +558,18 @@ def games_in(path):
 # key here is what makes the next run repair every record whose log still exists.
 FIELDS = ("date", "game_id", "hero", "place", "duo", "tribes",
           "offered_heroes", "offered_trinkets", "picked_trinkets", "source_log")
+
+# How this file MINES, as opposed to what it stores. Missing keys repair
+# themselves through FIELDS above, but a key whose VALUE was extracted wrongly
+# never would: the record has every field, so it looks complete forever. Bump
+# this whenever an extraction rule changes and every record mined by an older
+# rule is re-mined once, wherever its log still exists.
+#   2: lobby tribes count only pool minions in play (a hand-generated card or
+#      a summoned token carries a tribe the lobby never had; measured, one real
+#      game claimed 9 tribes, three of them impossible).
+#   3: lobby tribes key on BOB'S SHOP where the log names him, which also
+#      drops a generated card that was played onto a board.
+MINER_VERSION = 3
 
 
 def collect(logs=None):
@@ -467,10 +597,14 @@ def collect(logs=None):
             old = kept.get(rec["game_id"])
             if old is None:
                 added += 1
-            elif all(k in old for k in FIELDS):
-                continue                       # already complete; leave it alone
+            elif (all(k in old for k in FIELDS)
+                    and old.get("mv") == MINER_VERSION):
+                continue                       # complete AND mined by this rule
             else:
                 filled += 1                    # older record, re-mined in place
+                # The fresh mine wins key by key: that is what repairs a value
+                # an older rule got wrong, while anything only the old record
+                # has (a field from a log that has since rotated away) stays.
                 rec = {**old, **rec}
             kept[rec["game_id"]] = rec
     # Rewrite through a temp file so an interrupted run can never truncate the

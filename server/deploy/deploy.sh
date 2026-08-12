@@ -114,6 +114,19 @@ echo
 AFTER=$(curl -fsS "$BASE/health")
 echo "health before: $BEFORE"
 echo "health after:  $AFTER"
+
+# Take the synthetic game back out. It proved the write path works and it is
+# not a game anybody played, so leaving it behind quietly pollutes the pool:
+# one fake row per deploy, and they add up (four had to be dug out of the live
+# pool by hand on 2026-08-12).
+echo "-- removing the synthetic game again"
+$SSH "cd /opt/bgtracker/server && docker compose exec -T ingest python -c \"
+import glob, sqlite3
+c = sqlite3.connect(glob.glob('/data/*.db')[0])
+c.execute('delete from games where uid = ?', ('$UID_TEST',))
+c.commit()
+print('smoke-test row removed:', c.total_changes)\"" \
+  || echo "WARNING: could not remove the synthetic game (uid $UID_TEST) - do it by hand"
 echo
 echo "DONE. Point sources.json at:"
 echo "  \"heroes\":   \"$BASE/heroes-{time}.json\""

@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Lobby tribes were being overcounted, and the pool was being fed the wrong
+  ones.** A `CARDRACE` tag says what a CARD is, not what the LOBBY holds, and
+  the collector counted every one of them. So a card generated into your hand
+  (a Get, a discover, a Dark Gift reward) or a token summoned mid fight (a
+  Skeleton, a Beetle, a Golem) added a tribe that lobby never dealt. Measured
+  over 60 real games: six claimed 9 tribes, one of them with four impossible
+  ones. Now a tribe is counted only from a buyable minion standing in play,
+  keyed to Bob's shop wherever the log names him. Six bad games became one, and
+  that one is honest residual: its doubtful tribes have 1, 2, 4 and 4 sightings
+  against 42 to 71 for the real ones, and the log offers nothing that tells a
+  single shop sighting from a single card played out of hand. It still never
+  claims a tribe is OUT, only that a seen tribe is in.
+- Records now carry which mining rules produced them, so a fix to an
+  extraction rule re-mines the games it affected instead of leaving them
+  looking complete forever. That repaired 44 records here, and the corrected
+  ones replace their old rows in the shared pool on the next share.
+- `server/deploy/deploy.sh` removes the synthetic game it posts to prove the
+  write path works. It was leaving one fake row in the live pool per deploy.
+
 ## v0.3.1-alpha (12 August 2026)
 
 - **Community sharing is now ON BY DEFAULT, and this is a change of an
