@@ -46,7 +46,7 @@ launch_err.log
 # your personal stats configuration - never committed
 sources.json
 
-# your settings panel choices (scale, what to show, the data opt-in). Runtime
+# your settings panel choices (scale, what to show, the sharing switch). Runtime
 # state, and it can hold the address of a feed you run yourself.
 settings.json
 

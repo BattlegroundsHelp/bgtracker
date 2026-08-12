@@ -11,7 +11,7 @@ isolated tenant that can't touch your other project.
 
 ```
    client (overlay / collect.py --upload)
-        │  POST /upload   {uid, date, hero, place, tribes, ...}   (opt-in, anonymised)
+        │  POST /upload   {uid, date, hero, place, tribes, ...}   (anonymised; on by default, opt-out)
         ▼
    ingest.py ──writes──► data/games.db (SQLite)
         ▲                     │
@@ -88,17 +88,24 @@ the client's `--mmr` bracket, `100 | 50 | 25 | 10 | 1`. Leaving `{mmr}` out stil
 works (that file name is bracket 100), and a `{mmr}` URL still works against a
 server built before brackets existed - see "MMR buckets" below.
 
-## Contribute data (opt-in)
+## Contribute data
+
+The overlay does this on its own, on by default since 2026-08-12 (it was
+opt-in before): pool.py mines the log history once on start, then uploads each
+game as it finishes, throttled to stay well under this server's rate limits.
+The off switch is the settings panel's DATA box, or `--no-upload` for one run.
+The by-hand path still works and sends the whole backlog in one pass:
 
 ```bash
 python collect.py                              # mine your own Power.log history
 python collect.py --upload https://stats.example.com
 ```
 
-Only the aggregate signal leaves your machine - **hero, placement, lobby tribes,
-date**, under an opaque per-machine id (`sha256(local-random-salt : game-id)`).
-Never your battletag, never the logs. Re-running is idempotent (the server de-dupes
-on that id). Add `--token <secret>` if the server requires one.
+Only the aggregate signal leaves the machine - **hero, placement, lobby tribes,
+date, the offers** - under an opaque per-machine id
+(`sha256(local-random-salt : game-id)`). Never a battletag, never the logs.
+Re-running is idempotent (the server de-dupes on that id). Add
+`--token <secret>` if the server requires one.
 
 ## The upload contract
 

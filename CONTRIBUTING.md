@@ -110,11 +110,12 @@ statistics. Do not paste placement averages into it from anywhere.
 - **Log-first.** Anything that works from `Power.log` ships as default.
   Memory-derived features go through the opt-in `native/msync` helper and
   must degrade gracefully when it isn't built.
-- **No bundled third-party stats — and no default feed.** The repo ships code,
-  not other people's collected data, and it points at nobody's endpoint.
-  Numbers come only from a source the user configures themselves
-  (`sources.json`, gitignored) or from their own collected games
-  (`collect.py`). Don't send PRs that hardcode someone's stats feed.
+- **No bundled third-party stats.** The repo ships code, not other people's
+  collected data. The one feed it points at is **our own community pool**,
+  built only from games players share (the default since 2026-08-12, off
+  switch in the settings panel) and free for everyone. A user's
+  `sources.json` replaces it entirely. Don't send PRs that hardcode anyone
+  else's stats feed.
 - **Zero required dependencies** is a feature. A new runtime dependency needs
   a strong case.
 - **Count against reality, not against a slice.** The two subtlest bugs so far

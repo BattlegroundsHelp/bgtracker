@@ -6,12 +6,18 @@ bgtracker is a free overlay for Hearthstone Battlegrounds. It reads Hearthstone'
 own log file and draws small windows around the game: what the shop is, what the
 lobby is running, what your options are when the game makes you choose.
 
-**Read this bit first, it saves confusion later.** The tool ships with **no stats
-data**. Every *feature* works out of the box, but the placement *numbers* on hero
-and trinket picks stay blank until you either grow your own numbers from your own
-games (one command, section 4) or point it at a stats source you have the right to
-use. That is a deliberate choice, not a missing download: aggregate placement data
-belongs to whoever collected it.
+**Read this bit first, it saves confusion later.** The numbers come from the
+**community feed**: a pool built only from games players shared through this
+tool, read by default when you have no `sources.json`. The pool is young, so
+many rows are flagged thin (read: no signal yet). **Sharing goes both ways and
+is on by default**: as you play, the overlay sends one anonymised record per
+finished game back to that pool (it leaves when the next game starts or when
+the overlay closes) - no name, no battletag, no log files - and the
+settings panel's DATA section lists every field and holds the off switch
+(`--no-upload` turns it off for one run). Section 4 has the details, your own
+private feed, and how to point at any other source you have the right to use.
+No third party's stats are ever fetched: aggregate placement data belongs to
+whoever collected it.
 
 ---
 
@@ -27,7 +33,7 @@ the one nearly everyone should take (section 2). Running from source is section
 | **Python 3.10 or newer** | Only if you run from source (section 2b). From [python.org](https://www.python.org/downloads/windows/), tick **"Add python.exe to PATH"**. The download carries its own copy of Python and does not care what is installed on your machine. |
 | **Hearthstone in BORDERLESS WINDOWED** | Options (gear) → Graphics → window mode. Nothing can draw over exclusive fullscreen without hooking the game, which this deliberately does not do. |
 | **No pip installs** | The core has zero third party packages. `pip install pillow` is optional and only buys you card art (section 5). |
-| **Internet on first run** | It downloads the public card database from HearthstoneJSON once (card names, tiers, the minion pool) and caches it for a day. After that it runs fine offline. |
+| **Internet on first run** | It downloads the public card database from HearthstoneJSON once (card names, tiers, the minion pool) and caches it for a day. The overlay also talks to the community stats server: it reads the feed (cached an hour), asks for the newest version number on start (section 2c), and shares your finished games unless you switch that off (section 3b). Offline, everything still runs; numbers just come from the caches. |
 
 You do **not** need admin rights, a Blizzard login, an account of any kind, or the
 game to be restarted. Nothing is injected into the game and nothing is automated.
@@ -193,9 +199,9 @@ They sit on the left because a panel on the right would cover the trinket row.
 |---|---|---|
 | **MINIONS** | always, as a slim one-line bar; click `browse ▸` to expand | The whole current minion pool, filtered by tier, tribe and mechanic, with card text. Built from the live card data, so it is always this patch. **Needs no stats at all.** |
 | **SESSION** | always, except while the hero draft is up | Every game that finished while it was running, with placement and hero, and this lobby's tribes. **Your MMR is a dash** unless you build the optional memory reader (section 5). It is never guessed. |
-| **PICK YOUR HERO** | hero select | All four heroes, named and shown, each with one line saying when that hero is the pick (111 of the 121 heroes have one; the rest show nothing rather than a guess). **The ranking numbers are blank** without a stats source. |
-| **PICK YOUR HERO POWER** | that choice only | One row per hero power on offer. Numbers blank without a source. |
-| **PICK YOUR TRINKET** | trinket offers | The four trinkets, named. Numbers blank without a source. |
+| **PICK YOUR HERO** | hero select | All four heroes, named and shown, each with one line saying when that hero is the pick (111 of the 121 heroes have one; the rest show nothing rather than a guess). The ranking numbers come from the community feed by default; a row it holds too few games for is flagged thin or stays blank. |
+| **PICK YOUR HERO POWER** | that choice only | One row per hero power on offer. Numbers only where the feed has them. |
+| **PICK YOUR TRINKET** | trinket offers | The four trinkets, named, with the feed's numbers where they exist. |
 | **PICK ONE** | discovers and Dark Gifts | The options, named. Dark Gifts have no published stats anywhere, so those stay unrated even with a source. |
 | **OTHER PLAYERS** | while a lobby is running (it steps aside for a trinket offer) | Everyone else in place order: hero, tavern tier, health. For anyone you have fought, the board they were last seen holding, stamped `seen r7 · 2 rounds ago`; click a player to see it. **This window does not appear at all** unless you build the optional memory reader (section 5) — the log never states another player's board while you shop, so there is nothing to show without it. |
 
@@ -220,9 +226,11 @@ They sit on the left because a panel on the right would cover the trinket row.
 - The hero tips at the draft: they ship with the tool as plain text, so they
   need no source and no network.
 
-**Blank until you add numbers (section 4):** hero, hero power and trinket
+**From the community feed, which is young:** hero, hero power and trinket
 rankings, pick rates, sample sizes, measured tavern star ratings (the curated
-stars above stand in), measured comp averages.
+stars above stand in where it is thin), measured comp averages. Anything the
+pool holds too few games for is flagged thin or left blank rather than
+guessed; section 4 is how to read your own games or another source instead.
 
 ### Two things worth knowing on sight
 
@@ -261,14 +269,21 @@ overriding it.
   applied while you drag, so you can size it against the game instead of
   restarting to find out. Below it, a nudge for the badges printed on the cards:
   those already follow the game window on their own, so this only leans on them.
-- **DATA.** Sharing your finished games is **off** and stays off unless you tick
-  it. The line under the box lists exactly what would be sent: the hero you
-  played, your placement, the lobby tribes, the heroes and trinkets you were
-  offered, whether it was Duos, and a random id kept on this machine. No name,
-  no battletag, no log files. The pooled numbers are free for everyone and are
-  never paywalled. The same section picks where numbers come from (the
-  community feed, your own games, or whatever `sources.json` already says), the
-  MMR bracket, the period, and Duos.
+- **DATA.** Sharing your finished games is **on by default**, and this box is
+  the off switch: clear it and nothing is sent (or start with `--no-upload`
+  to stop it for one run without saving anything). While it is on, the
+  overlay sends one record per finished game - shortly after start for your
+  whole log history, then per finished game (a record leaves when the next
+  game starts, or when you quit). The line under the box lists exactly what a
+  record holds: a scrambled game id, the date, the hero you played, your
+  placement, whether it was Duos, the lobby tribes, the heroes and trinkets
+  you were offered, the trinkets you picked, the first 8 characters of this
+  machine's random client id (sent as is, so the feed can group one machine's
+  games), and the client version. No name, no battletag, no log files. The pooled
+  numbers are free for everyone and are never paywalled, whether you share or
+  not. The same section picks where numbers come from (the community feed,
+  which is the default, your own games, or whatever `sources.json` already
+  says), the MMR bracket, the period, and Duos.
 - **WHAT TO SHOW.** One switch per overlay window, built from the window
   registry, so a window added in a later version turns up here on its own. Off
   means the window is not built at all: no panel, no badges on the cards, and
@@ -287,11 +302,15 @@ opening it on start. The tool works exactly the same if you never open it.
 
 ---
 
-## 4. Getting numbers
+## 4. Where the numbers come from
 
-Two options. Do option A first, it takes one minute and involves nobody else.
+Out of the box, nothing to do: with no `sources.json` the overlay reads the
+**community feed**, the pool of games players shared through this tool. It is
+young, so plenty of rows are flagged thin; every game you play (with sharing
+on, which is the default - section 3b) makes it less thin for everyone. The
+two options below replace it.
 
-### Option A: grow your own numbers from your own games (recommended)
+### Option A: your own numbers from your own games only
 
 ```bash
 python collect.py
@@ -320,18 +339,24 @@ signal at all. It fills in as you play. Two practical notes: `--time all-time` i
 the useful window early (`last-patch` will be nearly empty), and `--mmr` does
 nothing against your own feed because your own games are one bucket.
 
-There is also `python collect.py --upload <url>`, which is strictly opt-in and
-shares your mined games with the community dataset. That server is now up and
-`sources.example.json` points at it; it is new, so its numbers are thin for
-now. Uploading stays off unless you run that command, the records are
-anonymised game results with no names and no battletags, the aggregates are
-free for everyone, and the data is never sold.
+About sharing: the overlay already contributes your finished games to the
+community dataset on its own (on by default; the DATA box in the settings
+panel and `--no-upload` are the off switches - section 3b). You do not need
+to run anything for that. `python collect.py --upload <url>` still exists as
+the by-hand version: it mines and sends everything in one pass, useful for
+checking your games arrived or for pointing at a different server. Either
+way the records are anonymised game results with no names and no battletags,
+the aggregates are free for everyone, and the data is never sold. Uploading
+was opt-in until 2026-08-12; the default changed then, and the CHANGELOG says
+so in plain words.
 
 ### Option B: point it at a stats source you have the right to use
 
 Copy `sources.example.json` to `sources.json` next to `bgtracker.py` and fill in
 your own URLs or local file paths. `sources.json` is gitignored, so a personal
-source never ends up in a commit.
+source never ends up in a commit. Writing the file replaces the built-in
+community default entirely: only the keys you name are read, and a key you
+leave out is a table you asked to keep empty.
 
 ```json
 {
@@ -474,6 +499,7 @@ bgtracker.bat --mmr 10 --time past-seven
 | `--demo <path-to-Power.log>` | Replay a finished log through the real windows. Good for testing without playing. |
 | `--diag` | Print the version, where it reads and writes, and every window it loaded, then exit. The first thing to paste in a bug report. |
 | `--no-update-check` | Do not ask whether there is a newer build (section 2c). Nothing is ever installed either way. |
+| `--no-upload` | Do not share finished games with the community feed, for this run only. The DATA box in the settings panel (section 3b) turns sharing off for good; it is on by default. |
 | `--no-panel` | Start without opening the settings panel (section 3b). |
 
 **Console version (`python bgtracker.py`)** — no overlay, just text. Takes
@@ -493,7 +519,7 @@ bgtracker.bat --mmr 10 --time past-seven
 | *(none)* | Mine your finished games into `data/games.jsonl`. |
 | `--stats` | Print what you have collected so far. |
 | `--local-feed` | Turn those games into your own stats feed and wire `sources.json` to it. |
-| `--upload <url>` | Opt-in contribution to a shared feed. Nothing to point it at yet. |
+| `--upload <url>` | Send ALL your collected games to a shared feed, now, by hand. The overlay already shares new games on its own (on by default), so this is for checking your games arrived, or for a different server. |
 | `--token <token>` | Upload token, if the server you are uploading to wants one. |
 
 ---
@@ -507,7 +533,7 @@ bgtracker.bat --mmr 10 --time past-seven
 | **`'python' is not recognized`, or the Microsoft Store opens** | Windows ships a fake `python` that just opens the Store. | Easiest fix: use the download (section 2), which needs no Python. Otherwise install real Python from python.org with **Add python.exe to PATH** ticked; if the Store still hijacks it, Settings → Apps → Advanced app settings → **App execution aliases** → turn **off** `python.exe` and `python3.exe`, then relaunch. |
 | **Windows are in the wrong place, off screen, or stacked on each other** | A saved drag position from a different resolution or monitor. | Quit the overlay, delete `.overlay.json` in the repo folder, start again. Every window returns to its default slot. (This also clears your session history.) |
 | **The overlay covers cards I need to click** | Every window is draggable, individually. | Drag it by its header to somewhere better. It remembers. Note the badge strips drawn *on* the cards are click-through, so clicks reach the game, and they cannot be dragged yet. |
-| **No numbers anywhere: hero picks show names but no placements** | No stats source configured. This is the default state, not a bug. | Section 4. `python collect.py` then `python collect.py --local-feed`, then restart the overlay. |
+| **No numbers anywhere: hero picks show names but no placements** | The community feed (the default) could not be reached, or a `sources.json` you wrote leaves those tables out. | Check the console for a "feed unreachable" line. Section 4 has the alternatives: `python collect.py` then `python collect.py --local-feed`, then restart the overlay. |
 | **Numbers appear but say "thin"** | Fewer than 30 games behind that row. | Correct behaviour. Read it as no signal. It fills in as you play. |
 | **Tavern stars look blunt, or a minion has none** | With no `cards` source the stars are the curated signal, which only rates comp-core minions and minions of a viable tribe. | Expected. Add a `cards` source (section 4) and every rated minion gets a measured star inside its own tavern tier. |
 | **Odds are not showing in COMBAT** | One of the warbands could not be fully recovered from the log, so nothing is shown rather than a made up number. Or the fight is already over. | Expected. If it never shows on any fight, report it (section 8) with the round number. |

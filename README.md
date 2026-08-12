@@ -6,10 +6,18 @@ Live Battlegrounds pick helper. When the game offers you heroes or trinkets, it
 prints what everyone else's results look like with those options: average
 placement, how often people take it, top-4 rate, sample size.
 
-No account, no subscription. It reads Hearthstone's own log file — and **ships
-with no stats data**: you bring your own source, or grow one from your own
-games (see "Bring your own stats"). By default nothing leaves your machine;
-contributing your games to the community dataset is a strict opt-in.
+No account, no subscription. It reads Hearthstone's own log file. The numbers
+come from the **community feed** by default: a pool built only from games
+players shared through this tool, free for everyone, never sold or paywalled.
+**Sharing is on by default too** - as you play, the overlay sends one
+anonymised record per finished game (no name, no battletag, no log files;
+it goes out when the next game starts or when the overlay closes) back to
+that pool,
+so everyone who plays also feeds the numbers everyone reads. The settings
+panel's DATA section lists every field that leaves and holds the off switch;
+`--no-upload` stops it for one run. Details, including that this default
+CHANGED in August 2026, under "Where the numbers come from (and where they
+go)" below.
 
 > **Not affiliated with or endorsed by Blizzard Entertainment.** Hearthstone®
 > and all card names and images are © Blizzard Entertainment, Inc. This is a
@@ -49,44 +57,51 @@ Keep it free and ad-free (it is) — that removes any commercial-competition ang
 and is the strongest protection. It never injects code, modifies the client, or
 automates anything.
 
-### Bring your own stats
+### Where the numbers come from (and where they go)
 
 Aggregate placement data belongs to whoever collected it — the numbers on the
 big stats sites are their collectors' property, and none of them permit
-third-party redistribution. So this tool bundles no stats, fetches none by default, and
-points at nobody's feed. A public URL is not a licence, and respecting that is
-a design decision here, not a technicality.
+third-party redistribution. A public URL is not a licence, and respecting that
+is a design decision here, not a technicality. So this tool touches no third
+party's feed. What it reads instead is the **community dataset**: our own
+pool, built only from games players shared through this tool. With no
+`sources.json`, the overlay reads that feed out of the box (the same URLs
+`sources.example.json` documents). The pool is young, so expect thin samples,
+flagged as thin, until it fills up.
 
-Offers are still detected and named without any data (recognition comes from
-the HearthstoneJSON card database). To see *numbers* on them, either:
+**Sharing back is on by default.** After each finished game (and once on
+start, for your whole log history) the overlay uploads one record per game to
+that same server: a scrambled game id, the date, the hero you played, your
+placement, whether it was Duos, the lobby tribes, the heroes and trinkets you
+were offered, the trinkets you picked, an opaque per-install id, and the
+client version. No names, no battletags, no log files. The off switch is the
+DATA box in the settings panel (saved), or `--no-upload` (one run); the
+aggregated stats stay **free for everyone** and are **never sold or
+paywalled** whether you share or not. Honesty note: this is a CHANGE of the
+original terms. Uploading was opt-in and off by default until 2026-08-12,
+when the author flipped the default so the pool can actually grow. The change
+is stated here, in the CHANGELOG, in the ROADMAP and in the panel itself,
+rather than slipped in quietly.
 
-- **Configure a source you have the right to use.** Create `sources.json` next
-  to `bgtracker.py` — see "Stats side" below for the keys and the expected JSON
-  shape. It can be a URL or a local file. Your `sources.json` is gitignored, so
-  a personal source never ends up in a commit.
-- **Grow your own dataset.** `python collect.py` mines every finished game out
+To read different numbers instead:
+
+- **Your own games only.** `python collect.py` mines every finished game out
   of your own log history into `data/games.jsonl` — your own gameplay, fully
   yours. Then `python collect.py --local-feed` turns those games into a
   personal stats feed and points `sources.json` at it, so the overlay shows
   **your own numbers** with no third party involved (thin samples are flagged
-  until they fill in). With enough users pooling their games, the same numbers
-  come from play the community actually owns.
+  until they fill in).
+- **Any source you have the right to use.** Create `sources.json` next to
+  `bgtracker.py` — see "Stats side" below for the keys and the expected JSON
+  shape. It can be a URL or a local file. Your `sources.json` is gitignored, so
+  a personal source never ends up in a commit. Writing the file replaces the
+  community default entirely; a key you leave out stays empty.
 
-Comps never need a data source to be useful: with no stats configured the tool
+Comps never need a data source to be useful: with no comps data the tool
 shows **curated comp families** — evergreen tribe archetypes whose core minions
 are computed from the live card pool, so they are always current-patch. They are
 labelled `curated`, and measured comp rows replace them the moment a comps
 source has data.
-
-A community dataset built from pooled games is now running, and
-`sources.example.json` points at it — it is new, so expect thin samples,
-flagged as thin, for a while. Its terms were fixed up front, in the spirit of
-asking rather than assuming:
-**uploading is opt-in only** (off by default — nothing leaves your machine
-unless you turn it on), records are **anonymised game results** (hero,
-placement, lobby tribes, final board — no names, no battletags, no account
-ids), the aggregated stats are **free for everyone**, and the data is **never
-sold or paywalled**.
 
 Open-source **code** (as distinct from collected data) is free to use under its
 own license and is credited where used; that is a separate thing from anyone's
@@ -271,9 +286,10 @@ FULL_ENTITY - Updating [entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=B
   that grants an extra), against 65 twos, 43 ones, 18 threes and 15 sixes of
   opponent reveals.
 
-**Stats side.** There is no built-in feed. `sources.json` next to `bgtracker.py`
-maps table names to a URL or local JSON file **you** supply; `{mmr}` and `{time}`
-placeholders are filled from the command-line flags:
+**Stats side.** The community feed is the built-in default (used only when no
+`sources.json` exists). To read anything else, `sources.json` next to
+`bgtracker.py` maps table names to a URL or local JSON file **you** supply;
+`{mmr}` and `{time}` placeholders are filled from the command-line flags:
 
 ```json
 {
@@ -304,8 +320,9 @@ yourself from `collect.py` output): hero records carry `heroCardId`,
 `compStats[].archetype/averagePlacement/heroStats[].finalBoards`; cards carry
 `cardStats[].cardId/averagePlacement/averagePlacementOther/totalPlayed`.
 URL responses are cached in `.cache/` for an hour, per source, so pointing at a
-different feed takes effect immediately. With no `sources.json`, every offer
-still appears — named, ranked by nothing, numbers hidden.
+different feed takes effect immediately. With no `sources.json`, the community
+feed answers; with one, only what it names is read, and an offer whose table is
+empty still appears — named, ranked by nothing, numbers hidden.
 
 **MMR brackets.** `--mmr` only means something if your source URL carries
 `{mmr}`. A feed publishes a bracket once it holds enough games, so `top 1%` may
@@ -446,9 +463,11 @@ the tribes at turn zero, and that comes out of memory.
   **widens** its odds rather than pretending — it never prints 0% or 100%. It is
   labelled BETA on screen for exactly that reason, and it never shows a number
   when either board could not be fully recovered.
-- **No numbers out of the box.** Stats appear only once you configure a
-  `sources.json` or compute your own tables from `collect.py` output. Offers
-  are still detected and named without one.
+- **The default numbers are young.** Out of the box the stats come from the
+  community pool, which is small so far: many rows are flagged thin (read: no
+  signal) and most MMR brackets are not published yet. Your own feed
+  (`collect.py --local-feed`) or any source you have the right to use replaces
+  it via `sources.json`.
 - **Dark Gifts have no stats to show.** They are live this patch, but nobody
   publishes placement data for them. **Quests are dead this patch** entirely.
   So heroes, trinkets, tribes and comps is the complete set of what can be shown.

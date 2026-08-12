@@ -461,10 +461,11 @@ the screen. A Monte Carlo simulator then replays the fight thousands of times.
 
 **The stance.** Aggregate placement data belongs to whoever collected it. The
 big stats sites' numbers are their collectors' property and none of them permit
-third party redistribution. So this tool **bundles no stats, fetches none by
-default, and points at nobody's feed**. A public URL is not a licence. Offers
-are still detected and named without any data, because recognition comes from
-the public card database.
+third party redistribution. A public URL is not a licence. So this tool
+**touches no third party's feed** - the only pool it reads (and, by default,
+feeds) is the community dataset built from games players shared through this
+tool. Offers are detected and named even with no data at all, because
+recognition comes from the public card database.
 
 **`python collect.py`** mines every finished game out of your whole Power.log
 history into `data/games.jsonl`: date, game id, hero, placement, lobby tribes,
@@ -484,14 +485,19 @@ server uses over your own games, writes hero, trinket, card and comp feeds into
 own numbers**, with no third party involved. Thin samples stay flagged until
 they fill in; under 30 games an average reads as no signal at all.
 
-**The community dataset** is **up**, and `sources.example.json` points at it.
-It is new, so it holds a few dozen games: expect most rows to be flagged thin,
-which means no signal rather than weak signal. Its terms were fixed before it
-existed: uploading is **opt in only** and off by default
-(nothing leaves your machine unless you turn it on), records are anonymised game
-results (hero, placement, lobby tribes, final board, no names, no battletags, no
-account ids) under an opaque per machine id, the aggregates are **free for
-everyone**, and the data is **never sold or paywalled**. The server half is
+**The community dataset** is **up**, it is what the overlay reads when no
+`sources.json` exists, and the overlay feeds it on its own: shortly after
+start it mines your whole log history once, then after each finished game it
+sends that game's record (pool.py). It is new, so it holds a few dozen games:
+expect most rows to be flagged thin, which means no signal rather than weak
+signal. **Sharing is on by default with an opt-out** - the DATA box in the
+settings panel turns it off for good, `--no-upload` for one run. That default
+is a CHANGE of the original terms, made by the author on 2026-08-12
+(uploading was opt in and off by default before then); the rest stands as
+first written: records are anonymised game results (hero, placement, lobby
+tribes, offers, no names, no battletags, no account ids) under an opaque per
+machine id, the aggregates are **free for everyone**, and the data is **never
+sold or paywalled**. The server half is
 deliberately tiny: stdlib Python, no pip install, its own SQLite file, a
 validated insert on the public endpoint and the heavy grouping on a timer off
 the request path. What it does not do yet is honest too: comp classification is
@@ -505,8 +511,9 @@ so rather than labelling the whole pool "top 1%". A
 public write endpoint is not tamper proof against a determined stats poisoner,
 and it is not advertised as one.
 
-**Needs.** Nothing, and nothing leaves your machine unless you pass `--upload`
-yourself.
+**Needs.** Nothing. What leaves your machine is the anonymised game records
+described above, on by default; clear the panel's DATA box (or start with
+`--no-upload`) and nothing is sent.
 
 ## What is deliberately NOT here
 

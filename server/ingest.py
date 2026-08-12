@@ -2,7 +2,8 @@
 """
 Ingest endpoint - the write side of the independent dataset.
 
-Receives opt-in, anonymised game records from clients (the overlay / collect.py)
+Receives anonymised game records from clients (the overlay's pool.py, sharing
+on by default with an opt-out since 2026-08-12; collect.py --upload by hand)
 and appends them to a local SQLite store. It computes nothing; aggregate.py turns
 the store into the stats feed the client reads. Splitting the two means the public
 endpoint only ever does a tiny validated INSERT, and the heavy grouping runs on a

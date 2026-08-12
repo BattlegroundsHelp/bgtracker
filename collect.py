@@ -35,6 +35,7 @@ server/aggregate.py exactly (hero_stats / trinket_stats read them by name).
 import argparse
 import hashlib
 import json
+import os
 import re
 import urllib.request
 import uuid
@@ -441,7 +442,14 @@ FIELDS = ("date", "game_id", "hero", "place", "duo", "tribes",
           "offered_heroes", "offered_trinkets", "picked_trinkets", "source_log")
 
 
-def collect():
+def collect(logs=None):
+    """Mine `logs` (default: the whole Power.log history) into games.jsonl.
+
+    `logs` exists for the overlay's own pooling (pool.py): the full-history
+    pass costs real time (measured 53 seconds over 1.6 GB of logs), so at a
+    game boundary the overlay passes just the CURRENT log and this merges its
+    games into the file without touching, or re-reading, anything else.
+    """
     DATA.mkdir(exist_ok=True)
     kept = {}                                  # game_id -> record, insertion order
     if OUT.exists():
@@ -451,7 +459,8 @@ def collect():
                 kept[rec["game_id"]] = rec
             except Exception:
                 pass
-    logs = sorted(bg.HS_LOGS.glob("Hearthstone_*/Power.log"))
+    if logs is None:
+        logs = sorted(bg.HS_LOGS.glob("Hearthstone_*/Power.log"))
     added = filled = 0
     for path in logs:
         for rec in games_in(path):
@@ -466,8 +475,11 @@ def collect():
             kept[rec["game_id"]] = rec
     # Rewrite through a temp file so an interrupted run can never truncate the
     # only copy of the dataset. Games whose log has since rotated away are kept
-    # exactly as they were - nothing is ever dropped.
-    tmp = OUT.with_suffix(".jsonl.tmp")
+    # exactly as they were - nothing is ever dropped. The temp name carries the
+    # pid because two writers are now reachable at once (the overlay's pool
+    # thread backfilling while the panel's "Share now" runs a mine): a shared
+    # fixed name would let one replace() publish the other's half-written file.
+    tmp = OUT.with_suffix(f".jsonl.{os.getpid()}.tmp")
     with open(tmp, "w", encoding="utf-8") as f:
         for rec in kept.values():
             f.write(json.dumps(rec) + "\n")
@@ -539,16 +551,17 @@ def client_id():
     return cid
 
 
-def upload(base_url, token=None, batch=300):
-    """Opt-in: contribute your collected games to a shared feed. Sends only the
-    aggregate signal (hero, placement, lobby tribes, date, and the heroes and
-    trinkets you were offered) under an opaque id - never your battletag, never
-    the logs themselves. This is what lets everyone's numbers get better without
-    depending on anyone's paid data."""
+def upload_records():
+    """One upload-shaped record per game in games.jsonl, or [] with none yet.
+
+    This list IS the privacy contract: every field that ever leaves the machine
+    is built right here and nowhere else, the settings panel's DATA copy names
+    each one, and tests/test_settings.py reads this function's source to hold
+    the two together. Only the aggregate signal (hero, placement, lobby tribes,
+    date, and the heroes and trinkets you were offered) under an opaque id -
+    never your battletag, never the logs themselves."""
     if not OUT.exists():
-        print("no data yet - run `" + HOWTO + "` first")
-        return {"sent": 0, "stored": 0, "error": None,
-                "note": "no games collected yet"}
+        return []
     cid = client_id()
     recs = []
     for line in OUT.read_text(encoding="utf-8").splitlines():
@@ -580,25 +593,56 @@ def upload(base_url, token=None, batch=300):
             # before the server that stores it is deployed.
             "v": VERSION,
         })
+    return recs
+
+
+def upload_url(base_url):
+    """The ingest endpoint for a feed address, however the address was typed."""
+    url = base_url.rstrip("/")
+    if not url.endswith("/upload"):
+        url += "/upload"
+    return url
+
+
+def post_batch(url, recs, token=None, timeout=30):
+    """POST one batch of records; return the server's parsed reply.
+
+    Raises on any failure - the CALLER decides whether that is printed
+    (upload() below) or swallowed and retried later (pool.py). `url` is the
+    full /upload endpoint, from upload_url()."""
+    body = json.dumps({"games": recs}).encode()
+    req = urllib.request.Request(url, data=body, method="POST",
+                                 headers={"Content-Type": "application/json",
+                                          "User-Agent": USER_AGENT})
+    if token:
+        req.add_header("X-Upload-Token", token)
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read())
+
+
+def upload(base_url, token=None, batch=300):
+    """Send EVERY collected game to a shared feed, in one pass.
+
+    This is the by-hand path (`--upload`, and the panel's Share now button):
+    it ignores pool.py's sent ledger and resends the lot, which is safe and
+    cheap because the server de-dupes on uid - and it is exactly what you want
+    when the question is "did my games arrive?". The overlay's own automatic
+    sharing lives in pool.py and sends only what has not gone yet."""
+    if not OUT.exists():
+        print("no data yet - run `" + HOWTO + "` first")
+        return {"sent": 0, "stored": 0, "error": None,
+                "note": "no games collected yet"}
+    recs = upload_records()
     if not recs:
         print("nothing to upload (no games with a hero or placement yet)")
         return {"sent": 0, "stored": 0, "error": None,
                 "note": "no games with a hero or placement yet"}
 
-    url = base_url.rstrip("/")
-    if not url.endswith("/upload"):
-        url += "/upload"
+    url = upload_url(base_url)
     sent = stored = 0
     for i in range(0, len(recs), batch):
-        body = json.dumps({"games": recs[i:i + batch]}).encode()
-        req = urllib.request.Request(url, data=body, method="POST",
-                                     headers={"Content-Type": "application/json",
-                                              "User-Agent": USER_AGENT})
-        if token:
-            req.add_header("X-Upload-Token", token)
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
-                res = json.loads(r.read())
+            res = post_batch(url, recs[i:i + batch], token)
         except Exception as e:
             print(f"  ! upload failed at batch {i // batch}: {e}")
             # The caller gets the failure verbatim. A partial upload is still
@@ -693,7 +737,9 @@ def main():
     ap.add_argument("--local-feed", action="store_true",
                     help="turn your collected games into a personal stats feed the overlay reads")
     ap.add_argument("--upload", metavar="URL",
-                    help="opt-in: send collected games to a shared feed (e.g. https://stats.example.com)")
+                    help="send ALL collected games to a shared feed, now, by hand "
+                         "(the overlay already shares new games on its own unless "
+                         "you switched that off)")
     ap.add_argument("--token", help="X-Upload-Token, if the server requires one")
     args = ap.parse_args()
     if args.upload:

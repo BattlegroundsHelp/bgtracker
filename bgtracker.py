@@ -4,14 +4,19 @@ bgtracker - live Hearthstone Battlegrounds pick helper.
 
 Reads Hearthstone's own Power.log, spots the moment you're offered heroes
 (or trinkets), and shows each option - with average placement and pick rate
-IF you have configured a stats source of your own (sources.json; see README).
+from the COMMUNITY feed by default, or from any source you configure in
+sources.json (see README).
 
-No stats data is bundled or fetched by default: aggregate placement data
-belongs to whoever collected it, and this tool points at nobody's feed.
-Card names and IDs come from HearthstoneJSON. Everything runs locally, and
-by default nothing leaves your machine. Contributing your finished games to
-the community dataset is a strict opt-in (see README) - anonymised records,
-aggregates free for everyone, never sold.
+The community feed is our own pooled data: built only from games players
+shared, aggregates free for everyone, never sold or paywalled. No third
+party's stats are bundled or fetched - aggregate placement data belongs to
+whoever collected it, and the only pool this points at is the one whose
+games were given to it. Card names and IDs come from HearthstoneJSON.
+The OVERLAY (overlay.py) also shares your finished games back to that pool
+BY DEFAULT - anonymised records, no names, no battletags; the settings
+panel's DATA section lists every field and holds the off switch, and
+--no-upload stops it for one run (see README). This console version never
+uploads anything on its own; `collect.py --upload` is its by-hand path.
 
 Usage:
     python bgtracker.py                     # live: follow the newest Power.log
@@ -35,13 +40,16 @@ from pathlib import Path
 
 from paths import APP_DIR, BUNDLE_DIR
 
-# There is NO built-in stats feed. To see numbers, create sources.json next to
-# this file with any of the keys
+# The stats feed: sources.json next to this file, with any of the keys
 #   heroes, trinkets, comps, cards
 #   heroes_duo, trinkets_duo, comps_duo, cards_duo   (what --duo reads)
 # each mapping to a URL or a local JSON file you have the right to use
-# ({mmr} and {time} placeholders are filled in). collect.py grows your own
-# dataset from your own games. See README: "Bring your own stats".
+# ({mmr} and {time} placeholders are filled in). With NO sources.json the
+# overlay reads the COMMUNITY feed (default_sources below) - the pool built
+# only from games players shared - so a fresh install both gives and gets.
+# Writing sources.json, with any subset of the keys, replaces that default
+# entirely: a key you leave out is a table you asked to keep empty, and the
+# default never fills it back in behind your edit.
 # APP_DIR rather than __file__: in a frozen build __file__ points inside
 # PyInstaller's private bundle, so this file - and the cache, and the memory
 # reader - would land somewhere the user never sees. See paths.py.
@@ -141,14 +149,53 @@ def _fetch(url: str):
     return json.loads(raw)
 
 
+_DEFAULT_SOURCES = None
+
+
+def default_sources() -> dict:
+    """The community feed's table templates - what a machine with NO
+    sources.json reads, so a fresh download shows numbers and (unless the
+    switch is off) gives its games back, with zero setup.
+
+    Read out of sources.example.json, which ships in the release zip, rather
+    than written out again here: two copies of a url is one copy that goes
+    stale the day the feed moves. A user's own copy beside the exe wins over
+    the bundled one, same as every other shipped file. If the example file is
+    gone too, the tables are rebuilt off the one host constant the uploader
+    already uses (settings.COMMUNITY_UPLOAD)."""
+    global _DEFAULT_SOURCES
+    if _DEFAULT_SOURCES is not None:
+        return _DEFAULT_SOURCES
+    out = {}
+    for base in (APP_DIR, BUNDLE_DIR):
+        try:
+            raw = json.loads((base / "sources.example.json").read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        out = {k: v for k, v in raw.items()
+               if not k.startswith("_") and isinstance(v, str) and v}
+        if out:
+            break
+    if not out:
+        import settings as _settings
+        host = _settings.COMMUNITY_UPLOAD.rstrip("/")
+        out = {k + d: f"{host}/{k}{'-duo' if d else ''}-{{mmr}}-{{time}}.json"
+               for k in ("heroes", "trinkets", "cards", "comps")
+               for d in ("", "_duo")}
+    _DEFAULT_SOURCES = out
+    return out
+
+
 def raw_source(kind: str):
-    """The un-formatted template for one table from sources.json - {mmr} and
-    {time} still in it. The template, not just the filled-in URL, is what tells
-    us whether this feed is bucketed at all."""
+    """The un-formatted template for one table - {mmr} and {time} still in it.
+    The template, not just the filled-in URL, is what tells us whether this
+    feed is bucketed at all. From sources.json when the user wrote one; the
+    community default stands in ONLY when the file does not exist at all, so
+    a hand-written file with a key removed keeps that table empty."""
     try:
         srcs = json.loads(SOURCES_FILE.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return None
+        return default_sources().get(kind) or None
     except json.JSONDecodeError as e:
         sys.exit(f"sources.json is not valid JSON: {e}")
     src = srcs.get(kind)
@@ -1353,13 +1400,17 @@ def main():
     elif args.duo:
         # Say which sources are missing, not just "some". Duos numbers never
         # fall back to the solo feed - they would be the wrong game's numbers.
-        print("  no Duos stats sources configured (heroes_duo / trinkets_duo /"
-              " cards_duo / comps_duo in sources.json) - offers will show without"
+        print("  no Duos numbers loaded (heroes_duo / trinkets_duo / cards_duo"
+              " / comps_duo empty or unreachable) - offers will show without"
               " numbers. `collect.py --local-feed` builds them from your own"
               " Duos games.")
     else:
-        print("  no stats sources configured - offers will show without numbers"
-              " (README: 'Bring your own stats')")
+        # With no sources.json the community feed is the default, so landing
+        # here means it was unreachable or empty - or a hand-written
+        # sources.json chose to leave these tables out.
+        print("  no numbers loaded (feed unreachable, or sources.json leaves"
+              " these tables empty) - offers will show without numbers"
+              " (README: 'Where the numbers come from')")
 
     det = OfferDetector(heroes, trinket_ids, hero_ids)
 

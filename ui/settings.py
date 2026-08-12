@@ -34,7 +34,7 @@ WHAT IS LIVE AND WHAT IS NOT, because a settings panel that quietly needs a
 restart is worse than one that says so:
 
     UI scale, badge nudge, every window on/off   applied as you change them
-    update settings, the data opt-in             applied immediately
+    update settings, the data sharing switch     applied immediately
     MMR bracket, time window, Duos, stats feed   next start, and the row says so
 
 The three that wait are the ones the log reader loads ONCE, when it starts: the
@@ -63,7 +63,7 @@ from tkinter import font as tkfont
 import bgtracker as bg
 import settings as store
 import update
-from paths import app_dir, bundle_dir
+from paths import app_dir
 
 from . import WINDOWS
 from .base import (ACCENT, AMBER, BAD, DIM, GOOD, LINE, PANEL, PANEL_HI, SOFT,
@@ -99,24 +99,11 @@ def _first_sentence(text, cap=112):
 def _community_sources():
     """The community feed's table urls, four tables plus their Duos twins.
 
-    Read out of ``sources.example.json``, which ships in the build, rather than
-    written out again here: two copies of a url is one copy that goes stale the
-    day the feed moves. Falls back to building them off the same host constant
-    the uploader uses, if that file is ever missing.
-    """
-    for base in (app_dir(), bundle_dir()):
-        try:
-            raw = json.loads((base / "sources.example.json").read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        out = {k: v for k, v in raw.items()
-               if not k.startswith("_") and isinstance(v, str)}
-        if out:
-            return out
-    host = store.COMMUNITY_UPLOAD.rstrip("/")
-    return {k + d: f"{host}/{k}{'-duo' if d else ''}-{{mmr}}-{{time}}.json"
-            for k in ("heroes", "trinkets", "cards", "comps")
-            for d in ("", "_duo")}
+    One implementation, in bgtracker.default_sources(): the same tables the
+    overlay reads when no sources.json exists at all, so what this panel
+    calls "community" and what a fresh install actually loads can never
+    drift apart."""
+    return dict(bg.default_sources())
 
 
 class SettingsPanel(tk.Toplevel):
@@ -395,24 +382,29 @@ class SettingsPanel(tk.Toplevel):
         self._check(sec, "Share my finished games with the community feed",
                     self.upload_var, self._on_upload_toggle)
         # This copy is a list of facts, so it is kept EXACTLY in step with what
-        # collect.upload() builds: every field in its record is named here, in
-        # order, and nothing else is sent with it. Change one, change both -
-        # tests/test_settings.py holds the two together.
+        # collect.upload_records() builds: every field in its record is named
+        # here, in order, and nothing else is sent with it. Change one, change
+        # both - tests/test_settings.py holds the two together.
         self.data_lbl = self._sub(sec,
-                  "Off by default: while this box is clear bgtracker does not "
-                  "upload your games. Ticked, one record per finished game is "
-                  "sent, holding exactly these fields: a scrambled game id, "
-                  "the date, the hero you played, your placement, whether it "
-                  "was Duos, the lobby tribes, the heroes you were offered, "
-                  "the trinkets you were offered, the trinkets you picked, "
-                  "the first 8 characters of this machine's random client id "
-                  "(sent as is, so the feed can group games from one install "
-                  "without knowing whose it is), and the bgtracker version "
-                  "that mined it. No name, no battletag, no log files. The "
-                  "pooled numbers are free for everyone and are never "
-                  "paywalled. Sending happens shortly after bgtracker starts, "
-                  "at most once every twelve hours; Share now sends "
-                  "immediately.")
+                  "On by default: the community numbers exist because players "
+                  "pool their games, and while this box is ticked this "
+                  "machine's games are part of that pool. Shortly after "
+                  "bgtracker starts it reads your whole log history once, "
+                  "then sends one record per finished game to the feed "
+                  "address below (a game's record leaves when the next game "
+                  "starts, or when you quit). Each record holds exactly these "
+                  "fields: a scrambled "
+                  "game id, the date, the hero you played, your placement, "
+                  "whether it was Duos, the lobby tribes, the heroes you were "
+                  "offered, the trinkets you were offered, the trinkets you "
+                  "picked, the first 8 characters of this machine's random "
+                  "client id (sent as is, so the feed can group games from "
+                  "one install without knowing whose it is), and the "
+                  "bgtracker version that mined it. No name, no battletag, no "
+                  "log files. This box is the off switch: clear it and "
+                  "nothing is sent; --no-upload does the same for one run "
+                  "without saving anything. The pooled numbers stay free for "
+                  "everyone either way, and are never paywalled.")
         self.netcheck_lbl = self._sub(sec,
                   "Separate from this box: when the update check is on (it is "
                   "on unless you turn it off), bgtracker asks its update "
@@ -440,7 +432,8 @@ class SettingsPanel(tk.Toplevel):
         tk.Label(sec, text="Numbers come from", bg=PANEL, fg=TEXT,
                  font=self.f_label, anchor="w").pack(fill="x")
         self.source_var = tk.StringVar(value=self._detect_source())
-        for key, label in (("community", "the community feed (everyone's shared games)"),
+        for key, label in (("community", "the community feed (everyone's shared "
+                                         "games; the default on a fresh install)"),
                            ("local", "your own games only (collected on this machine)"),
                            ("custom", "whatever sources.json already says")):
             tk.Radiobutton(sec, text=label, variable=self.source_var, value=key,
@@ -550,11 +543,13 @@ class SettingsPanel(tk.Toplevel):
         self._refresh_data()
 
     def _share_now(self):
-        """Collect what the log history holds, then send it. In a thread.
+        """Collect what the log history holds, then send ALL of it. In a thread.
 
-        Only ever from this button, or from the opt-in being on at startup (see
-        overlay.py). The result line is whatever actually happened, with the
-        error text verbatim when there is one.
+        The by-hand path: unlike the overlay's own sharing (pool.py), which
+        sends only what its ledger says has not gone, this resends everything
+        - the server de-dupes on uid, and "resend the lot" is the answer to
+        "did my games arrive?". The result line is whatever actually happened,
+        with the error text verbatim when there is one.
         """
         if not self.upload_var.get():
             self.share_lbl.configure(text="tick the box first: nothing is sent "
@@ -626,9 +621,14 @@ class SettingsPanel(tk.Toplevel):
         cur = bg.raw_source("heroes")
         feed = app_dir() / "data" / "feed"
         n_feed = len(list(feed.glob("*.json"))) if feed.is_dir() else 0
+        # No sources.json means the community default is in force - say so,
+        # rather than printing the url as if the user had configured it.
+        tail = ("" if bg.SOURCES_FILE.exists()
+                else "  (the built-in default; no sources.json written)")
         self.source_lbl.configure(
-            text="hero numbers load from: " + (cur or "nothing configured, so "
-                 "offers are named but carry no numbers"), fg=DIM)
+            text="hero numbers load from: " + ((cur + tail) if cur else
+                 "nothing configured, so offers are named but carry no "
+                 "numbers"), fg=DIM)
         self.feed_lbl.configure(
             text=(f"{n_feed} files in data/feed" if n_feed
                   else "no personal feed built yet"))

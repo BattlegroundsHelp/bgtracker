@@ -87,19 +87,25 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
 ## Partial
 
 - 🔨 **Community dataset** — the pooling half of the own-data collector: an
-  upload endpoint plus an aggregator that turns opt-in game records into the
-  stats feed the client already reads. The server is **up**, and it now splits
-  solo from Duos and publishes MMR brackets. What is still thin is the pool
-  itself: it holds a few dozen games, so most rows are flagged thin and most
-  brackets are not published yet. The terms were fixed before it existed:
-  upload is opt-in only (off by default), records are anonymised (hero,
-  placement, lobby tribes, final board — no names, no battletags), aggregates
-  are free for everyone, and the data is never sold or paywalled. Still
-  missing: comp classification (that file is written empty rather than faked),
-  per-tribe hero impact, and any real defence against a determined stats
-  poisoner. Meanwhile `collect.py --local-feed` gives every player their own
-  personal feed, and comps fall back to curated families computed from the live
-  card pool — so nothing shows a blank panel.
+  upload endpoint plus an aggregator that turns shared game records into the
+  stats feed the client already reads. The server is **up**, it splits solo
+  from Duos and publishes MMR brackets, and since 2026-08-12 the overlay
+  itself feeds it: with no `sources.json` the client reads the community feed,
+  and the overlay uploads each finished game on its own (`pool.py`). What is
+  still thin is the pool itself: it holds a few dozen games, so most rows are
+  flagged thin and most brackets are not published yet. **The terms CHANGED on
+  2026-08-12**, and saying so is part of the terms: uploading was opt-in and
+  off by default from the day the server existed until then; it is now **on by
+  default with an opt-out** (the settings panel's DATA box, or `--no-upload`
+  for one run), the author's call, made because a pool nobody feeds serves
+  nobody. The rest stands exactly as first promised: records are anonymised
+  (hero, placement, lobby tribes, offers; no names, no battletags), the
+  aggregates are free for everyone, and the data is never sold or paywalled.
+  Still missing: comp classification (that file is written empty rather than
+  faked), per-tribe hero impact, and any real defence against a determined
+  stats poisoner. Meanwhile `collect.py --local-feed` gives every player their
+  own personal feed, and comps fall back to curated families computed from the
+  live card pool — so nothing shows a blank panel.
 
 - 🔨 **Combat win % (a Bob's Buddy equivalent)** — shipped as BETA and labelled
   BETA on screen. Both warbands come out of Power.log before the fight

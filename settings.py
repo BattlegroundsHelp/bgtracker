@@ -80,10 +80,12 @@ DEFAULTS = {
     "mmr": "100",
     "time": "last-patch",
     "duo": False,
-    # OFF, and it stays off unless the user turns it on in the panel. Nothing
-    # about the upload is subtle: see the copy in ui/settings.py, which lists
-    # every field collect.py actually sends.
-    "upload": False,
+    # ON by default (the author's call, 2026-08-12; it shipped opt-in before
+    # that): everyone who plays feeds the community pool, and the off switch
+    # is the panel's DATA box or --no-upload for one run. Nothing about the
+    # upload is subtle: see the copy in ui/settings.py, which lists every
+    # field collect.py actually sends, and pool.py, which does the sending.
+    "upload": True,
     "upload_url": COMMUNITY_UPLOAD,
     "last_upload": None,          # epoch seconds of the last successful share
     "open_on_start": True,

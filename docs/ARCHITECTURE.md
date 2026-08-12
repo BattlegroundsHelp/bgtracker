@@ -88,12 +88,16 @@ at `zonePos=0`).
 
 ## Stats
 
-Tables are plain dicts keyed by cardId, loaded from whatever source **you**
-configure in `sources.json` — a URL (cached in `.cache/` for an hour, requested
-with a `bgtracker/<version>` User-Agent) or a local JSON file. The repo ships
-**no data and no default source**: aggregate placement data belongs to whoever
-collected it, and none of it is bundled or pointed at. Without a source every
-table is empty and the UI shows offers without numbers. Offer *recognition*
+Tables are plain dicts keyed by cardId, loaded from a URL (cached in `.cache/`
+for an hour, requested with a `bgtracker/<version>` User-Agent) or a local
+JSON file. With no `sources.json` the tables read **the community feed, our
+own pool of shared games** (`default_sources()` in bgtracker.py, the same
+URLs as sources.example.json); a `sources.json` you write replaces that
+entirely, including leaving a table empty by omitting its key. The repo still
+bundles **no data and points at nobody else's feed**: the community pool is
+built only from games players share (on by default since 2026-08-12, off
+switch in the settings panel), and aggregate data collected by anyone else
+stays theirs. Offer *recognition*
 never depends on stats — the hero/trinket ID sets come from HearthstoneJSON
 (`bg_ids()`), so detection works data-free. `collect.py` exists so the
 community can eventually stand on its own games instead.
@@ -215,7 +219,7 @@ restart is worse than one that says so:
 |---|---|
 | UI scale, badge nudge | as you drag |
 | every window on or off | immediately, built or destroyed |
-| the data opt-in, the update settings | immediately |
+| the data sharing switch (on by default), the update settings | immediately |
 | MMR bracket, period, Duos, which feed | next start, and the row says so |
 
 The four that wait are the tables the log reader loads once, at startup.

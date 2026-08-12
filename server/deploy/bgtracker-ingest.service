@@ -3,7 +3,7 @@
 #           cp deploy/bgtracker.env.example /etc/bgtracker.env  (then edit)
 #           systemctl enable --now bgtracker-ingest.service bgtracker-aggregate.timer
 [Unit]
-Description=bgtracker ingest endpoint (opt-in game uploads)
+Description=bgtracker ingest endpoint (shared game uploads, client opt-out)
 After=network.target
 
 [Service]

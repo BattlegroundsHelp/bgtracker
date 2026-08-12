@@ -7,7 +7,8 @@ simulate a game happening. Also drops a NEWER session dir mid-run to prove the
 rotation branch works.
 
 Needs the network once (fetches the card database for recognition, cached a
-day). Stats tables load only if you configured sources.json - the test passes
+day). Stats tables read your sources.json, or the community feed when there
+is none (the default since 2026-08-12) - the test passes
 either way. For the offline check CI runs, see test_regression.py.
 """
 import sys

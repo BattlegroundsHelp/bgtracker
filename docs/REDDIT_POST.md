@@ -1,5 +1,13 @@
 # Reddit post pack (r/BobsTavern)
 
+> **STALE, do not repost as is (2026-08-12).** The copy below predates a change
+> of terms: sharing games with the community feed is now ON BY DEFAULT with an
+> opt-out (the settings panel's DATA box, or `--no-upload` for one run), and
+> the community feed is the default stats source. Every "opt in and off by
+> default" sentence below was true when posted and is false now. Rewrite those
+> paragraphs from README "Where the numbers come from (and where they go)"
+> before using any of this again.
+
 Copy and paste source. Everything below the headings is the copy itself.
 
 The image slots below now name real files. All of them live in `docs/img/`, cut from a screen
@@ -264,13 +272,13 @@ What feature is a MUST to have in a hs battleground companion?
 
 Will edit the post with the name/link/github as soon as it's stable and ready
 
-EDIT, current as of v0.3.0 (EDIT 2, 3 and 4 are folded into this one section):
+EDIT, current as of v0.3.1 (EDIT 2, 3 and 4 are folded into this one section):
 
 It is out and it keeps growing: https://github.com/BattlegroundsHelp/bgtracker
 
 No account, no paywall, ever. Windows only. No Python needed: grab the zip from Releases, extract, run. Unsigned build, so Windows warns once; the source is public if you want to check first.
 
-On the data question this thread raised: it uses nobody else's data. It builds its own from your games, sharing is opt in and off by default, records are anonymised, and the pooled numbers are free for everyone. The settings panel lists every single field an upload contains.
+On the data question this thread raised: it uses nobody else's data. It builds its own pool from the games of the people who run it: as you play, the overlay shares one anonymised record per game (hero, placement, lobby tribes, what was offered and picked, no names, no battletags) and reads its numbers from that same pool. Sharing is on by default now. That is a change from the last edit and the call is mine: a pool nobody feeds serves nobody. The settings panel lists every single field that leaves and holds the off switch, and everything still works with it off. The aggregates stay free for everyone, never sold, never paywalled.
 
 WHAT IT DOES
 

@@ -44,6 +44,7 @@ import traceback
 from pathlib import Path
 
 import bgtracker as bg
+import pool as pool_mod
 import settings as settings_store
 import ui
 import ui.base
@@ -805,9 +806,10 @@ class Router:
 class App:
     """Tk loop + reader thread + router. No drawing lives here."""
 
-    def __init__(self, settings, demo=None, panel=True):
+    def __init__(self, settings, demo=None, panel=True, pool=None):
         self.q = queue.Queue()
         self.settings = settings
+        self.pool = pool          # community sharing (pool.py); None in tests
         self.panel = None
         # Scale FIRST, before a single window exists: a window built at the
         # right size never has to be repainted into it, and set_scale is a
@@ -881,6 +883,11 @@ class App:
     def _on_quit(self):
         if self.memory is not None:
             self.memory.stop()   # else msync outlives us and locks its binary
+        if self.pool is not None:
+            # One last chance for the game that just ended to reach the pool.
+            # Bounded (~2s) and best effort: quitting must never hang on a
+            # slow server - see pool.Pool.on_exit.
+            self.pool.on_exit()
 
     def quit(self):
         self.manager.quit()
@@ -891,6 +898,11 @@ class App:
                 name, payload = self.q.get_nowait()
                 if name == "game":
                     self.manager.reset_all()
+                    if self.pool is not None:
+                        # A new game means the previous one just finished and
+                        # is COMPLETE in the log: wake the sharing thread.
+                        # set() on an Event, so this cannot stall the UI.
+                        self.pool.on_game()
                 self.router.dispatch(name, payload)
         except queue.Empty:
             pass
@@ -981,44 +993,6 @@ def _announce_update(u):
               flush=True)
 
 
-def share_if_opted_in(settings):
-    """Contribute this machine's games to the community feed - opt-in only.
-
-    Three gates, in order: the saved opt-in (OFF by default, and nothing here
-    runs while it is off), a feed address, and at most one share every twelve
-    hours. Off the UI thread, and a failure is printed rather than raised: a
-    feed that is down is not a reason for the overlay to behave differently.
-    """
-    if not settings.get("upload"):
-        return None
-    url = (settings.get("upload_url") or "").strip()
-    if not url:
-        return None
-    last = settings.get("last_upload")
-    if last and time.time() - last < 12 * 3600:
-        return None
-
-    def work():
-        # Mining reads every Power.log the machine still has: measured at 53
-        # seconds over 1.6 GB of them. It is off the UI thread and disk bound
-        # rather than CPU bound, but that is still a minute of reading, so it
-        # waits until the overlay and the game have finished starting.
-        time.sleep(20)
-        try:
-            import collect
-            collect.collect()
-            res = collect.upload(url) or {}
-            if res.get("sent"):
-                settings.set("last_upload", time.time())
-        except Exception as e:
-            print(f"  ! sharing games failed: {type(e).__name__}: {e}",
-                  file=sys.stderr)
-
-    t = threading.Thread(target=work, name="share-games", daemon=True)
-    t.start()
-    return t
-
-
 def main():
     ap = argparse.ArgumentParser(description="Anchored, per-concern Battlegrounds overlay.")
     # Every flag defaults to None: only a flag the user actually typed becomes
@@ -1035,11 +1009,18 @@ def main():
                     help="print the loaded windows and the paths in use, then exit")
     ap.add_argument("--no-update-check", action="store_true",
                     help="do not look for a new version on start")
+    ap.add_argument("--no-upload", action="store_true", default=None,
+                    help="do not share finished games with the community feed "
+                         "for this run (the panel's DATA box turns it off for "
+                         "good; sharing is on by default)")
     ap.add_argument("--no-panel", action="store_true",
                     help="do not open the settings panel on start")
     args = ap.parse_args()
     s = settings_store.Settings.load(overrides={
-        "mmr": args.mmr, "time": args.time, "duo": args.duo})
+        "mmr": args.mmr, "time": args.time, "duo": args.duo,
+        # False only when typed: default=None keeps the flag out of the
+        # overrides entirely, so the file (or the on-by-default) rules.
+        "upload": False if args.no_upload else None})
     for problem in s.problems:
         print(f"  ! {problem}", file=sys.stderr)
     if args.diag:
@@ -1048,12 +1029,19 @@ def main():
     # cannot stall the overlay, and a dead server, no network or a captive
     # portal all end in silence (update.py). It never installs anything.
     update.start_check(_announce_update, disabled=args.no_update_check)
-    # A demo replays somebody's log through the windows; sharing games out of a
-    # run whose whole point is that it is not live would be wrong.
+    # Community sharing (pool.py): the full history shortly after start, then
+    # each game as it finishes, then a bounded flush on quit. On by default;
+    # the pool checks the switch itself at every boundary, so the panel's box
+    # and --no-upload both really stop it. A demo replays somebody's log
+    # through the windows; sharing games out of a run whose whole point is
+    # that it is not live would be wrong, so no pool exists there at all.
+    pool = None
     if not args.demo:
-        share_if_opted_in(s)
+        pool = pool_mod.Pool(s)
+        pool.start()
     App(s, Path(args.demo) if args.demo else None,
-        panel=bool(s.get("open_on_start")) and not args.no_panel).run()
+        panel=bool(s.get("open_on_start")) and not args.no_panel,
+        pool=pool).run()
 
 
 if __name__ == "__main__":

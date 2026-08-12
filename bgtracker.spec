@@ -43,6 +43,7 @@ HIDDEN = (
     + [
         "tkinter", "tkinter.font", "tkinter.ttk",
         "paths", "bgtracker", "collect",        # ui.session imports collect
+        "pool",                                 # overlay's community sharing
     ]
 )
 

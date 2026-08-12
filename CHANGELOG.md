@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.3.1-alpha (12 August 2026)
+
+- **Community sharing is now ON BY DEFAULT, and this is a change of an
+  earlier promise.** Until now every copy surface said uploading was opt in
+  and off by default. The author changed that default on 12 August 2026,
+  because a pool nobody feeds shows everybody thin numbers forever. Plainly:
+  unless you switch it off, the overlay now sends one anonymised record per
+  finished game to the community feed - your whole log history once, shortly
+  after start, then each game as it ends, and a last attempt when you quit.
+  The record holds exactly what it always held (the settings panel lists
+  every field: scrambled game id, date, hero, placement, Duos or not, lobby
+  tribes, the offers, the picks, an opaque per-install id, the client
+  version - no name, no battletag, no log files). **The off switch:** untick
+  "Share my finished games" in the settings panel's DATA section (saved), or
+  start with `--no-upload` (that run only, writes nothing). The aggregates
+  stay free for everyone and are never sold or paywalled, whether you share
+  or not. `collect.exe` remains as the by-hand path.
+- **The community feed is now the default stats source.** With no
+  `sources.json`, the overlay reads the community tables (the same URLs
+  `sources.example.json` documents), so a fresh install shows numbers and
+  gives games back with zero setup - both halves of the same default. Writing
+  your own `sources.json` replaces it entirely, exactly as before; nothing is
+  written to disk on your behalf.
+- New module `pool.py` does the sending: incremental (a ledger in
+  `data/uploaded.json` remembers what was sent, so nothing uploads twice),
+  throttled to one request every 2 seconds (a quarter of the server's own
+  rate limit), quiet on failure (a dead server means "try again at the next
+  game", never an error in your face), and always off the UI thread -
+  quitting waits at most about 2 seconds for a send in flight.
+
 ## v0.3.0-alpha (12 August 2026)
 
 Nearly all of it was asked for in the r/BobsTavern thread.

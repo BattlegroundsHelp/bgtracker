@@ -28,6 +28,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from ctypes import wintypes
 from pathlib import Path
@@ -82,6 +83,13 @@ def test_store():
     print(f"  no file at all      -> mmr={s.get('mmr')!r} ({s.source_of('mmr')}), "
           f"duo={s.get('duo')!r} ({s.source_of('duo')})")
     ok &= s.get("mmr") == "100" and s.source_of("mmr") == "default"
+
+    # Community sharing is ON by default (flipped from opt-in on 2026-08-12,
+    # the author's call): a fresh install with no settings file pools its
+    # games, and the panel's DATA box or --no-upload is the off switch.
+    print(f"  sharing default     -> upload={s.get('upload')!r} "
+          f"({s.source_of('upload')})")
+    ok &= s.get("upload") is True and s.source_of("upload") == "default"
 
     s.set("mmr", "25")
     s.set("duo", True)
@@ -298,7 +306,7 @@ def test_panel():
     print(f"  data section: share button={panel.share_btn['state']}, "
           f"line={panel.share_lbl.cget('text')!r}")
     if str(panel.share_btn["state"]) != "disabled":
-        print("    FAIL: games can be shared while the opt-in is off")
+        print("    FAIL: games can be shared while the switch is off")
         ok = False
     # A share that fails says what failed, in the words the network used. The
     # error is produced for real, against a port with nothing behind it.
@@ -323,13 +331,13 @@ def test_panel():
           f"switches for {len(ui.WINDOWS)} windows")
     ok &= set(panel.win_vars) == {c.KEY for c in ui.WINDOWS}
 
-    # -- the DATA copy names exactly what collect.upload() sends -----------
-    # The field list is read out of collect.upload's own source (the record
-    # literal), so adding a field there without naming it in the panel copy
-    # fails this test - the copy's claim is "exactly these fields".
+    # -- the DATA copy names exactly what collect.upload_records() sends ----
+    # The field list is read out of collect.upload_records' own source (the
+    # record literal), so adding a field there without naming it in the panel
+    # copy fails this test - the copy's claim is "exactly these fields".
     import inspect
     import re as _re
-    block = inspect.getsource(collect.upload).split("recs.append({", 1)[1]
+    block = inspect.getsource(collect.upload_records).split("recs.append({", 1)[1]
     sent = _re.findall(r'"(\w+)":', block.split("})", 1)[0])
     phrase = {"uid": "a scrambled game id", "date": "the date",
               "hero": "the hero you played", "place": "your placement",
@@ -341,16 +349,28 @@ def test_panel():
     txt = panel.data_lbl.cget("text")
     net = panel.netcheck_lbl.cget("text")
     unnamed = [f for f in sent if phrase.get(f) is None or phrase[f] not in txt]
-    print(f"  data copy: collect.upload sends {len(sent)} fields: {sent}")
-    print(f"    named in the opt-in copy: {len(sent) - len(unnamed)} of {len(sent)}"
+    print(f"  data copy: collect.upload_records sends {len(sent)} fields: {sent}")
+    print(f"    named in the sharing copy: {len(sent) - len(unnamed)} of {len(sent)}"
           + (f"  MISSING: {unnamed}" if unnamed else ""))
     if unnamed:
-        print("    FAIL: the opt-in copy does not name every field that is sent")
+        print("    FAIL: the sharing copy does not name every field that is sent")
         ok = False
     if "nothing leaves this machine" in txt:
         print("    FAIL: the copy still makes the blanket no-network claim")
         ok = False
-    for label, t in (("opt-in", txt), ("update-check", net)):
+    # Sharing is ON by default (author's decision, 2026-08-12) and the copy
+    # must say so plainly, name the off switch, and never repeat the old
+    # opt-in promise.
+    for needle in ("On by default", "--no-upload", "off switch",
+                   "free for everyone"):
+        if needle not in txt:
+            print(f"    FAIL: the sharing copy lost {needle!r}")
+            ok = False
+    for stale in ("Off by default", "opt-in", "opt in"):
+        if stale in txt:
+            print(f"    FAIL: the sharing copy still claims {stale!r}")
+            ok = False
+    for label, t in (("sharing", txt), ("update-check", net)):
         if "\u2014" in t or "\u2013" in t:
             print(f"    FAIL: em/en dash in the {label} copy")
             ok = False
@@ -621,6 +641,190 @@ def test_geometry():
     return bool(ok)
 
 
+def test_pool():
+    """The overlay's own community pooling (pool.py), against a REAL loopback
+    ingest server (server/ingest.py, the code the VPS runs), never the live
+    one. Proved, in order: the default is ON; --no-upload wins for one run
+    without touching the file; the opt-out persists; the sent ledger stops
+    re-uploads (and a record that GAINED data goes out again); a dead server
+    neither raises nor blocks and leaves the ledger alone; and the exit flush
+    is bounded."""
+    print("\n=== pool: on by default, ledger, throttle plumbing, dead server")
+    import http.server
+    import os
+    import shutil
+    import urllib.request
+
+    import bgtracker as bg
+    import collect
+    import pool as pool_mod
+
+    ok = True
+    tmp = Path(tempfile.mkdtemp(prefix="bgtracker-test-pool-"))
+    SFILE.unlink(missing_ok=True)
+
+    # ---- the real ingest server, on loopback, with a throwaway database
+    os.environ["BGTRACKER_DB"] = str(tmp / "games.db")
+    sys.path.insert(0, str(ROOT / "server"))
+    import importlib
+    import ingest
+    importlib.reload(ingest)               # re-read the env on a warm import
+    with ingest.db() as c:
+        c.executescript(ingest.SCHEMA)
+        ingest.migrate(c)
+        c.commit()
+
+    class Counting(ingest.Handler):
+        posts = []
+
+        def do_POST(self):
+            Counting.posts.append(self.path)
+            super().do_POST()
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Counting)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+
+    def health():
+        with urllib.request.urlopen(f"{base}/health", timeout=5) as r:
+            return json.loads(r.read())
+
+    # ---- point collect + pool at throwaway files, never the real ones
+    saved = (collect.DATA, collect.OUT, collect.CLIENT_ID_FILE,
+             pool_mod.SENT_FILE, bg.HS_LOGS)
+    collect.DATA = tmp / "data"
+    collect.OUT = collect.DATA / "games.jsonl"
+    collect.CLIENT_ID_FILE = collect.DATA / "client_id"
+    pool_mod.SENT_FILE = collect.DATA / "uploaded.json"
+    bg.HS_LOGS = tmp / "no-logs-here"      # the full-history mine finds nothing
+    try:
+        collect.DATA.mkdir()
+        games = [{"date": "2026_08_10", "game_id": f"Hearthstone_x:{i}",
+                  "hero": "BG26_HERO_104", "place": (i % 8) + 1, "duo": False,
+                  "tribes": ["MURLOC", "BEAST"], "offered_heroes": [],
+                  "offered_trinkets": [], "picked_trinkets": [],
+                  "source_log": "Hearthstone_x"} for i in range(3)]
+        # Game 0 predates the duos detector: no mode known. The server must
+        # store it unclassified, and the re-mine below must classify it.
+        games[0]["duo"] = None
+        collect.OUT.write_text(
+            "".join(json.dumps(g) + "\n" for g in games), encoding="utf-8")
+
+        # -- default ON, and --no-upload wins for a run without writing it --
+        s = store.Settings.load(SFILE)
+        s.set("upload_url", base)
+        p = pool_mod.Pool(s, spacing=0.01, start_delay=0)
+        flagged = store.Settings.load(SFILE, overrides={"upload": False})
+        p_flag = pool_mod.Pool(flagged, spacing=0.01, start_delay=0)
+        flagged.set("time", "past-seven")            # save something else
+        on_disk = json.loads(SFILE.read_text(encoding="utf-8"))
+        print(f"  default: enabled={p.enabled()}; with --no-upload: "
+              f"enabled={p_flag.enabled()}, upload source="
+              f"{flagged.source_of('upload')}, file holds {on_disk}")
+        if not p.enabled() or p_flag.enabled():
+            print("    FAIL: the default or the flag override is wrong")
+            ok = False
+        if "upload" in on_disk:
+            print("    FAIL: --no-upload leaked into the settings file")
+            ok = False
+        # enabled() is the gate the sharing thread checks before every sync;
+        # drive the flagged pool through that same gate, as the thread would.
+        if p_flag.enabled():
+            p_flag._sync(logs=[])
+        if Counting.posts:
+            print("    FAIL: a --no-upload run still uploaded")
+            ok = False
+
+        # -- the first sync backfills, the ledger stops the second ----------
+        p._sync(logs=[])
+        h = health()
+        first = list(Counting.posts)
+        p._sync(logs=[])
+        print(f"  backfill: {len(first)} POST(s), server now holds "
+              f"{h['games']} games; re-sync made "
+              f"{len(Counting.posts) - len(first)} request(s)")
+        if h["games"] != 3 or len(first) != 1:
+            print("    FAIL: the backfill did not land as one batch of 3")
+            ok = False
+        if len(Counting.posts) != len(first):
+            print("    FAIL: the ledger did not stop a re-upload")
+            ok = False
+
+        # -- a record that gained data since it was sent goes out again -----
+        games[0]["duo"] = True                        # a re-mine filled duo in
+        collect.OUT.write_text(
+            "".join(json.dumps(g) + "\n" for g in games), encoding="utf-8")
+        before = len(Counting.posts)
+        p._sync(logs=[])
+        h = health()
+        print(f"  refilled record: {len(Counting.posts) - before} more POST(s), "
+              f"server counts duo={h['duo']} (was 0), games={h['games']}")
+        if len(Counting.posts) - before != 1 or h["duo"] != 1 or h["games"] != 3:
+            print("    FAIL: the duo backfill never reached the server")
+            ok = False
+
+        # -- a dead server: no raise, no block, nothing marked sent ---------
+        games.append({"date": "2026_08_11", "game_id": "Hearthstone_x:99",
+                      "hero": "BG26_HERO_104", "place": 1, "duo": False,
+                      "tribes": [], "offered_heroes": [], "offered_trinkets": [],
+                      "picked_trinkets": [], "source_log": "Hearthstone_x"})
+        collect.OUT.write_text(
+            "".join(json.dumps(g) + "\n" for g in games), encoding="utf-8")
+        s.set("upload_url", "http://127.0.0.1:9")     # nothing listens there
+        t0 = time.time()
+        p._sync(logs=[])
+        took = time.time() - t0
+        print(f"  dead server: returned in {took:.2f}s, error="
+              f"{(p.last or {}).get('error')!r}")
+        if took > 10 or not (p.last or {}).get("error"):
+            print("    FAIL: a dead server raised, hung, or claimed success")
+            ok = False
+        ledger = json.loads(pool_mod.SENT_FILE.read_text(encoding="utf-8"))
+        if len(ledger.get("sent", {})) != 3:
+            print("    FAIL: a failed upload was marked sent")
+            ok = False
+
+        # -- the server comes back: the missed game goes at the next boundary
+        s.set("upload_url", base)
+        p._sync(logs=[])
+        h = health()
+        print(f"  server back: games={h['games']}, ledger holds "
+              f"{len(json.loads(pool_mod.SENT_FILE.read_text(encoding='utf-8'))['sent'])}")
+        if h["games"] != 4:
+            print("    FAIL: the game missed during the outage never arrived")
+            ok = False
+
+        # -- the opt-out persists, and the thread wiring shuts down bounded -
+        s.set("upload", False)
+        s2 = store.Settings.load(SFILE)
+        p2 = pool_mod.Pool(s2, spacing=0.01, start_delay=0)
+        print(f"  opt-out: reloaded upload={s2.get('upload')!r} "
+              f"({s2.source_of('upload')}), pool enabled={p2.enabled()}")
+        if s2.get("upload") is not False or p2.enabled():
+            print("    FAIL: the opt-out did not persist")
+            ok = False
+        p2.start()
+        p2.on_game()
+        t0 = time.time()
+        p2.on_exit(timeout=2.0)
+        took = time.time() - t0
+        print(f"  exit flush: returned in {took:.2f}s (bound is ~2s)")
+        if took > 3.0:
+            print("    FAIL: shutdown waited past its bound")
+            ok = False
+        if Counting.posts and Counting.posts[-1] != "/upload":
+            print("    FAIL: something other than /upload was posted")
+            ok = False
+    finally:
+        srv.shutdown()
+        (collect.DATA, collect.OUT, collect.CLIENT_ID_FILE,
+         pool_mod.SENT_FILE, bg.HS_LOGS) = saved
+        os.environ.pop("BGTRACKER_DB", None)
+        shutil.rmtree(tmp, ignore_errors=True)
+        SFILE.unlink(missing_ok=True)
+    return bool(ok)
+
+
 def main():
     results = {
         "store": test_store(),
@@ -628,6 +832,7 @@ def main():
         "panel": test_panel(),
         "what to show": test_window_toggle(),
         "geometry": test_geometry(),
+        "pool": test_pool(),
     }
     SFILE.unlink(missing_ok=True)
     POS_FILE.unlink(missing_ok=True)
