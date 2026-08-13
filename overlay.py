@@ -1067,6 +1067,43 @@ def diag(settings=None):
 
     # The single most common "it shows nothing" report is a display mode
     # question, so answer it here with the facts rather than in a FAQ.
+    # Monitors, because "the overlay is on the wrong screen" and "the badges
+    # are offset" are both dual-monitor questions and neither is answerable
+    # without knowing the layout.
+    try:
+        import ctypes
+        from ctypes import wintypes as _w
+        _u = ctypes.windll.user32
+        _PROC = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p,
+                                   ctypes.c_void_p, ctypes.POINTER(_w.RECT),
+                                   ctypes.c_double)
+        _mons = []
+
+        def _cb(h, hdc, lprc, data):
+            r = lprc.contents
+            _mons.append((r.left, r.top, r.right - r.left, r.bottom - r.top))
+            return 1
+
+        _u.EnumDisplayMonitors(None, None, _PROC(_cb), 0)
+        _lvl = "?"
+        try:
+            _u.GetThreadDpiAwarenessContext.restype = ctypes.c_void_p
+            _u.GetAwarenessFromDpiAwarenessContext.restype = ctypes.c_int
+            _u.GetAwarenessFromDpiAwarenessContext.argtypes = (ctypes.c_void_p,)
+            _lvl = {0: "unaware", 1: "system", 2: "per monitor"}.get(
+                _u.GetAwarenessFromDpiAwarenessContext(
+                    _u.GetThreadDpiAwarenessContext()), "?")
+        except Exception:
+            pass
+        print(f"\ndisplays      {len(_mons)}   dpi awareness: {_lvl}")
+        for x, y, w_, h_ in _mons:
+            print(f"  at {x},{y}  {w_}x{h_}")
+        if len(_mons) > 1 and _lvl != "per monitor":
+            print("  more than one display and NOT per-monitor aware: if the "
+                  "badges sit off the cards, this is why.")
+    except Exception as e:
+        print(f"\ndisplays      could not be read ({e})")
+
     hs = ui.base.hs_window_mode()
     print("\nHearthstone")
     if hs is None:

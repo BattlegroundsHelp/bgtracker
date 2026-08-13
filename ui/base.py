@@ -96,10 +96,29 @@ from tkinter import font as tkfont
 
 from paths import APP_DIR
 
-try:  # crisp text on scaled displays
-    ctypes.windll.shcore.SetProcessDpiAwareness(1)
-except Exception:
-    pass
+# DPI awareness, and it has to be PER MONITOR rather than merely "aware".
+#
+# With the old system-DPI level, Windows lies to a process about any monitor
+# whose scaling differs from the primary one: it hands back VIRTUALIZED
+# coordinates, so GetWindowRect for a game on the second screen comes back in
+# the wrong units. An overlay that positions itself from that rectangle lands
+# offset, or the wrong size, on exactly the setup people run - a scaled 4K
+# panel next to an unscaled 1080p one. Per-monitor v2 asks for the truth on
+# every monitor instead, which is what the window-following code needs.
+#
+# Three levels, newest first, because the newest is Windows 10 1703 and up:
+# an executable whose manifest already declares awareness makes all three fail
+# harmlessly, which is why nothing here treats failure as an error.
+for _dpi in (
+    lambda: ctypes.windll.user32.SetProcessDpiAwarenessContext(-4),  # per-mon v2
+    lambda: ctypes.windll.shcore.SetProcessDpiAwareness(2),          # per-monitor
+    lambda: ctypes.windll.shcore.SetProcessDpiAwareness(1),          # system
+):
+    try:
+        if _dpi():
+            break
+    except Exception:
+        continue
 
 # The folder the overlay owns: the repo when run from source, the folder
 # holding the exe in a frozen build. Never __file__ - frozen, that resolves
@@ -799,6 +818,34 @@ def hs_rect():
 _WS_CAPTION, _WS_POPUP, _WS_THICKFRAME = 0x00C00000, 0x80000000, 0x00040000
 
 
+class _MONITORINFO(ctypes.Structure):
+    _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT),
+                ("rcWork", wintypes.RECT), ("dwFlags", wintypes.DWORD)]
+
+
+def monitor_size(hwnd=None):
+    """The size of the monitor a window is on, primary if none is given.
+
+    GetSystemMetrics(0/1) is the PRIMARY monitor and nothing else, so anything
+    that measures a window against it is wrong the moment the game is dragged
+    to a second screen of a different size.
+    """
+    u = ctypes.windll.user32
+    try:
+        if hwnd:
+            # MONITOR_DEFAULTTONEAREST: a window half off the edge still
+            # belongs to the screen showing most of it.
+            mon = u.MonitorFromWindow(wintypes.HWND(hwnd), 2)
+            info = _MONITORINFO()
+            info.cbSize = ctypes.sizeof(_MONITORINFO)
+            if mon and u.GetMonitorInfoW(mon, ctypes.byref(info)):
+                m = info.rcMonitor
+                return m.right - m.left, m.bottom - m.top
+    except Exception:
+        pass
+    return u.GetSystemMetrics(0), u.GetSystemMetrics(1)
+
+
 def hs_window_mode():
     """What display mode Hearthstone is in, and whether we can draw over it.
 
@@ -832,7 +879,11 @@ def hs_window_mode():
     r = wintypes.RECT()
     u.GetWindowRect(hwnd, ctypes.byref(r))
     w, h = r.right - r.left, r.bottom - r.top
-    sw, sh = u.GetSystemMetrics(0), u.GetSystemMetrics(1)
+    # The screen to compare against is the one the GAME is on, not the primary
+    # one. GetSystemMetrics only ever describes the primary monitor, so on a
+    # second screen of a different size it would call a perfectly ordinary
+    # window "fullscreen", or a real fullscreen game a window.
+    sw, sh = monitor_size(hwnd)
     titled = bool(style & _WS_CAPTION)
     full = w >= sw and h >= sh
     if titled:

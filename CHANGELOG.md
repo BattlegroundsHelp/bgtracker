@@ -147,6 +147,26 @@
   with its own tier average, and which comps are built around it. The
   measurement lives in `grades.py` so nobody has to find this out twice.
 
+### Fixed
+
+- **Two monitors with different scaling put the badges in the wrong place.**
+  The overlay asked Windows only for system DPI awareness, and a system aware
+  process is handed virtualized coordinates for any monitor whose scaling
+  differs from the primary one. It reads the game's rectangle from exactly
+  that call, so on the common setup of a scaled 4K panel beside an unscaled
+  1080p one the badges landed offset or the wrong size, and it looked like the
+  tool was broken rather than misinformed. It now asks for per monitor
+  awareness, with fallbacks for older Windows. Two monitors were never the
+  problem on their own: the overlay follows the game in absolute desktop
+  coordinates, and mixed scaling was the problem.
+- The new display mode check measured the game against the primary monitor
+  rather than the monitor the game is on, so a second screen of a different
+  size would have been described wrongly.
+- `--diag` now prints every display with its position and size, the DPI
+  awareness actually granted, and the game's window mode, because "the badges
+  sit off the cards" and "nothing appears in fullscreen" are the two questions
+  that cannot be answered without them.
+
 ## v0.3.1-alpha (12 August 2026)
 
 - **Community sharing is now ON BY DEFAULT, and this is a change of an
