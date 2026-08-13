@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.3.3-alpha (13 August 2026)
+
+### Added
+
+- **`reconnect.exe`, a one-click disconnect and reconnect.** Reconnecting is
+  the standard fix for a hung fight, a frozen shop or animations that have
+  fallen behind, and doing it by hand costs a full client relaunch. This closes
+  the TCP socket Windows owns for the Hearthstone process, so the client shows
+  its own reconnect and rejoins the game in progress. It touches nothing inside
+  the game: no memory read, no file written. It is the same act as Sysinternals
+  TCPView's Close Connection, and combat resolves on Blizzard's servers, so
+  reconnecting cannot change a fight you are in.
+  Two limits, both deliberate and both stated rather than hidden. It needs an
+  Administrator shell, which is exactly why it is a SEPARATE program instead of
+  a button in the overlay: a free unsigned tool that wants Administrator to
+  start at all is a thing users are right to refuse, and this way the prompt
+  appears only when somebody runs it on purpose. And the Windows call is IPv4
+  only, so an IPv6 connection is reported and skipped rather than silently
+  counted as dropped; `reconnect.exe --restart` is the fallback that works
+  either way.
+
 ## v0.3.2-alpha (13 August 2026)
 
 ### Added

@@ -210,15 +210,19 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
 
 ## Open
 
-- ⬜ **Quick disconnect/reconnect button** - reconnecting is the standard fix
+- ✅ **Quick disconnect/reconnect button** - reconnecting is the standard fix
   for a hung fight or a frozen shop, and doing it by hand costs a full client
-  relaunch. It is doable: closing the TCP socket Windows owns for the
-  Hearthstone process makes the client show its own reconnect, which is what
-  Sysinternals TCPView does and touches nothing inside the game. It is not in
-  this repository, and the reason is a judgement rather than a technical one:
-  it needs an Administrator shell, and a free unsigned tool that asks for
-  Administrator to close a network connection is a thing users are right to be
-  suspicious of. Open until that trade is worth making.
+  relaunch. `reconnect.exe` ships in the download and closes the TCP socket
+  Windows owns for the Hearthstone process, so the client shows its own
+  reconnect and rejoins the game in progress. It touches nothing inside the
+  game: no memory is read, no file is written, and it is the same act as
+  Sysinternals TCPView's Close Connection. Two deliberate limits. It needs an
+  Administrator shell, which is why it is its OWN program rather than a button
+  in the overlay: a free unsigned tool that wants Administrator to start at all
+  is a thing users are right to refuse, and the elevation prompt now appears
+  only when somebody runs this on purpose. And the Windows call is IPv4 only,
+  so an IPv6 connection is reported and skipped rather than silently counted as
+  dropped; `--restart` is the fallback that works either way.
 - ⬜ **macOS** - untouched, and it is not a small job. The log parsing is plain
   Python and would port as is, but everything that puts a window over the game
   (finding the Hearthstone window, following it, click-through, staying hidden

@@ -83,6 +83,14 @@ Other programs in this folder:
   collect.exe          turn your own finished games into your own stats
                        (run "collect.exe", then "collect.exe --local-feed")
   fetch-art.exe        download card portraits into assets\\ (optional)
+  reconnect.exe        drops Hearthstone's connection so the client reconnects
+                       itself: the standard fix for a hung fight or a frozen
+                       shop, without a full relaunch. Run it only when you want
+                       it. It asks for Administrator, because closing a
+                       connection Windows owns needs that, and it is a separate
+                       program precisely so the overlay never has to ask. It
+                       reads no game memory and writes no game file; it closes
+                       a socket, the same thing Sysinternals TCPView does.
 
   bgtracker.exe --diag prints what loaded and where it reads and writes.
                        Paste that into any bug report.

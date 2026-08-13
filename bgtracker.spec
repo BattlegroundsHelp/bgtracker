@@ -129,6 +129,7 @@ a_overlay = analyze("overlay.py")
 a_cli = analyze("bgtracker.py")
 a_collect = analyze("collect.py")
 a_art = analyze("fetch_art.py")
+a_dcrc = analyze("dcrc.py")
 
 # console=True for the overlay too: the troubleshooting guide, the bug-report
 # instructions and the `hb` heartbeat all assume a console you can read. The
@@ -137,12 +138,20 @@ e_overlay = program(a_overlay, "bgtracker")
 e_cli = program(a_cli, "bgtracker-cli")
 e_collect = program(a_collect, "collect")
 e_art = program(a_art, "fetch-art")
+# reconnect.exe is its OWN program on purpose. Dropping a hung connection needs
+# an Administrator shell, and the overlay must never be the thing asking for
+# that: a free unsigned tool that wants Administrator to run at all is a thing
+# users are right to refuse. Kept separate, the overlay stays an ordinary
+# program and the elevation prompt appears only when somebody deliberately runs
+# this one.
+e_dcrc = program(a_dcrc, "reconnect")
 
 coll = COLLECT(  # noqa: F821
     e_overlay, a_overlay.binaries, a_overlay.datas,
     e_cli, a_cli.binaries, a_cli.datas,
     e_collect, a_collect.binaries, a_collect.datas,
     e_art, a_art.binaries, a_art.datas,
+    e_dcrc, a_dcrc.binaries, a_dcrc.datas,
     strip=False,
     upx=False,
     upx_exclude=[],
