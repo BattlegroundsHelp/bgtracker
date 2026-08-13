@@ -26,11 +26,11 @@ Two rules run through everything below:
 | area | window(s) | needs |
 |---|---|---|
 | [The pick moments](#the-pick-moments) | PICK YOUR HERO, PICK YOUR HERO POWER, PICK YOUR TRINKET, PICK ONE | nothing to detect and name; a stats source for numbers; hero tips ship with the tool |
-| [The tavern](#the-tavern-stars-and-comp-tags) | TAVERN | nothing; a cards source for real star ratings |
+| [The tavern](#the-tavern-stars-and-comp-tags) | TAVERN | nothing; a cards source turns the computed stars into measured ones |
 | [Comps and your board](#comps-and-your-board) | bgtracker | nothing; a comps source for measured rows; memory reader for your board |
 | [Lobby tribes](#lobby-tribes) | bgtracker, SESSION, MINIONS | nothing; memory reader for exactness at turn zero |
 | [Counters](#counters) | COUNTERS | nothing; memory reader for board tribe counts |
-| [Minion browser](#minion-browser) | MINIONS | nothing; a cards source for star ratings |
+| [Minion browser](#minion-browser) | MINIONS | nothing; a cards source turns the computed stars into measured ones |
 | [Session](#session) | SESSION | nothing; memory reader for MMR |
 | [The other players](#the-other-players) | OTHER PLAYERS | the memory reader - without it the window never appears |
 | [Combat odds BETA](#combat-odds-beta) | COMBAT | nothing |
@@ -266,6 +266,21 @@ minions show no stars rather than a rank invented out of three samples. A minion
 that appears on at least 10% of the winning boards of the comp you are leaning
 into gets one extra star.
 
+**Why an unmeasured minion gets no star at all.** A new install has measured
+almost nothing, so the obvious move is to rate the card from the card: its stat
+line against its own tavern tier, its keywords, whether a comp is built around
+it. That was built, and then measured against the mode, and it does not work.
+It ranks BODIES. Brann Bronzebeard, whose whole text is "your Battlecries
+trigger twice", came out at one star; a vanilla 10/11 came out at five; the
+score tracked raw stats at +0.67 to +0.90 in every tavern tier. The reason is
+not a weighting that needs tuning: in this mode what a card is worth lives in
+the board around it, and the board is not printed on the card. Drawing that
+opinion as a hollow star would have made a wrong rank honest, not right, so it
+is not drawn. What the browser shows instead for a card nobody has measured is
+what the card really proves: how its body compares with its own tier's average,
+and which comps are built around it. The measurement itself is kept in
+`grades.py` so the next person does not have to rediscover it.
+
 **The mechanical read.** Separate from the stars and from the comps, and the
 one rating in the panel that needs no stats source at all: what the card's own
 printed text says it pays off, against what your board is made of. `Beasts 4`
@@ -400,11 +415,14 @@ Click it and it expands into the whole current minion pool, filtered by:
   behind it).
 
 Rows show art, name, tavern tier, a tribe chip (`MIX` for multi tribe, `ALL` for
-an Amalgam), and stars when rated. Click a row to expand it: tier, tribes and
-traits, up to three lines of the real card text, and, only with a card table
-behind it, `3.92 avg when bought vs 4.21 without · 12,904 games`. Page with the
-up and down buttons or the mouse wheel; the footer reads `1-14 of 274` and
-either `rated vs own tier · top 100%` or `no stats source`.
+an Amalgam), and a filled `★` rating where real games measured the card, or no
+star at all where nothing has (see above). Click a row to expand it: tier,
+tribes and traits, up to three lines of the real card text, and then either the
+measurement - `3.92 avg when bought vs 4.21 without · 12,904 games`, only with
+a card table behind it - or, for a card nobody has measured, the line `no games
+have measured this one yet` followed by what the card itself proves, such as
+`6/6 body, tier 4 averages 8.5` and `core of pirate economy`. Page with the up
+and down buttons or the mouse wheel; the footer reads `1-14 of 274`.
 
 **When a minion pays off.** An opened row also splits that number across the
 game, when the configured feed carries a per turn breakdown: four stretches,

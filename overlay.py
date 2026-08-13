@@ -44,6 +44,7 @@ import traceback
 from pathlib import Path
 
 import bgtracker as bg
+import grades
 import pool as pool_mod
 import settings as settings_store
 import ui
@@ -206,6 +207,14 @@ class Reader(threading.Thread):
         except Exception as e:
             self.q.put(("status", f"loading failed: {e}"))
             return
+        try:
+            # The card-derived fallback grade, warmed HERE because it reads the
+            # card pool and a cold read can fetch: the shop rows are built on
+            # this thread, and no draw path may ever wait on a network call. A
+            # failure is not fatal - the shop just shows measured stars only.
+            grades.table()
+        except Exception:
+            pass
         self.q.put(("status", f"top {self.mmr}% · {self.period}"))
 
         det = bg.OfferDetector(heroes, trinket_ids, hero_ids, names=bg.card_names())
@@ -247,7 +256,6 @@ class Reader(threading.Thread):
         lean, lean_freq = None, {}
         me_name, last_gold, id_names = None, None, {}
         synergy = {}
-        viable_tribes = set()
         # The card database itself, indexed both ways: by name for the comp
         # engine, by cardId for the mechanical-synergy read (ui/synergy.py),
         # which needs each card's mechanics and printed text. One fetch, and it
@@ -502,42 +510,59 @@ class Reader(threading.Thread):
             if len(vals) >= 10:
                 _cut[t] = [vals[int(len(vals) * k)] for k in (0.08, 0.25, 0.50, 0.75)]
 
-        def star(st, name, tier=0):
-            """1..5 vs its own tier, +1 when it feeds the comp he's building.
-            With no per-minion data at all, fall back to the curated baseline:
-            a minion that is core to a lobby-viable comp family gets 3 stars
-            (4 when it also feeds the build he's on), everything else 0 - a
-            coarse but honest 'this one matters' signal instead of a dead UI."""
+        def star(st, name, tier=0, card=None):
+            """(stars, graded): 1..5 vs its OWN tier, +1 when it feeds the comp
+            he's building.
+
+            MEASURED WINS, per card: a card the table has a differential for is
+            never graded, and the first game that measures a card takes it off
+            the computed path on the next start. Only where the table has
+            nothing does grades.grade() rate the card ITSELF - stat line,
+            keywords, comp role - and `graded` says which of the two this is,
+            so the window can draw an opinion differently from a measurement.
+            No warm grade table (offline first run) means no star at all, which
+            is what this shop showed before grades existed.
+
+            The +1 for the build he is on rides on BOTH paths deliberately: it
+            is an adjustment to whatever the star was, and splitting it would
+            make the two paths behave differently in the player's hand."""
             delta = (st or {}).get("delta")
             cut = _cut.get(tier) or _cut.get(0)
-            if delta is None or not cut:
-                if not _cut:
-                    if synergy.get(name):
-                        return 4 if (lean and lean_freq.get(name, 0) >= 0.10) else 3
-                    rs = name_tribes.get(name) or set()
-                    if "ALL" in rs or rs & viable_tribes:
-                        return 2
-                return 0
-            s = 5 if delta <= cut[0] else 4 if delta <= cut[1] else \
-                3 if delta <= cut[2] else 2 if delta <= cut[3] else 1
+            if delta is not None and cut:
+                s = 5 if delta <= cut[0] else 4 if delta <= cut[1] else \
+                    3 if delta <= cut[2] else 2 if delta <= cut[3] else 1
+                graded = False
+            else:
+                # NO STAR. A grade read off the card alone was built and then
+                # measured against the mode, and it is a body ranking: Brann
+                # Bronzebeard ("your Battlecries trigger twice") came out 1
+                # star and a vanilla 10/11 came out 5, with the score tracking
+                # raw stats at +0.67 to +0.90 per tier. That is not a weighting
+                # to tune, it is what the card can tell you: in this mode the
+                # value of "trigger twice" lives in the board around it, and
+                # the board is not on the card. A hollow star still asserts a
+                # rank, so an honestly-labelled wrong rank is still wrong.
+                # What the card CAN say truthfully is said instead, next to the
+                # row: the tribe it pays off (ui/synergy.py) and the comp it is
+                # a core piece of. grades.py is kept because that measurement
+                # is worth having in the repo, and because the same machinery
+                # already produces those factual labels.
+                return 0, False
             if lean and lean_freq.get(name, 0) >= 0.10:
                 s = min(5, s + 1)
-            return s
+            return s, graded
 
         def rebuild_synergy():
             # minion name -> the best lobby-viable comp that actually runs it.
             # Curated baseline families count too - their cores come from the
             # live card pool, which is exactly what the shop tags need.
             synergy.clear()
-            viable_tribes.clear()
             tribes = lobby.tribes
             for c in comps:
                 if ((c["tribe"] is None or c["tribe"] in tribes)
                         and (c.get("baseline") or c["n"] >= COMP_MIN)):
                     for nm in c.get("key_wide") or []:
                         synergy.setdefault(nm, c["archetype"].replace("_", " "))
-                    if c.get("baseline") and c["tribe"] is not None:
-                        viable_tribes.add(c["tribe"])
 
         def minion_row(pos, name, card):
             base = card[:-2] if card.endswith("_G") else card
@@ -552,9 +577,10 @@ class Reader(threading.Thread):
             short, full = mech.format_synergy(
                 mech.synergy(pool_by_id.get(base), held_tribes, held_wild[0],
                              board_known=board_known))
+            stars, graded = star(st, name, tier, base)
             return {"pos": pos, "name": name, "card": card,
                     "avg": st.get("avg"), "n": st.get("n", 0),
-                    "tier": tier, "stars": star(st, name, tier),
+                    "tier": tier, "stars": stars, "graded": graded,
                     "comp": synergy.get(name), "syn": short, "syn_full": full,
                     "mine": lean is not None and lean_freq.get(name, 0) >= 0.10}
 
@@ -607,7 +633,10 @@ class Reader(threading.Thread):
                 return
             rolls[0] += 1
             self.q.put(("tavern", {
-                "rows": sorted(rows, key=lambda r: -r["stars"]),
+                # Equal stars: the measured one goes first. A computed star is
+                # an opinion about a card and a measured one is what happened
+                # in real games, so they cannot be tied.
+                "rows": sorted(rows, key=lambda r: (-r["stars"], r["graded"])),
                 "slots": sorted(rows, key=lambda r: r["pos"]),
                 "roll": rolls[0], "lean": lean}))
 

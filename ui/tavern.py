@@ -13,6 +13,16 @@ tag, then the tavern tier. Most specific wins, and only one is ever drawn:
 the row is 22px and it stays 22px, because the window's band is 232px and the
 layout law in ui/__init__.py is what keeps it off the comps window.
 
+The stars carry a second signal, and it is the one this window must never
+blur: a FILLED colour-graded ★ is measured (the buy-it-vs-skip-it differential
+out of a real card table). A minion nothing has measured gets NO star: a
+rating computed from the card alone was built and measured, and it ranks
+bodies (Brann Bronzebeard came out one star, a vanilla 10/11 came out five),
+because what makes a card good here lives in the board around it
+and the board is not printed on the card. The minion browser, which has the
+room, shows the two things the card CAN prove instead: how its body compares
+with its own tier's average, and which comps are built around it.
+
 The reroll law: a refresh RE-USES the existing TB_BaconShop_DragBuy tokens, so
 drag counts are zero on a reroll and nothing in the log ever says "this minion
 entered the shop". The reader therefore samples the whole shop and pushes a
@@ -94,8 +104,13 @@ class TavernWindow(BaseWindow):
             if ic is not None:
                 c.create_image(22, y + 10, image=ic, anchor="w")
                 art_frame(c, 21, y + 1, 41, y + 20, mine)
-            c.create_text(44, y + 10, text="★" * s, anchor="w",
-                          fill=STAR_COLOR.get(s, DIM), font=F_STARS)
+            # A star is a MEASUREMENT here or it is nothing. A row that
+            # arrives flagged graded carries a number read off the card, and
+            # that number ranks bodies rather than cards (see the note up top),
+            # so it is not drawn at all rather than drawn in another colour.
+            if s and not r.get("graded"):
+                c.create_text(44, y + 10, text="★" * s, anchor="w",
+                              font=F_STARS, fill=STAR_COLOR.get(s, DIM))
             c.create_text(90, y + 10, text=r["name"][:16], anchor="w",
                           fill=TEXT if r.get("mine") else SOFT, font=F_SUB)
             if r.get("mine"):

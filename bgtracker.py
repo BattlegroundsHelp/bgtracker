@@ -799,11 +799,18 @@ COMP_FAMILIES = [
 
 def bg_pool(refresh: bool = False) -> list:
     """The CURRENT Battlegrounds minion pool with the fields the comp engine
-    scores on (id/name/techLevel/races/mechanics/text), cached a day."""
+    and the card grades score on (id/name/techLevel/attack/health/races/
+    mechanics/text), cached a day."""
     CACHE_DIR.mkdir(exist_ok=True)
     path = CACHE_DIR / "bgpool.json"
     if not refresh and path.exists() and time.time() - path.stat().st_mtime < 86400:
-        return json.loads(path.read_text(encoding="utf-8"))
+        cached = json.loads(path.read_text(encoding="utf-8"))
+        # attack/health joined this row shape on 2026-08-13. A cache written
+        # before that carries every other field, so it would not look broken -
+        # it would quietly grade every minion as a 0/0 body. Treat the old
+        # shape as stale and refetch instead of trusting it.
+        if cached and "attack" in cached[0]:
+            return cached
     try:
         cards = _fetch(CARDS_URL)
     except Exception:
@@ -812,6 +819,7 @@ def bg_pool(refresh: bool = False) -> list:
         raise
     pool = [{"id": c["id"], "name": c.get("name", c["id"]),
              "techLevel": c.get("techLevel", 0),
+             "attack": c.get("attack", 0), "health": c.get("health", 0),
              "races": c.get("races") or ([c["race"]] if c.get("race") else []),
              "mechanics": c.get("mechanics") or [],
              "text": c.get("text") or ""}
@@ -968,6 +976,36 @@ def comp_roles_for(archetype: str, tribe: str | None) -> dict | None:
         return roles.get("menagerie") if "menagerie" in archetype.lower() else None
     owners = [e for e in roles.values() if e["tribes"] == [tribe]]
     return owners[0] if len(owners) == 1 else None
+
+
+def comp_role_hits(minion: dict) -> tuple[list, list]:
+    """(core families, add-on families) for ONE pool minion.
+
+    comp_role_split answers the same question for a whole comp row; this
+    answers it for a single card, which is what a per-card rating needs. The
+    rule is the one classify_board already uses, and nothing new is authored:
+    a card can only be core to a family whose tribe it carries (an Amalgam,
+    race ALL, carries them all), and it is core when its OWN keywords or text
+    match that family's core role in data/comp_roles.json. A family with no
+    roles entry is skipped rather than guessed at, and a card that misses the
+    core role but matches the add-on role is reported as support - the two are
+    never merged, because "the engine" and "what you layer on it" are worth
+    different amounts.
+    """
+    roles = comp_roles()
+    core, addon = [], []
+    races = minion.get("races") or []
+    for _order, archetype, tribe, _mechs, _pattern in COMP_FAMILIES:
+        entry = roles.get(archetype)
+        if entry is None:
+            continue
+        if tribe is not None and tribe not in races and "ALL" not in races:
+            continue
+        if _role_hit(minion, entry["core"]):
+            core.append(archetype)
+        elif _role_hit(minion, entry.get("addons")):
+            addon.append(archetype)
+    return core, addon
 
 
 def pool_by_name(refresh: bool = False) -> dict:

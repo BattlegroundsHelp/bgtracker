@@ -19,11 +19,15 @@ Three rules it exists to keep:
    which are in every lobby. Touching a tribe chip hands control to the
    player; the ``lobby`` chip gives it back. The header dot says whether the
    lobby is exact (memory read) or only what has been seen so far.
-3. **No stats, no numbers.** Ratings come from a configured card table only.
-   With none - which is the default, since the stats feed is bring-your-own -
-   the browser still browses: names, tiers, tribes, traits and card text, and
-   the footer says plainly that there is no stats source. A minion inside a
-   configured table that has no row of its own shows a dash, never a guess.
+3. **No stats, no invented stats.** A NUMBER here only ever comes from a
+   configured card table: placements, sample sizes and the turn strip are
+   measured or they are absent. What a minion nobody has measured yet gets
+   instead is NO star and two facts it can check: how its body compares with
+   its own tier's average, and which comps are built around it. A rating
+   computed from the card alone was built and measured first, and it ranked
+   bodies - Brann Bronzebeard one star, a vanilla 10/11 five - so it was not
+   shipped. With neither a table nor a warm pool the browser still browses:
+   names, tiers, tribes, traits and card text.
 
 An opened row also answers WHEN a minion pays off, if the configured feed
 carries a per-turn breakdown: four stretches of the game, each showing the
@@ -49,6 +53,7 @@ import textwrap
 import threading
 
 import bgtracker as bg
+import grades
 
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_STARS, F_SUB, F_TITLE,
                    GOOD, LINE, OFF_CHIP, ON_CHIP, PANEL, SHADE, SOFT,
@@ -245,6 +250,14 @@ class BrowserWindow(BaseWindow):
             tiers = {}
         for m in pool:                    # the pool already knows its own tier
             tiers.setdefault(m["id"], m["techLevel"])
+        try:
+            # The card-derived grade for everything the table has not measured.
+            # Warmed HERE, on the loader thread, for the same reason the pool
+            # is: a cold build reads the card pool and the draw path may never
+            # wait on that. It failing costs the grades, nothing else.
+            grades.table()
+        except Exception:
+            pass
         self.pool = pool
         self.cards = cards
         self.turns = turns
@@ -354,6 +367,12 @@ class BrowserWindow(BaseWindow):
         """True only when a real card table is behind the stars."""
         return bool(self.bands)
 
+    @property
+    def graded(self):
+        """True when the card-derived fallback is warm. It needs no stats
+        source at all - only the card database the browser already reads."""
+        return grades.ready()
+
     def stars(self, m):
         """1..5 against its OWN tier, or None when nothing measured it."""
         st = self.cards.get(m["id"])
@@ -363,6 +382,26 @@ class BrowserWindow(BaseWindow):
             return None
         return (5 if delta <= cut[0] else 4 if delta <= cut[1] else
                 3 if delta <= cut[2] else 2 if delta <= cut[3] else 1)
+
+    def rating(self, m):
+        """(stars, graded) - what this row should draw.
+
+        MEASURED WINS, per card and not per table: a card with a real
+        differential is measured even in a pool where almost nothing else is,
+        and the day the pool can measure a card it stops being graded. Only
+        where the table has nothing does the card's own grade answer, and the
+        second value says which of the two it was so the row can draw an
+        opinion differently from a measurement.
+        """
+        s = self.stars(m)
+        if s is not None:
+            return s, False
+        # No computed star. See the note in overlay.py's star(): a grade read
+        # off the card alone ranks bodies, so it put Brann Bronzebeard at 1
+        # star and a vanilla 10/11 at 5. The row still carries what the card
+        # really says (its tier, its tribe, its text, and the comps it is core
+        # to), which is useful and cannot be wrong.
+        return None, False
 
     # --------------------------------------------------------------- filters
 
@@ -392,9 +431,15 @@ class BrowserWindow(BaseWindow):
         rows = [m for m in self.pool if self._match(m)]
         if self.sort == "name":
             rows.sort(key=lambda m: m["name"].lower())
-        elif self.sort == "rating" and self.rated:
-            rows.sort(key=lambda m: (self.stars(m) is None, -(self.stars(m) or 0),
-                                     -m["techLevel"], m["name"].lower()))
+        elif self.sort == "rating" and (self.rated or self.graded):
+            # Equal stars: measured before graded. One is what happened in real
+            # games and the other is an opinion about a card, so a tie between
+            # them is not a tie.
+            def key(m):
+                s, graded = self.rating(m)
+                return (s is None, -(s or 0), graded, -m["techLevel"],
+                        m["name"].lower())
+            rows.sort(key=key)
         else:
             rows.sort(key=lambda m: (m["techLevel"], m["name"].lower()))
         return rows
@@ -450,7 +495,8 @@ class BrowserWindow(BaseWindow):
                 self.trait_i = (self.trait_i + step) % max(1, len(self.traits))
             self.top = 0
         elif kind == "sort":
-            opts = [s for s in SORTS if s != "rating" or self.rated]
+            opts = [s for s in SORTS
+                    if s != "rating" or self.rated or self.graded]
             self.sort = (opts[(opts.index(self.sort) + 1) % len(opts)]
                          if self.sort in opts else opts[0])
             self.top = 0
@@ -616,14 +662,18 @@ class BrowserWindow(BaseWindow):
         elif "ALL" in m["races"]:
             c.create_text(self.WIDTH - 52, y + 14, text="ALL", fill=SOFT,
                           font=F_CHIP)
-        if self.rated:
-            s = self.stars(m)
+        if self.rated or self.graded:
+            s, graded = self.rating(m)
             if s is None:
                 c.create_text(self.WIDTH - 74, y + 14, text="—", anchor="e",
                               fill=DIM, font=F_SUB)
             else:
-                c.create_text(self.WIDTH - 74, y + 14, text="★" * s, anchor="e",
-                              fill=STAR_COLOR.get(s, DIM), font=F_STARS)
+                # Filled and colour graded = measured. Hollow and muted = read
+                # off the card. Same glyph rule as the tavern row, so the two
+                # windows never say the same thing two ways.
+                c.create_text(self.WIDTH - 74, y + 14, anchor="e", font=F_STARS,
+                              text="★" * s,
+                              fill=SOFT if graded else STAR_COLOR.get(s, DIM))
 
     def _detail(self, m):
         """The opened row: what it is, what it does, and - only with a real
@@ -642,6 +692,8 @@ class BrowserWindow(BaseWindow):
             out.append((f"{st['avg']:.2f} avg when bought vs "
                         f"{st['avg'] - st['delta']:.2f} without · "
                         f"{st.get('n', 0):,} games", ACCENT))
+        else:
+            out.extend(self._grade_lines(m))
         rows = self.turns.get(m["id"])
         if rows:
             out.append((TURNS, self._turn_bands(rows)))
@@ -650,6 +702,31 @@ class BrowserWindow(BaseWindow):
             # no per-turn split. Say which of the two it is rather than
             # leaving a silence that reads like "this card is never good".
             out.append(("no turn-by-turn split in this source", DIM))
+        return out
+
+    @staticmethod
+    def _grade_lines(m):
+        """The opened row for a minion NOBODY HAS MEASURED.
+
+        There is deliberately no star here. A rating computed from the card
+        alone was built and measured, and it ranks BODIES: it put Brann
+        Bronzebeard at one star and a vanilla 10/11 at five, because the value
+        of "your Battlecries trigger twice" lives in the board around it and
+        the board is not on the card. Labelling that opinion hollow would not
+        have made it right.
+
+        What is left is what the card really says, and every line of it is
+        checkable: how its body compares with its own tier's average, and which
+        comps are built around it. Those come from the same pass that scored
+        the card, so they cannot drift from anything else the window draws.
+        """
+        why = [w for w in (grades.why(m["id"]) or [])
+               if "body" in w or "core" in w or "supports" in w]
+        if not why:
+            return []
+        out = [("no games have measured this one yet", AMBER)]
+        for line in textwrap.wrap(", ".join(why), 52)[:2]:
+            out.append((line, DIM))
         return out
 
     def _detail_h(self, detail):
@@ -694,8 +771,18 @@ class BrowserWindow(BaseWindow):
         c.create_text(78, y + 8, anchor="w", fill=DIM, font=F_SUB,
                       text=f"{self.top + 1 if drawn else 0}-{self.top + drawn}"
                            f" of {total}")
+        # What the stars on screen actually are, in the smallest honest words.
+        # Both halves get named whenever both are on screen: a player who never
+        # opens a row still has to be able to tell an opinion from a
+        # measurement.
+        if self.rated and self.graded:
+            note, fill = f"★ measured top {self.mmr}%", DIM
+        elif self.rated:
+            note, fill = f"rated vs own tier · top {self.mmr}%", DIM
+        elif self.graded:
+            note, fill = "no games have measured these yet", AMBER
+        else:
+            note, fill = "no stats source", AMBER
         c.create_text(self.WIDTH - 14, y + 8, anchor="e", font=F_SUB,
-                      fill=DIM if self.rated else AMBER,
-                      text=(f"rated vs own tier · top {self.mmr}%"
-                            if self.rated else "no stats source"))
+                      fill=fill, text=note)
         return y + 24

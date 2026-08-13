@@ -156,7 +156,7 @@ Down the **right** edge of the game - the state of play:
 |---|---|---|
 | **COUNTERS** | turn, gold `cur/max`, your tavern tier and what the next tier costs *right now*, gold banked for next turn, elemental and Blood Gem buffs, what tribes your board is made of, free rerolls, triples, turns until the next trinket | whenever the log has stated any of it |
 | **COMBAT** | which round is fighting, and one clearly-flagged BETA line of win / tie / loss odds for the fight on screen | from the fight starting to the tavern coming back |
-| **TAVERN** | the shop you are looking at - a star rating per minion, which ones feed the comp you are building, what each one pays off against your board ("Beasts 4", read from the card's own text so it needs no stats source), gold. With a `cards` source the stars are measured inside the minion's own tavern tier; without one they fall back to a coarse curated signal | every roll, buy and sell, in the tavern only |
+| **TAVERN** | the shop you are looking at - a star rating per minion, which ones feed the comp you are building, what each one pays off against your board ("Beasts 4", read from the card's own text so it needs no stats source), gold. With a `cards` source the stars are measured inside the minion's own tavern tier; a minion no games have rated yet gets no star, because a rating computed from the card alone was measured and it ranks bodies rather than cards | every roll, buy and sell, in the tavern only |
 | **bgtracker** | tribe chips (colored = in this lobby), the comps still open to you, your board's synergy with them. Click a comp to expand its core minions | always |
 
 Down the **left** edge - the cards you are choosing between, so nothing sits on

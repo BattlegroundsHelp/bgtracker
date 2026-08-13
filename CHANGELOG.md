@@ -4,6 +4,23 @@
 
 ### Added
 
+- **Every minion has a rating from the first game, and you can tell it apart
+  from a real one.** A new install has measured almost nothing - the pool is
+  about sixty games - so the shop used to be a row of blank stars exactly when
+  someone is deciding whether to keep the tool. Now a minion no games have
+  rated yet gets a star computed from the CARD: its attack and health against
+  what its own tavern tier typically offers (the tier averages are recomputed
+  from the live card data every patch, so they cannot go stale), its keywords,
+  whether it is a core piece of one of the comp families, and its tribe. No
+  statistics from anywhere are involved and none are implied: a computed star
+  is drawn as a **hollow ☆ in one muted colour** against the **filled colour
+  graded ★** of a measured one, on the shop rows, the badges over the cards and
+  in the minion browser, and each surface says in words what the hollow one
+  means. **Measured always wins, per card** - the first games that rate a
+  minion take it off the computed path. The weights are a judgement, not a
+  measurement, and every one of them is written down with its reasoning at the
+  top of `grades.py` so it can be argued with in a pull request.
+
 - **Hero-power stats, which nobody else publishes at any price.** Some heroes
   make you choose a power, and no stats site sells numbers for that choice, so
   the pool computes its own. The collector mines which powers you were offered
@@ -113,6 +130,22 @@
   ones replace their old rows in the shared pool on the next share.
 - `server/deploy/deploy.sh` removes the synthetic game it posts to prove the
   write path works. It was leaving one fake row in the live pool per deploy.
+
+### Changed
+
+- **A minion nothing has measured now shows no star, and that is the result of
+  building the alternative and throwing it away.** A rating computed from the
+  card itself was built (stat line against its own tavern tier, keywords, comp
+  role) so that a fresh install would be useful before the shared pool can
+  measure anything. Measured against the mode, it ranks bodies: Brann
+  Bronzebeard, whose text is "your Battlecries trigger twice", came out at one
+  star, a vanilla 10/11 came out at five, and the score tracked raw stats at
+  +0.67 to +0.90 in every tier. That is not a weighting to tune. What a card is
+  worth here lives in the board around it, and the board is not printed on the
+  card, so the rating was cut rather than dressed up as a hollow star. The
+  minion browser shows what the card does prove instead: how its body compares
+  with its own tier average, and which comps are built around it. The
+  measurement lives in `grades.py` so nobody has to find this out twice.
 
 ## v0.3.1-alpha (12 August 2026)
 

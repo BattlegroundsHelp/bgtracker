@@ -1412,7 +1412,14 @@ class BadgeStrip(tk.Toplevel):
             col = avg_color(shown)
             if r.get("stars") is not None:
                 s = r.get("stars", 0)
-                shadow_text(c, cx, b(12), "★" * s, STAR_COLOR.get(s, DIM),
+                # Same two-glyph rule as the tavern row it mirrors: filled and
+                # colour graded means measured, hollow and muted means read off
+                # the card (grades.py). The badge sits ON the card art, so it
+                # is the one place the distinction must survive a scale change
+                # and a busy background - a glyph does, a hairline would not.
+                graded = bool(r.get("graded"))
+                shadow_text(c, cx, b(12), "★" * s,
+                            SOFT if graded else STAR_COLOR.get(s, DIM),
                             F_BADGE_STARS)
                 # Same ranking as the tavern row: the mechanical read wins the
                 # one line under the stars whenever it has a count behind it,
