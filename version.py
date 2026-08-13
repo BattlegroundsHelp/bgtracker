@@ -18,8 +18,8 @@ fetches.
 The comparison is semver's, not a string compare: "0.10.0" is newer than
 "0.9.0" (a string compare says the opposite, which is the classic way an
 updater goes quiet forever), and a prerelease is older than the release it
-leads to - the release it leads to being its OWN, so 0.3.1-alpha < 0.3.1.
-It is still newer than everything before that: 0.3.1-alpha > 0.3.0, measured,
+leads to - the release it leads to being its OWN, so 0.3.2-alpha < 0.3.1.
+It is still newer than everything before that: 0.3.2-alpha > 0.3.0, measured,
 which is what makes an alpha worth offering at all.
 """
 
@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import re
 
-VERSION = "0.3.1-alpha"
+VERSION = "0.3.2-alpha"
 
 #: What this build calls itself over HTTP. Also what the aggregator logs.
 USER_AGENT = f"bgtracker/{VERSION}"
@@ -39,7 +39,7 @@ _VERSION_RE = re.compile(r"^v?(\d+(?:\.\d+)*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za
 
 
 def parse(v: str) -> tuple[tuple[int, int, int], tuple[str, ...]]:
-    """("0.3.1-alpha") -> ((0, 3, 1), ("alpha",)). Raises ValueError on junk.
+    """("0.3.2-alpha") -> ((0, 3, 1), ("alpha",)). Raises ValueError on junk.
 
     Junk is a real case, not a theoretical one: the updater has to survive a
     manifest that has been truncated, edited by hand, or replaced by a captive

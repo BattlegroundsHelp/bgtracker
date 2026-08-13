@@ -1,25 +1,25 @@
 # Changelog
 
-## Unreleased
+## v0.3.2-alpha (13 August 2026)
 
 ### Added
 
-- **Every minion has a rating from the first game, and you can tell it apart
-  from a real one.** A new install has measured almost nothing - the pool is
-  about sixty games - so the shop used to be a row of blank stars exactly when
-  someone is deciding whether to keep the tool. Now a minion no games have
-  rated yet gets a star computed from the CARD: its attack and health against
-  what its own tavern tier typically offers (the tier averages are recomputed
-  from the live card data every patch, so they cannot go stale), its keywords,
-  whether it is a core piece of one of the comp families, and its tribe. No
-  statistics from anywhere are involved and none are implied: a computed star
-  is drawn as a **hollow ☆ in one muted colour** against the **filled colour
-  graded ★** of a measured one, on the shop rows, the badges over the cards and
-  in the minion browser, and each surface says in words what the hollow one
-  means. **Measured always wins, per card** - the first games that rate a
-  minion take it off the computed path. The weights are a judgement, not a
-  measurement, and every one of them is written down with its reasoning at the
-  top of `grades.py` so it can be argued with in a pull request.
+- **A rating computed from the card was built, measured, and cut.** A new
+  install has measured almost nothing, so the shop is a row of blank stars
+  exactly when someone is deciding whether to keep the tool. The obvious fix is
+  to rate the card from the card: stat line against its own tavern tier,
+  keywords, whether an archetype is built around it. That was built and wired
+  in, drawn as a hollow star so an opinion could never pass for a measurement.
+  Then it was measured against the mode and it ranks BODIES: Brann Bronzebeard,
+  whose whole text is "your Battlecries trigger twice", came out at one star;
+  Titus Rivendare at one; a vanilla 10/11 at five; the score tracked raw stats
+  at +0.67 to +0.90 in every tier. That is not a weighting to tune. What a card
+  is worth here lives in the board around it, and the board is not printed on
+  the card. A hollow star still asserts a rank, and an honestly labelled wrong
+  rank is still wrong, so it was cut rather than shipped. An unmeasured minion
+  shows no star, and the minion browser shows what the card does prove instead:
+  how its body compares with its own tier average, and which comps are built
+  around it. The measurement is kept in `grades.py` so nobody repeats it.
 
 - **Hero-power stats, which nobody else publishes at any price.** Some heroes
   make you choose a power, and no stats site sells numbers for that choice, so
@@ -27,8 +27,8 @@
   and which you took, the aggregator builds a `heropowers` table exactly the way
   it builds the hero table (the offer is the denominator, the pick is the
   numerator, the placement is the game's own result), and the client can read
-  it. Plainly: **the PICK YOUR HERO POWER panel does not read that table yet**,
-  so on screen those options still mostly show a dash. Only some heroes offer
+  it. The PICK YOUR HERO POWER panel reads that table and only that table: never
+  the owning hero's average, never the card table. Only some heroes offer
   the choice at all, so this is a small table by nature and it will need a much
   bigger pool than today's before a row clears the 30 game floor.
 - **Comps are classified now.** Every shared final board goes through the
@@ -132,22 +132,6 @@
   write path works. It was leaving one fake row in the live pool per deploy.
 
 ### Changed
-
-- **A minion nothing has measured now shows no star, and that is the result of
-  building the alternative and throwing it away.** A rating computed from the
-  card itself was built (stat line against its own tavern tier, keywords, comp
-  role) so that a fresh install would be useful before the shared pool can
-  measure anything. Measured against the mode, it ranks bodies: Brann
-  Bronzebeard, whose text is "your Battlecries trigger twice", came out at one
-  star, a vanilla 10/11 came out at five, and the score tracked raw stats at
-  +0.67 to +0.90 in every tier. That is not a weighting to tune. What a card is
-  worth here lives in the board around it, and the board is not printed on the
-  card, so the rating was cut rather than dressed up as a hollow star. The
-  minion browser shows what the card does prove instead: how its body compares
-  with its own tier average, and which comps are built around it. The
-  measurement lives in `grades.py` so nobody has to find this out twice.
-
-### Fixed
 
 - **Two monitors with different scaling put the badges in the wrong place.**
   The overlay asked Windows only for system DPI awareness, and a system aware
