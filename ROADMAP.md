@@ -178,14 +178,14 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
   player their own personal feed, and comps fall back to curated families
   computed from the live card pool - so nothing shows a blank panel.
 
-- 🔨 **Hero-power numbers in the pick panel** - the feed exists (see Shipped
-  above) and `sources.example.json` documents the key, but the overlay does not
-  read it yet: PICK YOUR HERO POWER still scores its options against the
-  `cards` table, so a number appears only when that source happens to carry a
-  row for the power's exact cardId, and otherwise every option shows a dash.
-  Nothing is borrowed from the hero that owns the power. What is left is one
-  wire, from `bgtracker.hero_power_table` into the panel's rows.
-
+- ✅ **Hero-power numbers in the pick panel** - the pick panel used to name
+  the options and rate none of them, because no feed anywhere published hero
+  power numbers. The collector mines them now (the choose-one block whose every
+  option is a hero power), the aggregator publishes a table in the same shape
+  as the hero one, and PICK YOUR HERO POWER reads THAT table: never the owning
+  hero's average, and never the card table, which could not match a hero power
+  by construction. An option the feed does not carry, or carries too thinly to
+  stand behind, draws a dash.
 - 🔨 **Combat win % (a Bob's Buddy equivalent)** - shipped as BETA and labelled
   BETA on screen. Both warbands come out of Power.log before the fight
   animates, and a Monte Carlo sim over the vanilla rules, derived deathrattle
