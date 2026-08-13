@@ -66,7 +66,7 @@ MMR_MEASURED = "2026-08-07"
 
 # The community feed's ingest endpoint: the host sources.example.json already
 # ships, which is also the box that serves the update manifest.
-COMMUNITY_UPLOAD = "https://165-227-41-29.sslip.io"
+COMMUNITY_UPLOAD = "http://165.227.41.29"
 
 SCALE_MIN, SCALE_MAX = 0.75, 3.0        # mirrors ui.base, without importing Tk
 BADGE_MIN, BADGE_MAX = 0.5, 2.0

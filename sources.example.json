@@ -1,21 +1,21 @@
 {
-  "_comment": "You do NOT need this file: with no sources.json the overlay already reads the community feed below (built only from games players shared, free and never paywalled) - these urls document that default. The overlay also SHARES your finished games back to that feed by default; the settings panel's DATA section lists every field that leaves and holds the off switch (--no-upload stops it for one run). Copy this file to sources.json only to read something else: (1) your own games, via `collect.py` then `collect.py --local-feed`, which writes sources.json for you pointing at data/feed; (2) any source you have the right to use. {time} = all-time | past-seven | past-three | last-patch, {mmr} = 100|50|25|10|1. A value may be an https URL or a local file path. A sources.json replaces the default entirely: delete a line and that table stays empty, the tool shows 'no numbers' rather than failing. The community feed is young, so expect thin samples, flagged as thin, until it fills up. Send your whole backlog by hand with: collect.py --upload https://165-227-41-29.sslip.io",
+  "_comment": "You do NOT need this file: with no sources.json the overlay already reads the community feed below (built only from games players shared, free and never paywalled) - these urls document that default. The overlay also SHARES your finished games back to that feed by default; the settings panel's DATA section lists every field that leaves and holds the off switch (--no-upload stops it for one run). Copy this file to sources.json only to read something else: (1) your own games, via `collect.py` then `collect.py --local-feed`, which writes sources.json for you pointing at data/feed; (2) any source you have the right to use. {time} = all-time | past-seven | past-three | last-patch, {mmr} = 100|50|25|10|1. A value may be an https URL or a local file path. A sources.json replaces the default entirely: delete a line and that table stays empty, the tool shows 'no numbers' rather than failing. The community feed is young, so expect thin samples, flagged as thin, until it fills up. Send your whole backlog by hand with: collect.py --upload http://165.227.41.29",
 
   "_comment_mmr": "{mmr} is your --mmr bracket. A feed publishes a bracket only once it holds enough games, so top-1% may not exist yet; when it doesn't, the tool falls back to the all-players file and says on screen which bracket the numbers actually came from - it never labels the whole pool 'top 1%'. A feed built before brackets existed serves heroes-{time}.json, and that is tried last, so this file works against an old server too. What each bracket means is written inside every file (the 'mmr' block: bucket, minRating, games) - see server/README.md.",
 
-  "heroes":     "https://165-227-41-29.sslip.io/heroes-{mmr}-{time}.json",
-  "heropowers": "https://165-227-41-29.sslip.io/heropowers-{mmr}-{time}.json",
-  "trinkets":   "https://165-227-41-29.sslip.io/trinkets-{mmr}-{time}.json",
-  "cards":      "https://165-227-41-29.sslip.io/cards-{mmr}-{time}.json",
-  "comps":      "https://165-227-41-29.sslip.io/comps-{mmr}-{time}.json",
+  "heroes":     "http://165.227.41.29/heroes-{mmr}-{time}.json",
+  "heropowers": "http://165.227.41.29/heropowers-{mmr}-{time}.json",
+  "trinkets":   "http://165.227.41.29/trinkets-{mmr}-{time}.json",
+  "cards":      "http://165.227.41.29/cards-{mmr}-{time}.json",
+  "comps":      "http://165.227.41.29/comps-{mmr}-{time}.json",
 
   "_comment_heropowers": "heropowers is the hero POWER table - average placement and pick rate for the powers you choose between when a hero offers a choice. No stats site publishes these at any price, so before this pool existed the pick panel could name your three options and rate none of them. Only some heroes offer the choice, so this table is small by nature; leave the key out and those options simply show a dash.",
 
   "_comment_duo": "The same tables built from DUOS games only - this is what --duo reads. Separate on purpose: a duos lobby is four teams finishing 1st-4th, a solo lobby is eight players finishing 1st-8th, on a different hero pool, so one pooled average would describe neither. There is deliberately no fallback from duos to solo: leave these keys out and --duo shows no numbers rather than the wrong game's numbers.",
 
-  "heroes_duo":     "https://165-227-41-29.sslip.io/heroes-duo-{mmr}-{time}.json",
-  "heropowers_duo": "https://165-227-41-29.sslip.io/heropowers-duo-{mmr}-{time}.json",
-  "trinkets_duo":   "https://165-227-41-29.sslip.io/trinkets-duo-{mmr}-{time}.json",
-  "cards_duo":      "https://165-227-41-29.sslip.io/cards-duo-{mmr}-{time}.json",
-  "comps_duo":      "https://165-227-41-29.sslip.io/comps-duo-{mmr}-{time}.json"
+  "heroes_duo":     "http://165.227.41.29/heroes-duo-{mmr}-{time}.json",
+  "heropowers_duo": "http://165.227.41.29/heropowers-duo-{mmr}-{time}.json",
+  "trinkets_duo":   "http://165.227.41.29/trinkets-duo-{mmr}-{time}.json",
+  "cards_duo":      "http://165.227.41.29/cards-duo-{mmr}-{time}.json",
+  "comps_duo":      "http://165.227.41.29/comps-duo-{mmr}-{time}.json"
 }
