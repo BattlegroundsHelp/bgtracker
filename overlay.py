@@ -857,7 +857,13 @@ class Reader(threading.Thread):
 
         path = bg.newest_power_log()
         if not path:
-            self.q.put(("status", "no Power.log - is Hearthstone installed?"))
+            # Name the folder being watched: "waiting for game" with the wrong
+            # path behind it looks identical to a broken overlay, and the first
+            # beta tester lost an evening to exactly that. A non-default
+            # install goes in settings.json as "hs_logs".
+            self.q.put(("status",
+                        f"no Power.log in {bg.HS_LOGS} - moved install? "
+                        f'set "hs_logs" in settings.json'))
             return
         for line in bg.follow(path):
             if line is None:
@@ -1021,6 +1027,8 @@ def diag(settings=None):
     print(f"  executable  {sys.executable}")
     print(f"  app dir     {app_dir()}        (writes: .cache, data, assets, "
           f".overlay.json, sources.json)")
+    print(f"  hs logs     {bg.HS_LOGS}   "
+          f"({'exists' if bg.HS_LOGS.exists() else 'MISSING - set hs_logs in settings.json'})")
     print(f"  bundle dir  {bundle_dir()}     (code)")
     print(f"  python      {sys.version.split()[0]}   tcl/tk "
           f"{tkinter.TkVersion}")

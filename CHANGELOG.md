@@ -4,6 +4,16 @@
 
 ### Fixed
 
+- **Hearthstone installs anywhere now, not just the default path.** The first
+  outside contribution (issue #1, thanks Levtos) and the first beta tester's
+  lost evening were the same bug from two sides: an install on another drive
+  left the overlay saying "waiting for game" forever, watching an empty folder
+  it never named. Three answers, most deliberate first: `hs_logs` in
+  `settings.json` (the install folder or its Logs folder, environment
+  variables expand), then the registry's InstallLocation, so a moved install
+  is found with zero configuration, then the default exactly as before. The
+  status line and `--diag` now name the folder being watched, because
+  "waiting for game" over the wrong path looked identical to a broken overlay.
 - **The update manifest is signed now, and the reason it is not simply served
   over HTTPS is worth writing down.** Installing already refused a non-https
   download and checked the SHA-256 before unpacking, but the hash comes FROM

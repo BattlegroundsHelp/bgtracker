@@ -37,6 +37,7 @@ python tests/test_tribes.py         # a lobby's tribes, counted only from what p
 python tests/test_badges.py         # click-through, calibrate mode, the turn-by-turn split
 python tests/test_tips.py           # hero tip submissions, votes, publish floors
 python tests/test_dcrc.py           # the reconnect tool's Win32 structs
+python tests/test_logsdir.py        # where the Hearthstone logs are looked for
 python tests/test_stats_engine.py   # every stats table's parser and its fallbacks
 python -m ruff check --select E9,F63,F7,F82 .
 ```

@@ -82,7 +82,56 @@ MIN_SAMPLE = 30
 # A trinket offer always presents exactly four options.
 TRINKET_OPTIONS = 4
 
-HS_LOGS = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Hearthstone" / "Logs"
+# Where Hearthstone writes its logs. Three sources, most deliberate first, and
+# the answer is settled once at import so every consumer agrees for the whole
+# run. Asked for by the first outside contributor (issue #1) and by the first
+# beta tester, who hit the same wall from the other side: an install anywhere
+# but the default path left the overlay saying "waiting for game" forever.
+#
+#   1. `hs_logs` in settings.json - somebody who set it explicitly is right by
+#      definition; a set-but-wrong path is REPORTED, never silently swapped
+#      for a guess, because the overlay watching a different folder than the
+#      one the user named is the harder bug to see.
+#   2. The registry: Blizzard writes InstallLocation on install, so a D: drive
+#      or a moved install is found with zero configuration. Both registry
+#      views are read, since a 32-bit process sees the WOW6432Node copy.
+#   3. The historical default, exactly as before.
+
+
+def _hs_logs_dir() -> Path:
+    default = (Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+               / "Hearthstone" / "Logs")
+    try:
+        import settings as _settings
+        configured = (_settings.Settings.load().get("hs_logs") or "").strip()
+    except Exception:
+        configured = ""
+    if configured:
+        p = Path(os.path.expandvars(configured)).expanduser()
+        # The Logs folder or the install folder are both accepted: "where is
+        # Hearthstone" is the question a user can actually answer.
+        return p if p.name.lower() == "logs" else p / "Logs"
+    try:
+        import winreg
+        for hive, key in (
+            (winreg.HKEY_LOCAL_MACHINE,
+             r"SOFTWARE\WOW6432Node\Blizzard Entertainment\Hearthstone"),
+            (winreg.HKEY_LOCAL_MACHINE,
+             r"SOFTWARE\Blizzard Entertainment\Hearthstone"),
+        ):
+            try:
+                with winreg.OpenKey(hive, key) as k:
+                    loc = winreg.QueryValueEx(k, "InstallLocation")[0]
+                if loc and (Path(loc) / "Logs").is_dir():
+                    return Path(loc) / "Logs"
+            except OSError:
+                continue
+    except Exception:
+        pass
+    return default
+
+
+HS_LOGS = _hs_logs_dir()
 
 # Lines look like:
 # D 13:29:32.3296250 PowerTaskList.DebugPrintPower() -     FULL_ENTITY - Updating

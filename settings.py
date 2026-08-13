@@ -86,6 +86,12 @@ DEFAULTS = {
     # upload is subtle: see the copy in ui/settings.py, which lists every
     # field collect.py actually sends, and pool.py, which does the sending.
     "upload": True,
+    # Where Hearthstone is installed, for anyone whose install is not at the
+    # default path (the first outside contribution asked for exactly this).
+    # Empty means work it out: settings here win, then the registry's
+    # InstallLocation, then the historical default. Accepts the install folder
+    # or its Logs folder; environment variables and ~ are expanded.
+    "hs_logs": "",
     "upload_url": COMMUNITY_UPLOAD,
     "last_upload": None,          # epoch seconds of the last successful share
     "open_on_start": True,
