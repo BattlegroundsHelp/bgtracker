@@ -25,6 +25,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import subprocess
+import tempfile
 import sys
 import zipfile
 from datetime import date
@@ -58,6 +61,9 @@ def main() -> int:
     ap.add_argument("--url", required=True,
                     help="where that zip can be downloaded (https, the Releases asset)")
     ap.add_argument("--version", help="only needed for a zip with no version.txt")
+    ap.add_argument("--key", type=Path, default=None,
+                    help="the RSA key that signs the manifest "
+                         "(default: manifest_signing_key.pem in the repo root)")
     ap.add_argument("--notes", help="link to the patch notes (default: the release page)")
     ap.add_argument("--published", default=date.today().isoformat(),
                     help="YYYY-MM-DD, default today")
@@ -102,6 +108,39 @@ def main() -> int:
         "published": a.published,
         "notes": notes,
     }
+    # SIGN IT. The manifest travels over plain http (update.py explains why TLS
+    # was tried and rejected on evidence), so this signature is the only thing
+    # between a user and somebody on the path naming their own zip. The private
+    # key is never in this repository: it sits beside it, gitignored. This
+    # refuses to write an unsigned manifest rather than quietly producing one
+    # that every current client would throw away.
+    key = a.key or (ROOT / "manifest_signing_key.pem")
+    if not key.is_file():
+        sys.exit(f"no signing key at {key}. Generate one once with:\n"
+                 f"  openssl genrsa -out {key} 3072\n"
+                 f"and put its modulus in update.MANIFEST_PUBKEY_N.")
+    payload = json.dumps(doc, sort_keys=True, separators=(",", ":")).encode()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as fh:
+        fh.write(payload)
+        tmp = fh.name
+    try:
+        sig = subprocess.run(["openssl", "dgst", "-sha256", "-sign", str(key),
+                              tmp], capture_output=True, check=True).stdout
+    finally:
+        os.unlink(tmp)
+    doc["sig"] = sig.hex()
+
+    # Verify what is about to be published with the SAME function the client
+    # runs, so a wrong key or a changed field cannot leave the box carrying a
+    # manifest every client refuses.
+    sys.path.insert(0, str(ROOT))
+    import update as _u
+    if not _u.verify_signature(payload, doc["sig"]):
+        sys.exit("that signature does not verify against the public key in "
+                 "update.py: the key that signed this is not the key clients "
+                 "trust, and publishing it would end every update check.")
+    print("signature verifies against update.MANIFEST_PUBKEY_N")
+
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
 

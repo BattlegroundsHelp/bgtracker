@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **The update manifest is signed now, and the reason it is not simply served
+  over HTTPS is worth writing down.** Installing already refused a non-https
+  download and checked the SHA-256 before unpacking, but the hash comes FROM
+  the manifest, so over plain http anyone on the path could serve their own
+  manifest naming their own https zip and its own matching hash, and every
+  check downstream would have passed. TLS was tried first: the box is a bare IP
+  that no certificate authority will certify, so it was given a real hostname
+  through wildcard DNS and Caddy fetched a Let's Encrypt certificate for it.
+  Modern curl accepted the result. Python refused it, and so did
+  `letsencrypt.org` from the same interpreter, because Let's Encrypt now issues
+  under roots that older trust stores do not carry. Shipping that would have
+  silently ended update checks for exactly the people least likely to have a
+  fresh trust store, while looking perfect in a browser. So the manifest
+  carries an RSA signature instead, verified with about thirty lines of modular
+  arithmetic and no new dependency. A manifest that is unsigned, altered, or
+  signed by anything else is refused before a single field is believed. The
+  server still answers https for anyone who wants it.
+- Every alpha release is now flagged as a prerelease on GitHub. They were
+  marked as full releases, which is what an automated tool reads to decide
+  what "latest" means.
+
 ## v0.3.3-alpha (13 August 2026)
 
 ### Added

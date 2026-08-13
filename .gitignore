@@ -59,3 +59,6 @@ server/.env
 # local notes
 EMAIL_FIRESTONE.md
 
+
+# the manifest signing key: the private half never goes in the repository
+manifest_signing_key.pem

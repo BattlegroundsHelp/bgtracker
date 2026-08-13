@@ -64,6 +64,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import os
 import shutil
@@ -81,10 +82,45 @@ from pathlib import Path
 from paths import app_dir, frozen
 from version import USER_AGENT, VERSION, is_newer, parse
 
-# The stats box, at the bare address sources.example.json already ships. One
-# more static file in the folder the web server already publishes as its root
-# (server/deploy/nginx-bgtracker.conf: root /opt/bgtracker/server/out).
+# The stats box: one more static file in the folder its web server already
+# publishes as its root.
+#
+# PLAIN HTTP, deliberately, and the manifest is SIGNED instead. TLS was tried
+# first and rejected on evidence. The box is a bare IP, which no certificate
+# authority will certify, so it was given a real hostname through sslip.io
+# (wildcard DNS back to the same IP) and Caddy fetched a Let's Encrypt
+# certificate for it. Modern curl accepted the result. Python did not:
+#
+#     165-227-41-29.sslip.io   CERTIFICATE_VERIFY_FAILED, certificate expired
+#     letsencrypt.org          CERTIFICATE_VERIFY_FAILED, certificate expired
+#     github.com               OK
+#
+# letsencrypt.org failing from the same interpreter is the whole answer: Let's
+# Encrypt now issues under roots (ISRG Root YE, 2026) that older trust stores
+# do not carry, and asking for an older chain no longer helps because that
+# chain is no longer offered. Shipping TLS would have silently ended update
+# checks for precisely the users least likely to have a fresh trust store, and
+# it would have looked perfect in a browser the whole time.
+#
+# So the integrity guarantee does not lean on the CA system at all. The
+# manifest carries an RSA signature over its own bytes, made by a key that
+# lives on the author's machine and is not in this repository; the public half
+# is below. check() refuses a manifest whose signature is missing or wrong, so
+# the attack TLS was meant to stop - somebody on the path serving their own
+# manifest naming their own https zip and its own matching hash - fails on the
+# signature instead of on the transport.
+#
+# The server still answers https for anyone who wants it. Nothing here needs it.
 DEFAULT_MANIFEST_URL = "http://165.227.41.29/update.json"
+
+# The public half of the manifest signing key (RSA 3072, e 65537). Verification
+# is plain modular arithmetic on integers, which is why this needs no third
+# party library and cannot pull one in: `zero required dependencies` is a
+# feature of this project, and a cryptography wheel is the last place to break
+# it. The private half never leaves the author's machine, so this file being
+# public gives an attacker nothing.
+MANIFEST_PUBKEY_N = '0xb14576f5badde42604fcf9dd0bd1b3d89009545c9190998a1ea647616c5667e7baa5c86805f1bcaa48af83794c4a160c2b882048c5f94c3992e475263038539446acf250fbe82721ca9ce4ea130a7b62d699e1a0f180d0a016c4562cbe714ee38a26720de655f8a6f109e10fa0e31d8cffa887592c89666fb0a28aac97560a39b3aefb9adbc696b47f48ae27af063a99af183fb5df238d7a0e9756ece09c211c5c894d3be3632977b6511838f784fa1859d9aca63e6f048342d87a12fc827cc452e2f04a7237a777776e7b1c8188f12545b68953131be98a54376fd06e420219afdc542bdc16d6988ac2052caf314991f8524940f1cea85c2022afe4224ad4f5987aae73dcc21a9d4a71ce292ed611bc81dabe5eef73a6eee781f05929e0ed9f415bcf6da93ab537cb4c34f5fbb50ce5d632c9f64a1c367f5929c51d08ddfd9b1e0d1945cf59126462bb2c4320c960bb29fed9454e061307a6203fffec31355781bd8a41ac5d9896ca88febb3f7847cbcd1b9cd4995138ebe1f3a280dd10e5fb'
+MANIFEST_PUBKEY_E = 65537
 
 MANIFEST_NAME = "update.json"
 
@@ -336,6 +372,47 @@ def _get(url: str, timeout: float, cap: int) -> bytes:
     return body
 
 
+# SHA-256's DigestInfo prefix, the fixed ASN.1 header PKCS#1 v1.5 puts in front
+# of the hash. Comparing the whole padded block against a locally rebuilt copy
+# is what makes this a verification rather than a hopeful glance at the tail:
+# the classic RSA signature forgery works precisely by leaving junk in the parts
+# a lazy check never looks at.
+_SHA256_DIGESTINFO = bytes.fromhex("3031300d060960864801650304020105000420")
+
+
+def verify_signature(payload: bytes, sig_hex: str) -> bool:
+    """Was this exact manifest signed by the key whose public half is above?
+
+    RSA PKCS#1 v1.5 verification in full: raise the signature to the public
+    exponent, then rebuild the block the signer must have padded
+    (0x00 0x01 0xFF...0xFF 0x00 DigestInfo SHA256) and compare every byte.
+    """
+    try:
+        sig = bytes.fromhex(sig_hex)
+    except Exception:
+        return False
+    n = int(MANIFEST_PUBKEY_N, 16)
+    k = (n.bit_length() + 7) // 8
+    if len(sig) != k:
+        return False
+    m = pow(int.from_bytes(sig, "big"), MANIFEST_PUBKEY_E, n)
+    got = m.to_bytes(k, "big")
+    digest = hashlib.sha256(payload).digest()
+    tail = _SHA256_DIGESTINFO + digest
+    want = b"\x00\x01" + b"\xff" * (k - len(tail) - 3) + b"\x00" + tail
+    # Constant time is not strictly needed to check a public signature, but it
+    # costs one call and removes the question.
+    return hmac.compare_digest(got, want)
+
+
+def _unsigned_bytes(doc: dict) -> bytes:
+    """The exact bytes the signature covers: the manifest without its own
+    signature, serialised one fixed way so signer and verifier cannot disagree
+    about whitespace or key order."""
+    return json.dumps({k: v for k, v in doc.items() if k != "sig"},
+                      sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
 def parse_manifest(body: bytes, source: str | None = None) -> Update:
     """Bytes to an Update, or raise UpdateError. Every field is checked here so
     nothing downstream has to trust the server."""
@@ -345,6 +422,16 @@ def parse_manifest(body: bytes, source: str | None = None) -> Update:
         raise UpdateError(f"the manifest is not valid JSON ({e})") from None
     if not isinstance(doc, dict):
         raise UpdateError("the manifest is not a JSON object")
+
+    # The signature, before anything else is believed. This is what stands in
+    # for TLS here (see DEFAULT_MANIFEST_URL): the manifest travels over plain
+    # http, so without this an attacker on the path could name their own https
+    # zip and their own matching hash, and every later check would pass.
+    sig = doc.get("sig")
+    if not isinstance(sig, str) or not sig:
+        raise UpdateError("the manifest is not signed")
+    if not verify_signature(_unsigned_bytes(doc), sig):
+        raise UpdateError("the manifest's signature does not match")
 
     latest = doc.get("version")
     try:
@@ -1166,11 +1253,36 @@ def _selftest() -> int:                                  # noqa: C901 - it is a 
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{srv.server_address[1]}"
 
+    # A THROWAWAY key, generated once and pinned here, that stands in for the
+    # real one while the test runs. Signing is the same modular arithmetic as
+    # verifying, with the private exponent, so the test needs no openssl and no
+    # library: it can mint a correctly signed fixture offline, on any machine,
+    # forever. The real signing key is not here and never will be.
+    global MANIFEST_PUBKEY_N
+    _real_pubkey = MANIFEST_PUBKEY_N
+    _test_n = '0xc871ae49a7d9f4d32dd9c9ae96f88be7862194cec5ee79abc928756032b5a37e2beadbe5f3927e8b9ea18c72b5de7f466e0fd79bdff076eca213cdbae474ed8253a3c42d2285ac00ac30a0193e7cc8e6064d1824b2091a5b32882c8ce638e81b20203ba300e8e83a89d96c43c22fa7c16f315c284bb020eccd06c333c50045ec3e8329b952f393155f96a8d3f5ab3a097d0cdcafd445a48186d2099fcd6564b6625a9c60bb591f1a0e69f935eac3dfaacfdfaacaad331d724af5d9a80a1a9fc42707c4912ba762b95ca5980a0a9b91a6136440e5c52d90ad9426bcc81482a9872f144f3dd7a71cea15c5f22b8e3db66afb66ffb0354a705a1cdbe2cc98bffced'
+    _test_d = '0x50861ad64c302b428b30eaecd08998eab1dfdbc01593f01d2afaadecaf7278f3bf00e2c6464b9bbacb476afcca43502e23190a2cfc91c5b4da87ca26429116b93c9095c6ec0f7741edeabae6694c0809208ee81c15c9c264d0b013f5a6a745d75fd8931cb0c8e042640e8c87cc0309099479e7e3e84421760007af73a4b8af5db9f7ee7dcd31c8ec02bbb3c77471f4386c01b8e2e3e33cefe00988ec9ca24c8816734cb3c2183bd55961381901c7f12e304c320ad5a51c644b78194feb05d0e782da45b4096fc3a167bb76a14c707097d7fac628419cef011797977ef4b624fb39360c20fa4ac4db972fc5336448287573c53eabae311ca061e83919174addb'
+    MANIFEST_PUBKEY_N = _test_n
+
+    def sign(doc):
+        """Sign a fixture exactly the way server/make_manifest.py signs a real
+        manifest: PKCS#1 v1.5 over the canonical bytes, minus the sig field."""
+        body = json.dumps({k: v for k, v in doc.items() if k != "sig"},
+                          sort_keys=True, separators=(",", ":")).encode()
+        n, d = int(_test_n, 16), int(_test_d, 16)
+        k = (n.bit_length() + 7) // 8
+        tail = _SHA256_DIGESTINFO + hashlib.sha256(body).digest()
+        block = (bytes([0, 1]) + bytes([255]) * (k - len(tail) - 3)
+                 + bytes([0]) + tail)
+        return pow(int.from_bytes(block, "big"), d, n).to_bytes(k, "big").hex()
+
     def manifest(**kw):
         d = {"schema": 1, "version": "9.9.9", "url": "https://example.invalid/b.zip",
              "sha256": good_sha, "size": len(payload), "published": "2026-08-12",
              "notes": "https://example.invalid/notes"}
         d.update(kw)
+        if "sig" not in d:
+            d["sig"] = sign(d)
         return json.dumps(d).encode()
 
     routes["/up-to-date.json"] = (200, manifest(version=VERSION))
