@@ -228,9 +228,22 @@ ground rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the map.
   (finding the Hearthstone window, following it, click-through, staying hidden
   while the game is not in front) is Win32, and so is the memory reader. Nobody
   has started it and there is no Mac here to test on, so no promises.
-- ⬜ **Linux** - same story, one step further: the game itself only runs there
-  through Wine or Proton, so an overlay has to deal with that as well.
-  Unaddressed.
+- ⬜ **Linux** - deferred by the author until the compatibility picture is
+  clearer, and measured first so whoever picks it up starts from facts rather
+  than folklore. The data core (parser, collector, simulator, pooling,
+  settings, updater) has ZERO module-level Windows imports - every winreg and
+  windll call is guarded inside a function - so the console tool and own-game
+  stats are days of porting, not a rewrite: mostly teaching the log finder
+  about Wine and Proton prefixes, and the `hs_logs` setting already lets a
+  Linux user point at their prefix by hand today. The overlay is the real
+  fork: a true overlay needs X11 specifics (window finding via the window
+  list, click-through via the X Shape extension) and cannot honestly be
+  promised on native Wayland, where compositors do not let one app position
+  itself over another; a companion-window mode - the same panels in one
+  normal window beside the game - would work on both and reuses the existing
+  draw code. Nobody here has a Linux machine to verify on, so any port ships
+  as "built, needs testers"; the thread that started this project contains
+  Linux volunteers.
 
 ## Not possible today (and why)
 
