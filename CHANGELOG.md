@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.3.4-alpha (13 August 2026)
 
 ### Fixed
 
@@ -31,6 +31,11 @@
   arithmetic and no new dependency. A manifest that is unsigned, altered, or
   signed by anything else is refused before a single field is believed. The
   server still answers https for anyone who wants it.
+- The stats and upload addresses stay on plain http on purpose: the same
+  trust stores that refused the manifest's certificate would have refused
+  these too, and both must keep working on a machine that has never updated
+  its roots. The manifest is the channel that decides what code runs, and it
+  is the one that is signed.
 - Every alpha release is now flagged as a prerelease on GitHub. They were
   marked as full releases, which is what an automated tool reads to decide
   what "latest" means.

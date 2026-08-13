@@ -42,16 +42,17 @@ POLL_MS = 500
 RECONNECT_TIMEOUT = 90.0
 ARM_SECONDS = 3.0
 
-# Two drops 17 seconds apart is what killed the client on the first run. The
-# second one is also unmeasurable: the client is still settling from the first,
-# so whatever it does next says nothing about a dc/rc from a steady state. One
-# drop, let it fully recover, then judge.
-COOLDOWN = 45.0
+# The audit's verdict on why this died on use #2: re-use was allowed by a
+# 45-second CLOCK, not by the client actually being back. The reference tool
+# has no timer at all - its button stays hidden until it sees a live remote
+# game connection again. So: one busy flag, set on fire, cleared only when a
+# real game-range socket is confirmed back (or the attempt failed/timed out).
+# No wall-clock gate.
 
-# 3s may simply be shorter than the client's patience, in which case it buffers
-# through and nothing happens on screen. The point of the bench is to find the
-# shortest block that actually trips the reconnect, so the length is a dial.
-BLIP_CHOICES = (9.0, 10.0, 12.0, 8.0)
+# Both buttons now run the same adaptive block (hold only until the game
+# socket actually dies, then lift). The dial is merely the give-up ceiling for
+# a quiet client with nothing in flight to time out.
+BLIP_CHOICES = (20.0, 25.0, 15.0)
 
 VK_CONTROL, VK_MENU, VK_D = 0x11, 0x12, 0x44
 
@@ -76,16 +77,17 @@ def _sig(c: dict) -> str:
     return f"v{c['family']} {c['remote'][0]}:{c['remote'][1]}"
 
 
-def _gamesig(c: dict) -> str:
-    """For deciding whether the GAME came back, where the address is useless.
+def game_is_back(live: list[dict]) -> bool:
+    """A real reconnect = an established GAME-range socket, nothing else.
 
-    Measured across three drops: the client rejoins on a different server every
-    time (34.13.221.86, then 34.91.128.107, then 34.141.204.51). Matching the
-    address therefore never fires, and what did fire was the CDN link on :443
-    reopening - a reported 1.1s "reconnect" that had nothing to do with the
-    game. Only the port identifies the session.
+    The audit found the old port-only signature ('v4 :1119') was matching the
+    spared Battle.net session - which also lives on 1119 and never went
+    anywhere - so every drop reported a phantom sub-second reconnect off a
+    socket that never closed. The block only returns after the game socket is
+    dead, so any is_game_conn socket seen afterwards is by construction the
+    NEW one.
     """
-    return f"v{c['family']} :{c['remote'][1]}"
+    return any(dcrc.is_game_conn(c) for c in live)
 
 
 class Trial:
@@ -95,10 +97,13 @@ class Trial:
         self.seen: set[str] = set()
         self.armed_until = 0.0
         self.drop_at: float | None = None
-        self.last_drop: float | None = None
         self.blip_secs = BLIP_CHOICES[0]
         self.hung = False
-        self.targets: set[str] = set()
+        # THE re-use gate, replacing the old 45s clock: set when a cut starts,
+        # cleared only on a CONFIRMED new game socket, a timeout, a failure,
+        # a hang, or the client going away. State, not time.
+        self.busy = False
+        self._combo = False
 
         root.title("dc/rc trial")
         root.attributes("-topmost", True)
@@ -112,12 +117,13 @@ class Trial:
 
         bar = tk.Frame(root, bg="#14140f")
         bar.pack(fill="x", padx=10)
-        self.b_drop = tk.Button(bar, text="ARM DROP  (ctrl+alt+D)",
+        self.b_drop = tk.Button(bar, text="SKIP FIGHT  (ctrl+alt+D)",
                                 command=self.arm, bg=IDLE_BG, fg="#f0e6cc",
                                 activebackground="#5a4620", relief="flat",
                                 font=("Consolas", 10, "bold"))
         self.b_drop.pack(side="left", padx=(0, 6))
-        self.b_blip = tk.Button(bar, text="BLIP 3s", command=self.blip,
+        self.b_blip = tk.Button(bar, text=f"SKIP {BLIP_CHOICES[0]:.0f}s (click)",
+                                command=self.blip,
                                 bg="#14331f", fg="#dff0e0",
                                 activebackground="#1f5232", relief="flat",
                                 font=("Consolas", 10, "bold"))
@@ -169,91 +175,75 @@ class Trial:
                               bg=ARMED_BG)
         self.say("armed", "ARM")
 
-    def fire(self) -> None:
+    def fire(self, ceiling: float = 20.0) -> None:
+        """The dc/rc: adaptive firewall block, per the audit's fix plan.
+
+        NOT drop_sockets. The socket abort tells the client the server hung up
+        on it, which it survives exactly once per session - that was the whole
+        'works only the first time'. The block is what the maintained tools
+        do, and ours lifts the moment the socket dies so the client's retries
+        actually get through.
+        """
         self.armed_until = 0.0
         if self.pid is None:
             self.say("Hearthstone is gone", "ABORT")
             return
-        if self.last_drop is not None:
-            waited = time.monotonic() - self.last_drop
-            if waited < COOLDOWN:
-                self.say(f"{COOLDOWN - waited:.0f}s left of the cooldown - let "
-                         "the client fully settle, or the next result means "
-                         "nothing", "REFUSED")
-                return
+        if self.busy:
+            self.say("a cycle is still in flight - the next press unlocks on "
+                     "a CONFIRMED reconnect, a timeout, or a restart",
+                     "REFUSED")
+            return
         before = established(self.pid)
         game = [c for c in before if dcrc.is_game_conn(c)]
-        self.targets = {_gamesig(c) for c in game}
         self.say(f"{len(before)} established, {len(game)} of them the game: "
                  + (", ".join(sorted(_sig(c) for c in game)) or "NONE")
                  + "   | leaving alone: "
                  + ", ".join(sorted(_sig(c) for c in before
                                     if not dcrc.is_game_conn(c))), "BEFORE")
-        r = dcrc.drop_sockets(self.pid)
-        self.say(str(r), "DROP")
-        if r["dropped"]:
-            self.drop_at = self.last_drop = time.monotonic()
-            self.say(f"timing the game socket back on {sorted(self.targets)}",
-                     "WAIT")
-        else:
-            self.targets = set()
+        if not game:
+            self.say("no game connection to cut - join a match first", "VOID")
+            return
+        self.busy = True
+        pid = self.pid
+        self.say(f"blocking until the game socket dies (ceiling "
+                 f"{ceiling:.0f}s), then lifting immediately", "CUT")
+
+        def run():
+            r = dcrc.block_until_dropped(pid, ceiling)
+            self.root.after(0, lambda: self._work_done(r))
+
+        threading.Thread(target=run, daemon=True).start()
 
     def cycle_secs(self) -> None:
         i = BLIP_CHOICES.index(self.blip_secs)
         self.blip_secs = BLIP_CHOICES[(i + 1) % len(BLIP_CHOICES)]
-        self.b_blip.configure(text=f"BLIP {self.blip_secs:.0f}s")
+        self.b_blip.configure(text=f"SKIP {self.blip_secs:.0f}s (click)")
         self.say(f"blip length set to {self.blip_secs:.0f}s", "SET")
 
     def blip(self) -> None:
-        """Packet loss for 3s, socket untouched. No arming: unlike a drop this
-        does not hang the client up, it only makes it wait."""
-        if self.pid is None:
-            self.say("Hearthstone is gone", "ABORT")
-            return
-        if self.last_drop is not None:
-            waited = time.monotonic() - self.last_drop
-            if waited < COOLDOWN:
-                self.say(f"{COOLDOWN - waited:.0f}s left of the cooldown",
-                         "REFUSED")
-                return
-        pid = self.pid
-        self.targets = {_gamesig(c) for c in established(pid)
-                        if dcrc.is_game_conn(c)} or {"v4 :1119"}
-        secs = self.blip_secs
-        self.say(f"blocking the game's traffic for a full {secs:.0f}s, held "
-                 f"the whole time, sockets untouched "
-                 f"(watching {sorted(self.targets)})", "BLIP")
-        self.last_drop = time.monotonic()
+        """Same adaptive cut as ARM DROP, with the dial as the ceiling."""
+        self.fire(ceiling=self.blip_secs)
 
-        def run():
-            r = dcrc.disconnect_via_firewall(pid, secs)
-            self.root.after(0, lambda: self._blip_done(r))
-
-        threading.Thread(target=run, daemon=True).start()
-
-    def _blip_done(self, r: dict) -> None:
-        self.say(str(r), "BLIP")
+    def _work_done(self, r: dict) -> None:
+        self.say(str(r), "RESULT")
         if r.get("errors"):
             self.say("!! " + "; ".join(r["errors"]), "WARN")
-        # Only time a reconnect when there was a disconnect. Otherwise the
-        # still-open game socket is sitting right there at the next poll and
-        # gets reported as a triumphant sub-second recovery, which is what
-        # every misleading RECONNECT line in this log has been.
-        if r.get("dropped") or r.get("blocked"):
+        if r.get("dropped"):
             self.drop_at = time.monotonic()
+            self.say("game socket is dead, block lifted - watching for a NEW "
+                     "game-range connection", "WAIT")
         else:
-            self.targets = set()
+            # Nothing was disconnected (idle client, not elevated, rule
+            # failed). Nothing to time, and no reason to stay locked.
+            self.busy = False
             self.say("nothing was disconnected, so there is nothing to time",
                      "VOID")
 
     def restart(self) -> None:
-        if self.pid is None:
-            self.say("Hearthstone is gone", "ABORT")
-            return
-        self.targets = {_gamesig(c) for c in established(self.pid)
-                        if dcrc.is_game_conn(c)} or {"v4 :1119"}
+        """Always available - it IS the escape hatch when a cycle went bad."""
+        self.busy = False
+        self.drop_at = None
         self.say(str(dcrc.restart_client()), "RESTART")
-        self.drop_at = time.monotonic()
 
     # -- loop --------------------------------------------------------------
 
@@ -262,6 +252,8 @@ class Trial:
         if pid != self.pid:
             self.pid = pid
             self.seen.clear()
+            self.busy = False
+            self.drop_at = None
             self.say(f"Hearthstone pid = {pid}", "GAME")
 
         if self.pid:
@@ -272,6 +264,7 @@ class Trial:
                          "does not show up as the process going away. "
                          "RESTART CLIENT is the only way out.", "HUNG")
                 self.drop_at = None
+                self.busy = False
             self.hung = hung
 
             live = established(self.pid)
@@ -288,25 +281,32 @@ class Trial:
                      f"   v6 {sum(c['family'] == 6 for c in live)}")
 
             if self.drop_at is not None:
-                back = {_gamesig(c) for c in live} & self.targets
-                if back:
+                if game_is_back(live):
                     dt = time.monotonic() - self.drop_at
-                    self.say(f"back on {sorted(back)[0]} after {dt:.1f}s",
+                    who = [c for c in live if dcrc.is_game_conn(c)]
+                    self.say(f"NEW game connection {_sig(who[0])} after "
+                             f"{dt:.1f}s - ready for the next press",
                              "RECONNECT")
                     self.drop_at = None
-                    self.targets = set()
+                    self.busy = False
                 elif time.monotonic() - self.drop_at > RECONNECT_TIMEOUT:
                     self.say(f"no reconnect within {RECONNECT_TIMEOUT:.0f}s",
                              "TIMEOUT")
                     self.drop_at = None
+                    self.busy = False
         else:
             self.head.configure(text="Hearthstone not running")
 
         if time.monotonic() >= self.armed_until and self.b_drop["bg"] == ARMED_BG:
-            self.b_drop.configure(text="ARM DROP  (ctrl+alt+D)", bg=IDLE_BG)
+            self.b_drop.configure(text="SKIP FIGHT  (ctrl+alt+D)", bg=IDLE_BG)
 
-        if _key(VK_CONTROL) and _key(VK_MENU) and _key(VK_D):
+        # Fire only on the key-down TRANSITION. Polling every 500ms meant a
+        # held combo armed on one tick and fired on the next, collapsing the
+        # two-press guard into a single long press.
+        combo = _key(VK_CONTROL) and _key(VK_MENU) and _key(VK_D)
+        if combo and not self._combo:
             self.arm()
+        self._combo = combo
 
         self.root.after(POLL_MS, self.tick)
 
