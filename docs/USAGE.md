@@ -31,7 +31,7 @@ the one nearly everyone should take (section 2). Running from source is section
 |---|---|
 | **Windows** | 10 or 11. The overlay is Windows only (it anchors itself to the Hearthstone window). |
 | **Python 3.10 or newer** | Only if you run from source (section 2b). From [python.org](https://www.python.org/downloads/windows/), tick **"Add python.exe to PATH"**. The download carries its own copy of Python and does not care what is installed on your machine. |
-| **Hearthstone in BORDERLESS WINDOWED** | Options (gear) → Graphics → window mode. Nothing can draw over exclusive fullscreen without hooking the game, which this deliberately does not do. |
+| **Hearthstone windowed or borderless** | Either works, and fullscreen usually does too (Windows composites it). Only true exclusive fullscreen cannot work, because nothing can draw over it without hooking the game, which this deliberately does not do. `--diag` tells you the mode. |
 | **No pip installs** | The core has zero third party packages. `pip install pillow` is optional and only buys you card art (section 5). |
 | **Internet on first run** | It downloads the public card database from HearthstoneJSON once (card names, tiers, the minion pool) and caches it for a day. The overlay also talks to the community stats server: it reads the feed (cached an hour), asks for the newest version number on start (section 2c), and shares your finished games unless you switch that off (section 3b). Offline, everything still runs; numbers just come from the caches. |
 
@@ -54,7 +54,7 @@ Do not put it in `C:\Program Files`, because the tool writes its cache, your sav
 window positions, your collected games and any card art right beside the exe, in
 that same folder.
 
-**Step 2. Put Hearthstone in borderless windowed.**
+**Step 2. Windowed or borderless. Fullscreen usually works too.**
 
 In game: Options (gear, top right) → Graphics → set the window mode to
 **Borderless Windowed**. This is the single most common reason someone sees

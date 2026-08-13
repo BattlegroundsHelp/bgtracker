@@ -9,7 +9,9 @@ ui/__init__.py for the plugin contract and the event table.
     python overlay.py                  # live
     python overlay.py --demo <log>     # replay a log through the windows
 
-Run Hearthstone in BORDERLESS WINDOWED.
+Hearthstone can be windowed, borderless, or fullscreen where Windows
+composites it (which is the default on 10 and 11). Only true exclusive
+fullscreen cannot be drawn over, and `--diag` says which mode is in force.
 
 SETTINGS PRECEDENCE (settings.py owns the file, this file owns the flags):
 
@@ -1062,6 +1064,28 @@ def diag(settings=None):
     print("  " + " ".join(w.heartbeat() for w in mgr.windows))
     missing = [c.KEY for c in ui.WINDOWS if c.KEY not in mgr.by_key]
     print(f"  missing: {missing or 'none'}")
+
+    # The single most common "it shows nothing" report is a display mode
+    # question, so answer it here with the facts rather than in a FAQ.
+    hs = ui.base.hs_window_mode()
+    print("\nHearthstone")
+    if hs is None:
+        print("  not running, so the window mode cannot be checked. Start the "
+              "game and run this again.")
+    else:
+        w, h = hs["size"]
+        sw, sh = hs["screen"]
+        print(f"  window      {w}x{h}   screen {sw}x{sh}")
+        print(f"  mode        {hs['mode']}")
+        if hs["titled"]:
+            print("  the overlay draws over a titled window fine.")
+        else:
+            print("  borderless and fullscreen look the same from out here, "
+                  "and on Windows 10 and 11 they usually behave the same too:")
+            print("  fullscreen optimizations run the game through the desktop "
+                  "compositor, and the overlay then draws over it.")
+            print("  if you cannot see the overlay in fullscreen, switch the "
+                  "game to borderless windowed - that always works.")
     mgr.root.destroy()
     return 0 if not missing and len(mgr.windows) == len(ui.WINDOWS) else 1
 

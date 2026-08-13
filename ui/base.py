@@ -774,11 +774,17 @@ def _on_any_screen(x, y, w, h):
         return True
 
 
+def hs_hwnd():
+    """Hearthstone's window handle, or 0."""
+    u = ctypes.windll.user32
+    return (u.FindWindowW("UnityWndClass", "Hearthstone")
+            or u.FindWindowW(None, "Hearthstone"))
+
+
 def hs_rect():
     """The Hearthstone window rectangle, or None when it isn't on screen."""
     u = ctypes.windll.user32
-    hwnd = (u.FindWindowW("UnityWndClass", "Hearthstone")
-            or u.FindWindowW(None, "Hearthstone"))
+    hwnd = hs_hwnd()
     if not hwnd or not u.IsWindowVisible(hwnd):
         return None
     r = wintypes.RECT()
@@ -787,6 +793,58 @@ def hs_rect():
     if r.right - r.left < 300:      # minimised
         return None
     return r
+
+
+# Window styles, so the mode report below reads as words rather than hex.
+_WS_CAPTION, _WS_POPUP, _WS_THICKFRAME = 0x00C00000, 0x80000000, 0x00040000
+
+
+def hs_window_mode():
+    """What display mode Hearthstone is in, and whether we can draw over it.
+
+    Worth being precise about what is knowable here, because the honest answer
+    is "mostly": from outside the process, BORDERLESS fullscreen and EXCLUSIVE
+    fullscreen look identical. Both are a caption-less popup filling the
+    monitor; the difference is whether the GPU is flipping the game's buffer
+    straight to the display, which is a property of the swap chain and not of
+    the window.
+
+    What makes it mostly academic on a current machine: Windows 10 and 11 turn
+    on Fullscreen Optimizations by default, which runs a DirectX fullscreen app
+    through the desktop compositor anyway. When that is in force, an ordinary
+    topmost window composites over the game and this overlay works in
+    "fullscreen" exactly as it does in borderless. That is also why the Discord
+    and Steam overlays usually work in fullscreen now.
+
+    So this reports the facts it can prove and stops there. Anything that could
+    tell the two apart for certain means hooking the game's swap chain, which
+    is code injection into another process, and this tool does not do that.
+
+    Returns a dict, or None when the game is not running.
+    """
+    u = ctypes.windll.user32
+    hwnd = hs_hwnd()
+    if not hwnd:
+        return None
+    u.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+    u.GetWindowLongPtrW.argtypes = (wintypes.HWND, ctypes.c_int)
+    style = u.GetWindowLongPtrW(hwnd, -16)          # GWL_STYLE
+    r = wintypes.RECT()
+    u.GetWindowRect(hwnd, ctypes.byref(r))
+    w, h = r.right - r.left, r.bottom - r.top
+    sw, sh = u.GetSystemMetrics(0), u.GetSystemMetrics(1)
+    titled = bool(style & _WS_CAPTION)
+    full = w >= sw and h >= sh
+    if titled:
+        mode, ok = "windowed", True
+    elif full:
+        # The one honest label for the pair that cannot be separated here.
+        mode, ok = "fullscreen or borderless", True
+    else:
+        mode, ok = "borderless (not filling the screen)", True
+    return {"hwnd": hwnd, "mode": mode, "size": (w, h), "screen": (sw, sh),
+            "titled": titled, "fills_screen": full, "can_draw": ok,
+            "popup": bool(style & _WS_POPUP)}
 
 
 # ------------------------------------------------------------------- assets

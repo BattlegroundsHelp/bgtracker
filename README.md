@@ -189,8 +189,18 @@ top of them:
 - Nothing is ever invented. A number the log has not stated is a dash, and a
   window with nothing real to say stays shut.
 
-**Keep Hearthstone in borderless windowed.** Nothing can draw over exclusive
-fullscreen without hooking the game, which this deliberately does not do.
+**Windowed or borderless both work. Fullscreen usually does too.** The overlay
+is an ordinary always on top window that follows Hearthstone's rectangle, so
+any mode the desktop composites works, and windowed with a title bar is fine.
+True exclusive fullscreen is the one case that cannot work, because the GPU
+sends the game's frames straight to the display and nothing else gets a look
+in. In practice Windows 10 and 11 turn on fullscreen optimizations by default,
+which runs the game through the compositor anyway, which is why the Discord and
+Steam overlays work in fullscreen these days. If you cannot see the overlay in
+fullscreen, switch to borderless windowed. `bgtracker.exe --diag` reports the
+mode the game is actually in. What this tool will not do to force the issue is
+hook the game's swap chain: that means injecting code into Hearthstone, which
+is exactly what it refuses to do.
 
 The overlay takes the same options: `bgtracker.bat --mmr 10 --time past-seven`,
 plus `--demo <log>` to replay a Power.log through the UI.
