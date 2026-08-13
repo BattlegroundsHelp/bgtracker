@@ -3,15 +3,19 @@
 
   "_comment_mmr": "{mmr} is your --mmr bracket. A feed publishes a bracket only once it holds enough games, so top-1% may not exist yet; when it doesn't, the tool falls back to the all-players file and says on screen which bracket the numbers actually came from - it never labels the whole pool 'top 1%'. A feed built before brackets existed serves heroes-{time}.json, and that is tried last, so this file works against an old server too. What each bracket means is written inside every file (the 'mmr' block: bucket, minRating, games) - see server/README.md.",
 
-  "heroes":   "http://165.227.41.29/heroes-{mmr}-{time}.json",
-  "trinkets": "http://165.227.41.29/trinkets-{mmr}-{time}.json",
-  "cards":    "http://165.227.41.29/cards-{mmr}-{time}.json",
-  "comps":    "http://165.227.41.29/comps-{mmr}-{time}.json",
+  "heroes":     "http://165.227.41.29/heroes-{mmr}-{time}.json",
+  "heropowers": "http://165.227.41.29/heropowers-{mmr}-{time}.json",
+  "trinkets":   "http://165.227.41.29/trinkets-{mmr}-{time}.json",
+  "cards":      "http://165.227.41.29/cards-{mmr}-{time}.json",
+  "comps":      "http://165.227.41.29/comps-{mmr}-{time}.json",
 
-  "_comment_duo": "The same four tables built from DUOS games only - this is what --duo reads. Separate on purpose: a duos lobby is four teams finishing 1st-4th, a solo lobby is eight players finishing 1st-8th, on a different hero pool, so one pooled average would describe neither. There is deliberately no fallback from duos to solo: leave these keys out and --duo shows no numbers rather than the wrong game's numbers.",
+  "_comment_heropowers": "heropowers is the hero POWER table - average placement and pick rate for the powers you choose between when a hero offers a choice. No stats site publishes these at any price, so before this pool existed the pick panel could name your three options and rate none of them. Only some heroes offer the choice, so this table is small by nature; leave the key out and those options simply show a dash.",
 
-  "heroes_duo":   "http://165.227.41.29/heroes-duo-{mmr}-{time}.json",
-  "trinkets_duo": "http://165.227.41.29/trinkets-duo-{mmr}-{time}.json",
-  "cards_duo":    "http://165.227.41.29/cards-duo-{mmr}-{time}.json",
-  "comps_duo":    "http://165.227.41.29/comps-duo-{mmr}-{time}.json"
+  "_comment_duo": "The same tables built from DUOS games only - this is what --duo reads. Separate on purpose: a duos lobby is four teams finishing 1st-4th, a solo lobby is eight players finishing 1st-8th, on a different hero pool, so one pooled average would describe neither. There is deliberately no fallback from duos to solo: leave these keys out and --duo shows no numbers rather than the wrong game's numbers.",
+
+  "heroes_duo":     "http://165.227.41.29/heroes-duo-{mmr}-{time}.json",
+  "heropowers_duo": "http://165.227.41.29/heropowers-duo-{mmr}-{time}.json",
+  "trinkets_duo":   "http://165.227.41.29/trinkets-duo-{mmr}-{time}.json",
+  "cards_duo":      "http://165.227.41.29/cards-duo-{mmr}-{time}.json",
+  "comps_duo":      "http://165.227.41.29/comps-duo-{mmr}-{time}.json"
 }

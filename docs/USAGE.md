@@ -168,7 +168,7 @@ fastest way to see whether the check is reaching anything at all.
 ## 3. What you will see the first time
 
 The overlay is **eleven small windows**, not one big panel (ten without the
-optional memory reader — OTHER PLAYERS needs it). Each one opens and closes
+optional memory reader - OTHER PLAYERS needs it). Each one opens and closes
 on its own trigger, at the moment it is about the thing in front of you. Each one
 is **draggable on its own** and remembers its own spot in `.overlay.json`, so
 moving the tavern window never moves anything else.
@@ -199,11 +199,11 @@ They sit on the left because a panel on the right would cover the trinket row.
 |---|---|---|
 | **MINIONS** | always, as a slim one-line bar; click `browse ▸` to expand | The whole current minion pool, filtered by tier, tribe and mechanic, with card text. Built from the live card data, so it is always this patch. **Needs no stats at all.** |
 | **SESSION** | always, except while the hero draft is up | Every game that finished while it was running, with placement and hero, and this lobby's tribes. **Your MMR is a dash** unless you build the optional memory reader (section 5). It is never guessed. |
-| **PICK YOUR HERO** | hero select | All four heroes, named and shown, each with one line saying when that hero is the pick (111 of the 121 heroes have one; the rest show nothing rather than a guess). The ranking numbers come from the community feed by default; a row it holds too few games for is flagged thin or stays blank. |
-| **PICK YOUR HERO POWER** | that choice only | One row per hero power on offer. Numbers only where the feed has them. |
+| **PICK YOUR HERO** | hero select | All four heroes, named and shown, each with one line saying when that hero is the pick (all 121 heroes have one, and those lines ship with the tool). The ranking numbers come from the community feed by default; a row it holds too few games for is flagged thin or stays blank. |
+| **PICK YOUR HERO POWER** | that choice only | One row per hero power on offer, named and lined up. Numbers are the one gap here: the pool now collects and publishes hero-power stats, but this panel does not read that table yet, so most of the time every option shows a dash. |
 | **PICK YOUR TRINKET** | trinket offers | The four trinkets, named, with the feed's numbers where they exist. |
 | **PICK ONE** | discovers and Dark Gifts | The options, named. Dark Gifts have no published stats anywhere, so those stay unrated even with a source. |
-| **OTHER PLAYERS** | while a lobby is running (it steps aside for a trinket offer) | Everyone else in place order: hero, tavern tier, health. For anyone you have fought, the board they were last seen holding, stamped `seen r7 · 2 rounds ago`; click a player to see it. **This window does not appear at all** unless you build the optional memory reader (section 5) — the log never states another player's board while you shop, so there is nothing to show without it. |
+| **OTHER PLAYERS** | while a lobby is running (it steps aside for a trinket offer) | Everyone else in place order: hero, tavern tier, health. For anyone you have fought, the board they were last seen holding, stamped `seen r7 · 2 rounds ago`; click a player to see it. **This window does not appear at all** unless you build the optional memory reader (section 5) - the log never states another player's board while you shop, so there is nothing to show without it. |
 
 ### The honest version of "what works right now"
 
@@ -226,11 +226,15 @@ They sit on the left because a panel on the right would cover the trinket row.
 - The hero tips at the draft: they ship with the tool as plain text, so they
   need no source and no network.
 
-**From the community feed, which is young:** hero, hero power and trinket
-rankings, pick rates, sample sizes, measured tavern star ratings (the curated
-stars above stand in where it is thin), measured comp averages. Anything the
-pool holds too few games for is flagged thin or left blank rather than
-guessed; section 4 is how to read your own games or another source instead.
+**From the community feed, which is young:** hero and trinket rankings, pick
+rates, sample sizes, measured tavern star ratings (the curated stars above stand
+in where it is thin), measured comp averages. Anything the pool holds too few
+games for is flagged thin or left blank rather than guessed; section 4 is how to
+read your own games or another source instead. Two honest gaps at this pool
+size: **hero-power numbers** are collected and published but the pick panel does
+not read them yet, and the **comps file has no rows in it** because an archetype
+is only published once 30 games have been classified into it (the curated
+families cover for it meanwhile).
 
 ### Two things worth knowing on sight
 
@@ -242,7 +246,11 @@ guessed; section 4 is how to read your own games or another source instead.
 ### About the combat odds
 
 Both warbands are read out of the log before the fight animates and a Monte Carlo
-simulation gives win / tie / loss. Across 339 real logged fights it called the
+simulation gives win / tie / loss. The same rollouts give a second line where
+the log stated enough to compute it: roughly how much damage lands each way, and
+the chance this fight ends you or them (`hit ~7 · take ~4 · they die 12% · we
+die 3%`). Any part of that the log cannot support is left out rather than
+guessed. Across 339 real logged fights it called the
 winning side about **86%** of the time. It knows the vanilla rules, deathrattle
 summons and the highest-impact per-card triggers, but plenty of cards are still
 unscripted, so when one is on the board the odds are deliberately widened. It
@@ -269,6 +277,8 @@ overriding it.
   applied while you drag, so you can size it against the game instead of
   restarting to find out. Below it, a nudge for the badges printed on the cards:
   those already follow the game window on their own, so this only leans on them.
+  If the nudge is not enough, drag them by hand: see **Moving the badges** just
+  below.
 - **DATA.** Sharing your finished games is **on by default**, and this box is
   the off switch: clear it and nothing is sent (or start with `--no-upload`
   to stop it for one run without saving anything). While it is on, the
@@ -299,6 +309,40 @@ loaded once, when the log reader starts.
 
 `--no-panel` starts without it, and the last checkbox in the panel turns off
 opening it on start. The tool works exactly the same if you never open it.
+
+### Moving the badges (calibrate mode)
+
+The numbers and stars printed **on the cards** are not part of any panel. They
+are thin transparent strips lying over the game, and they are click-through so
+every click reaches Hearthstone. That is also what makes them impossible to
+drag, because a drag is a click.
+
+So there is a mode for it. The switch is the **`⇕ badges` chip in the header of
+the window titled bgtracker**, just to the right of the title. It lives there
+because that window is always up and cannot be switched off, and because no
+click can ever land on a strip itself.
+
+1. Click `⇕ badges`. Every strip appears at once, showing a marker per card slot
+   and **no numbers at all** (a placeholder number is still a made-up number),
+   and the chip turns into `⇕ done`.
+2. **Click-through is off for as long as the mode is on.** That is the whole
+   point of it, and the trade: while you are calibrating, a click that lands on
+   a strip is taken by the strip and does not reach the game. Do it between
+   games, not mid-fight. The game stays the front window throughout, so the
+   overlay does not hide itself while you drag.
+3. Drag each strip onto the row of cards it belongs to. There are four kinds
+   (heroes, trinkets, the shop, and choose-one dialogs) and each is positioned
+   on its own, because being wrong about one says nothing about the others. The
+   pattern shows the number of slots that dialog usually deals, so it sits where
+   the real badges will.
+4. Click `⇕ done`. Click-through goes straight back on. It also ends on its own two other ways, because a mode left on is four bands of the screen the game cannot be clicked through: it times out after 90 seconds with no drag, and it closes the moment a fight starts, the markers disappear,
+   and the real badges return.
+
+What is saved is an offset as a **fraction of the game window**, not a pixel
+position, so it survives a resolution or window-size change. The nudge is capped
+(a fifth of the width, a bit under half the height) so a fumbled drag cannot
+fling a strip off the game and out of reach. Deleting `.overlay.json` clears
+the offsets along with the window positions.
 
 ---
 
@@ -360,10 +404,12 @@ leave out is a table you asked to keep empty.
 
 ```json
 {
-  "heroes":   "https://your-host.example/heroes-{time}.json",
-  "trinkets": "https://your-host.example/trinkets-{time}.json",
-  "cards":    "https://your-host.example/cards-{time}.json",
-  "comps":    "https://your-host.example/comps-{time}.json"
+  "heroes":     "https://your-host.example/heroes-{time}.json",
+  "heropowers": "https://your-host.example/heropowers-{time}.json",
+  "trinkets":   "https://your-host.example/trinkets-{time}.json",
+  "cards":      "https://your-host.example/cards-{time}.json",
+  "comps":      "https://your-host.example/comps-{time}.json",
+  "hero_tips":  "https://your-host.example/hero-tips-community.json"
 }
 ```
 
@@ -379,19 +425,28 @@ leave out is a table you asked to keep empty.
 - URL responses are cached in `.cache/` for one hour.
 - Delete a line to leave that table empty. Missing data degrades to "no numbers",
   it never crashes.
-- `heroes_duo`, `trinkets_duo`, `cards_duo` and `comps_duo` are optional extra
-  keys, used by `--duo`. They are the same four tables built from Duos games
-  only. There is deliberately no fallback from them to the solo tables: a Duos
-  lobby is four teams finishing 1st-4th where solo is eight players finishing
-  1st-8th, so a solo number under a Duos heading would answer the wrong
-  question. Leave them out and `--duo` shows no numbers instead.
+- `heroes_duo`, `heropowers_duo`, `trinkets_duo`, `cards_duo` and `comps_duo`
+  are optional extra keys, used by `--duo`. They are the same tables built from
+  Duos games only. There is deliberately no fallback from them to the solo
+  tables: a Duos lobby is four teams finishing 1st-4th where solo is eight
+  players finishing 1st-8th, so a solo number under a Duos heading would answer
+  the wrong question. Leave them out and `--duo` shows no numbers instead.
   `collect.py --local-feed` writes them for you.
+- `heropowers` is the hero **power** table. Nobody else publishes one at any
+  price, so the pool computes its own. It is small by nature, since only some
+  heroes make you choose a power at all, and the pick panel does not read it
+  yet, so setting the key changes nothing on screen today.
+- `hero_tips` is the **voted** hero tips feed written by `server/tips.py`. Leave
+  it out and the tips that ship with the tool are the only ones you see, which
+  is the default. A voted line is marked `▲` in the draft so it is never
+  mistaken for a reviewed one.
 
 **The JSON shape.** Each file is one object with one array in it:
 
 | file | top level key | fields read from each row |
 |---|---|---|
 | heroes | `heroStats` | `heroCardId`, `averagePosition`, `totalOffered`, `totalPicked`, `dataPoints`, `placementDistribution`, `tribeStats[]` (each with `tribe`, `impactAveragePosition`, `dataPoints`, `dataPointsOnMissingTribe`) |
+| heropowers | `heroPowerStats` | `heroPowerCardId`, `averagePosition`, `totalOffered`, `totalPicked`, `dataPoints`, `placementDistribution` |
 | trinkets | `trinketStats` | `trinketCardId`, `averagePlacement`, `pickRate`, `dataPoints`, `averagePlacementAtMmr[]` (`mmr`, `placement`) |
 | cards | `cardStats` | `cardId`, `averagePlacement`, `averagePlacementOther`, `totalPlayed` |
 | comps | `compStats` | `archetype`, `averagePlacement`, `dataPoints`, `averagePlacementAtMmr[]`, `heroStats[].finalBoards` |
@@ -444,7 +499,7 @@ to any log file:
 - **hero picks re-scored for the lobby you are actually in** rather than a global
   average,
 - your **MMR** in the SESSION window, and your board for synergy marks,
-- the **leaderboard** — everyone's hero, tavern tier and health — and the board
+- the **leaderboard** - everyone's hero, tavern tier and health - and the board
   each opponent was last seen holding, which is the whole OTHER PLAYERS window.
   Without this helper that window never appears.
 
@@ -502,7 +557,7 @@ bgtracker.bat --mmr 10 --time past-seven
 | `--no-upload` | Do not share finished games with the community feed, for this run only. The DATA box in the settings panel (section 3b) turns sharing off for good; it is on by default. |
 | `--no-panel` | Start without opening the settings panel (section 3b). |
 
-**Console version (`python bgtracker.py`)** — no overlay, just text. Takes
+**Console version (`python bgtracker.py`)** - no overlay, just text. Takes
 `--mmr`, `--time` and `--duo` as above, plus:
 
 | flag | what it does |
@@ -532,7 +587,8 @@ bgtracker.bat --mmr 10 --time past-seven
 | **Nothing appears, and it is already borderless** | The overlay only draws while Hearthstone is the front window. Or it crashed on launch. | Click on the game. Then restore the minimised **bgtracker** console from the taskbar and read the last lines: `hb ... front=True anchored=True` means it is alive and anchored; `anchored=False` means it cannot see the game window. |
 | **`'python' is not recognized`, or the Microsoft Store opens** | Windows ships a fake `python` that just opens the Store. | Easiest fix: use the download (section 2), which needs no Python. Otherwise install real Python from python.org with **Add python.exe to PATH** ticked; if the Store still hijacks it, Settings → Apps → Advanced app settings → **App execution aliases** → turn **off** `python.exe` and `python3.exe`, then relaunch. |
 | **Windows are in the wrong place, off screen, or stacked on each other** | A saved drag position from a different resolution or monitor. | Quit the overlay, delete `.overlay.json` in the repo folder, start again. Every window returns to its default slot. (This also clears your session history.) |
-| **The overlay covers cards I need to click** | Every window is draggable, individually. | Drag it by its header to somewhere better. It remembers. Note the badge strips drawn *on* the cards are click-through, so clicks reach the game, and they cannot be dragged yet. |
+| **The overlay covers cards I need to click** | Every window is draggable, individually. | Drag it by its header to somewhere better. It remembers. The badge strips drawn *on* the cards are click-through, so clicks reach the game anyway; to move those, use the `⇕ badges` chip in the bgtracker window's header (section 3b, **Moving the badges**). |
+| **The badges sit slightly off the cards** | A resolution or window size the measured slots were not taken on. | Section 3b, **Moving the badges**: `⇕ badges` in the bgtracker header lets you drag each strip into place, and the offset is saved as a fraction of the game window. |
 | **No numbers anywhere: hero picks show names but no placements** | The community feed (the default) could not be reached, or a `sources.json` you wrote leaves those tables out. | Check the console for a "feed unreachable" line. Section 4 has the alternatives: `python collect.py` then `python collect.py --local-feed`, then restart the overlay. |
 | **Numbers appear but say "thin"** | Fewer than 30 games behind that row. | Correct behaviour. Read it as no signal. It fills in as you play. |
 | **Tavern stars look blunt, or a minion has none** | With no `cards` source the stars are the curated signal, which only rates comp-core minions and minions of a viable tribe. | Expected. Add a `cards` source (section 4) and every rated minion gets a measured star inside its own tavern tier. |

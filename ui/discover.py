@@ -11,12 +11,17 @@ Lifecycle:
 Scoring rule that has to stay: score every option we CAN and show the rest as
 no-data. Requiring all options to be known dropped the whole panel whenever a
 token or a brand-new card was among them - which is most Dark Gifts.
+
+Each option also carries the MECHANICAL read (ui/synergy.py) on its own line:
+what the card's own text says it pays off, against what your board is made of.
+That line comes out of the card database alone, so it is the one rating in
+this panel that is there with no stats source configured at all.
 """
 
 from __future__ import annotations
 
-from .base import (ACCENT, DIM, F_STARS, F_SUB, SOFT, STAR_COLOR, TEXT,
-                   BaseWindow)
+from .base import (ACCENT, DIM, F_STARS, F_SUB, GOOD, SOFT, STAR_COLOR, TEXT,
+                   BaseWindow, art_frame, fit_text, plate)
 
 
 class DiscoverWindow(BaseWindow):
@@ -60,12 +65,25 @@ class DiscoverWindow(BaseWindow):
             c.create_text(14, y + 8, text="no discover open", anchor="w",
                           fill=DIM, font=F_SUB)
             return y + 24
+        # The mechanical read gets its own line here, where the tavern row only
+        # has room for the short form. A discover is at most four options and
+        # this window's band is 300px, so 40px rows still fit with room over
+        # (28 + 4x40 + 10 = 198). The rows only grow when a line actually
+        # exists, so a dialog with nothing to say stays exactly as compact as
+        # it always was.
+        step = 40 if any(r.get("syn_full") for r in self.rows) else 26
         for r in self.rows:
             s = r.get("stars", 0)
+            mine = bool(r.get("mine"))
+            # At most four options, so every one of them can be a plate here
+            # (unlike the seven-row tavern) - and the one already in your
+            # build is the only one wearing the gold edge.
+            plate(c, 8, y, self.WIDTH - 8, y + step - 4, 8, best=mine)
             ic = (self.app.art.icon(r.get("card"), 22)
                   or self.app.art.icon_for_name(r["name"], 22))
             if ic is not None:
                 c.create_image(20, y + 11, image=ic, anchor="w")
+                art_frame(c, 19, y, 43, y + 22, mine)
             c.create_text(46, y + 11, text="★" * s, anchor="w",
                           fill=STAR_COLOR.get(s, DIM), font=F_STARS)
             c.create_text(92, y + 11, text=r["name"][:16], anchor="w",
@@ -79,5 +97,8 @@ class DiscoverWindow(BaseWindow):
             elif r.get("tier"):
                 c.create_text(self.WIDTH - 14, y + 11, text=f"T{r['tier']}",
                               anchor="e", fill=DIM, font=F_SUB)
-            y += 26
+            if step > 26 and r.get("syn_full"):
+                c.create_text(46, y + 28, anchor="w", fill=GOOD, font=F_SUB,
+                              text=fit_text(r["syn_full"], self.WIDTH - 60))
+            y += step
         return y + 10

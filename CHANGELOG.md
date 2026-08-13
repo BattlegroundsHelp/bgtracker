@@ -2,6 +2,97 @@
 
 ## Unreleased
 
+### Added
+
+- **Hero-power stats, which nobody else publishes at any price.** Some heroes
+  make you choose a power, and no stats site sells numbers for that choice, so
+  the pool computes its own. The collector mines which powers you were offered
+  and which you took, the aggregator builds a `heropowers` table exactly the way
+  it builds the hero table (the offer is the denominator, the pick is the
+  numerator, the placement is the game's own result), and the client can read
+  it. Plainly: **the PICK YOUR HERO POWER panel does not read that table yet**,
+  so on screen those options still mostly show a dash. Only some heroes offer
+  the choice at all, so this is a small table by nature and it will need a much
+  bigger pool than today's before a row clears the 30 game floor.
+- **Comps are classified now.** Every shared final board goes through the
+  client's own rule: a board belongs to the tribe it is mostly made of, and only
+  when that family's engine piece is standing on it. A board that matches
+  nothing is counted under "none" rather than forced into the nearest bucket,
+  because piling leftovers into the closest archetype drags every average toward
+  the middle and makes the whole table say nothing. An archetype is only
+  published once 30 games have been classified into it, so **on today's pool the
+  comps file still carries no rows at all** - it carries the counts instead, and
+  the client goes on showing the curated families. "We classified this many
+  boards and nothing has cleared the floor" is a fact; a table of four-game
+  averages is not.
+- **Move the badges printed on the cards.** The strips are click-through so
+  every click reaches the game, which is exactly what made them impossible to
+  drag. So there is a mode: the `⇕ badges` chip in the bgtracker window's
+  header drops click-through on every strip for as long as it is on, the strips
+  show a marker per slot and no numbers at all while you position them (a
+  placeholder number is still a made-up number), and `⇕ done` puts click-through
+  back. The offset is saved per kind of strip as a fraction of the game window,
+  so it survives a resolution change, and it is capped so a fumbled drag cannot
+  fling a strip off the game and out of reach. The chip lives in that window
+  because it is the only surface that is always up and cannot be switched off,
+  and because no click can ever land on a strip itself.
+- **Stars on the discover and Dark Gift cards themselves.** PICK ONE and PICK
+  YOUR HERO POWER now carry their own badge strip. The band had to be measured
+  rather than guessed: on the Choose One frame the cards run y 302 to 617 with
+  the tribe and stat banners at 630 to 670, so the first value put the stars on
+  top of the tribe banner. They sit across the top of the card art instead,
+  clear of the tier gem and of every line the card prints.
+- **What a card pays off, from the card's own text.** "Beasts 4" on a shop row
+  means this card names Beasts and you are holding four. It reads the card
+  database and nothing else, so it works with no stats source, no community feed
+  and no memory reader, and it is this patch's data by definition. Three things
+  count and no more: the text naming a tribe, Magnetic (which attaches to a Mech
+  without saying the word), and Blood Gems (a Quilboar mechanic the text spells
+  differently). "Your minions" and Spellcraft are ignored, because a tag that
+  fires on nearly every card says nothing, and simply belonging to a tribe is
+  only mentioned once you hold two of them. The tavern shows the short form
+  where a row has no comp to name; PICK ONE gives every option its own line. The
+  count needs the memory reader - without it the payoff is still named and no
+  number is printed, because "how many Beasts do you hold" has no answer in
+  Power.log.
+- **When a minion pays off, not just whether.** Opening a row in the minion
+  browser splits the buy-it-versus-skip-it difference across four stretches of
+  the game, where the feed carries a per-turn breakdown. Splitting one card's
+  games across fourteen turns is how a healthy sample becomes fourteen small
+  ones, so a stretch under the sample floor prints the word `thin` with its game
+  count and never a number, a stretch nobody played it in is a dash, and a feed
+  with no breakdown says so in one line instead of drawing an empty grid. Needs
+  a feed carrying turn data behind it; the community pool is nowhere near that
+  yet.
+- **All 121 heroes now have a tip at the draft**, up from 111. The last ten were
+  the awkward ones, whose printed power names a reward the card itself never
+  spells out (a Quest, a Timewarp, a Darkmoon Prize). Their lines say what the
+  power costs, when it pays out and what it asks of you, and stop where the card
+  stops rather than inventing the reward.
+- **Voting on the tips, for people who will never open a pull request.**
+  `server/tips.py` takes submissions and votes and publishes a community tips
+  feed the client reads like any other source. A line only reaches that feed
+  once distinct voters, its score and a margin over the shipped line have all
+  cleared a floor, so a handful of manufactured voters changes nothing anybody
+  sees. A voted line is marked `▲` in the draft and named in the header, because
+  a stranger's wording and a reviewed one are not the same claim. There is
+  deliberately no vote button in the overlay: a hero pick is a sixty second
+  decision, the panel's band is full at four heroes, and a one-click vote from
+  an anonymous overlay is a ballot box with no lock. Honest limit: nothing here
+  knows who anyone is, so somebody rotating client ids across many addresses can
+  still manufacture voters. The floors are the lock, not the ballot box. With no
+  feed, an unreachable feed or a corrupt one you get the tips that ship.
+
+### Changed
+
+- **The overlay is warm dark now instead of blue-grey.** Battlegrounds is
+  stained wood, stone, aged parchment and lamplight, and a cool charcoal slab
+  beside it always read as a different program's window sitting on top of the
+  game. Panels sit in a three-tone rim, rows sit on raised plates, and card art
+  gets a frame. Nothing about what a colour **means** changed: the placement
+  colours, the star colours and the tribe colours are untouched, because their
+  hue is the number.
+
 ### Fixed
 
 - **Lobby tribes were being overcounted, and the pool was being fed the wrong

@@ -12,14 +12,18 @@ Lifecycle:
   closes  when the screen enters combat, when a later tavern roll proves the
           dialog is gone, or on its timeout
 
-Honesty: there is no hero-power stats feed. If a configured source happens to
-carry a row for the power's cardId it is shown; otherwise every option shows a
-dash. No number is ever borrowed from the hero that owns the power.
+Honesty: the numbers come from the hero-power feed and from nowhere else
+(bgtracker.hero_power_table, built from the games players shared - no stats
+site publishes these at any price). An option that feed does not carry, or
+carries on too few games to stand behind, shows a dash. No number is ever
+borrowed from the hero that owns the power, and none from the minion table -
+a hero power is not a minion, which is why that lookup used to find nothing.
 """
 
 from __future__ import annotations
 
-from .base import DIM, F_NAME, F_SUB, SOFT, TEXT, BaseWindow, avg_color
+from .base import (DIM, F_NAME, F_SUB, SOFT, TEXT, BaseWindow, art_frame,
+                   avg_color, plate)
 
 
 class HeroPowerWindow(BaseWindow):
@@ -65,12 +69,19 @@ class HeroPowerWindow(BaseWindow):
             c.create_text(14, y + 8, text="no hero-power pick open", anchor="w",
                           fill=DIM, font=F_SUB)
             return y + 24
+        # Rows arrive best first (overlay.py sorts them), but no row wears the
+        # gold "standout" edge the hero and trinket panels use: this window
+        # draws no sample size beside its numbers, so it has nowhere to say
+        # how thin the winner is, and crowning one on that would be a claim it
+        # cannot back. Every option gets the same plate.
         for r in self.rows:
+            plate(c, 8, y + 1, self.WIDTH - 8, y + 25, 8)
             ic = (self.app.art.icon(r.get("card"), 24)
                   or self.app.art.icon_for_name(r["name"], 24))
             tx = 18
             if ic is not None:
                 c.create_image(16, y + 13, image=ic, anchor="w")
+                art_frame(c, 15, y + 1, 41, y + 25)
                 tx = 46
             c.create_text(tx, y + 13, text=r["name"][:24], anchor="w",
                           fill=TEXT, font=F_NAME)

@@ -16,12 +16,23 @@ so a thousand clients fetching stats never touch this process or the DB.
 What it computes honestly, from the data we actually have:
   - heroes:   averagePosition + placement spread + sample, from games with a hero
               and a placement. Pick-rate only when clients upload the offered set.
+  - heropowers: the same numbers for the hero POWER, from the games that were
+              offered a choice of one. Nobody publishes these anywhere - the pick
+              panel could name the options and never rate them.
   - trinkets: averagePlacement + sample, from games that took the trinket. Pick-rate
               likewise needs the offered set.
   - cards:    played-vs-not placement delta, from games that upload their final board.
-  - comps:    EMPTY for now - archetype labelling needs a classifier we don't have
-              yet (see server/README.md "What's not computed"). The file is still
-              written so the client degrades to "no comp data", never errors.
+  - comps:    the archetype each finished board was BUILT as, averaged. The
+              labelling uses the client's own families and core roles
+              (bgtracker.COMP_FAMILIES + data/comp_roles.json), imported rather
+              than restated, so the server and the panels can never disagree
+              about what "beast summons" means. A board matching nothing is
+              counted as "none", never swept into the nearest bucket. Rows are
+              published only once an archetype clears COMP_MIN_GAMES; below that
+              the file carries the classification counts and no rows, and the
+              client falls back to its curated list - because a thin measured row
+              REPLACES that list on screen, which would show a comp ranking built
+              on four games.
 
 Each of those is written once per MMR bucket the pool can actually support (see
 MMR_BUCKETS below): heroes-{mmr}-{period}.json. Bucket 100 is ALSO written under
@@ -51,6 +62,7 @@ import gzip
 import json
 import os
 import sqlite3
+import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -82,6 +94,36 @@ MMR_BUCKETS = [100, 50, 25, 10, 1]
 # already draws between "signal" and "no signal".
 MMR_MIN_GAMES = int(os.environ.get("BGTRACKER_MMR_MIN", "30"))
 
+# Games one archetype needs before its row is published at all. Every other
+# table publishes thin rows and lets the client flag them, but a comp row cannot
+# do that: the client's comp_table drops its CURATED family list the moment the
+# feed carries a single measured row (bgtracker.comp_table), so publishing a
+# 4-game archetype would replace a useful list with a ranking nobody should
+# read. Same number as the client's MIN_SAMPLE.
+COMP_MIN_GAMES = int(os.environ.get("BGTRACKER_COMP_MIN", "30"))
+
+# The comps file carries the example boards the client builds "key minions" and
+# their frequency from. Capped so one popular archetype cannot make the file
+# enormous; the cap is on BOARDS, and the newest are kept.
+COMP_MAX_BOARDS = 200
+
+# ---------------------------------------------- the client's own definitions
+# The archetypes, and what makes a minion core to one, are defined in the CLIENT
+# (bgtracker.COMP_FAMILIES + data/comp_roles.json), because that is what the
+# panels draw. They are imported, never restated: a second list here would drift
+# from the first and the two would disagree on screen, which is worse than
+# having no comp table at all.
+#
+# The import is optional on purpose. The deployed container may hold only this
+# file, and the classifier also needs the live card pool (HearthstoneJSON) to
+# know a minion's tribes and text. Either being missing means the comps file
+# says so and carries no rows - it never falls back to a guess.
+sys.path.insert(0, str(Path(__file__).parent.parent))
+try:
+    import bgtracker as bg
+except Exception:                                  # pragma: no cover - deploy shape
+    bg = None
+
 
 def load_games():
     if not DB_PATH.exists():
@@ -93,8 +135,13 @@ def load_games():
     out = []
     for r in rows:
         g = dict(r)
-        for k in ("tribes", "offered_heroes", "offered_trinkets", "picked_trinkets", "final_board"):
-            g[k] = json.loads(g[k]) if g[k] else []
+        # .get, not [k]: a store written by an older ingest has no column for a
+        # newer field until that ingest starts and migrates it, and the
+        # aggregator must not crash in the gap - a missing column is an empty
+        # list, exactly like a row that never carried the field.
+        for k in ("tribes", "offered_heroes", "offered_trinkets", "picked_trinkets",
+                  "offered_hero_powers", "picked_hero_powers", "final_board"):
+            g[k] = json.loads(g[k]) if g.get(k) else []
         out.append(g)
     return out
 
@@ -195,6 +242,56 @@ def hero_stats(games):
     return {"heroStats": out}
 
 
+def hero_power_stats(games):
+    """The hero-power table, built exactly like hero_stats.
+
+    Only some heroes hand you a choice of power; the rest have a fixed one and
+    contribute nothing here, which is why this table is much smaller than the
+    hero table and why that is not a bug.
+
+    One game can pick SEVERAL powers - a power that hands out another power
+    re-offers every few turns (measured: one game picked five). So:
+      - a placement counts ONCE per distinct power per game, or a single long
+        game would stack five copies of its own result onto one row;
+      - offered / picked count every showing, because pick rate is asking
+        "how often is this taken when it is on screen", and it was on screen
+        each time.
+    """
+    places = defaultdict(list)          # power -> [place, ...]
+    offered = defaultdict(int)
+    picked = defaultdict(int)
+    for g in games:
+        if g["place"]:
+            for p in set(g["picked_hero_powers"]):
+                places[p].append(g["place"])
+        if g["offered_hero_powers"]:
+            for p in g["offered_hero_powers"]:
+                offered[p] += 1
+            for p in g["picked_hero_powers"]:
+                if p in g["offered_hero_powers"]:
+                    picked[p] += 1
+
+    out = []
+    for p in set(places) | set(offered):
+        pl = places[p]
+        dist = []
+        if pl:
+            for rank in range(1, 9):
+                c = pl.count(rank)
+                if c:
+                    dist.append({"rank": rank, "percentage": round(100.0 * c / len(pl), 2)})
+        out.append({
+            "heroPowerCardId": p,
+            "averagePosition": round(mean(pl), 3) if pl else None,
+            "dataPoints": len(pl),
+            "placementDistribution": dist,     # the client's top-4 comes from this
+            "totalOffered": offered[p],
+            "totalPicked": picked[p],
+        })
+    out.sort(key=lambda r: (r["averagePosition"] is None, r["averagePosition"] or 9))
+    return {"heroPowerStats": out}
+
+
 def trinket_stats(games):
     places = defaultdict(list)
     offered = defaultdict(int)
@@ -247,10 +344,77 @@ def card_stats(games):
 
 
 def comp_stats(games):
-    # Archetype labelling (Beasts / Murlocs / Menagerie ...) needs a classifier we
-    # haven't built. Emit an empty-but-valid file so the client shows "no comp
-    # data" instead of erroring. See server/README.md "What's not computed".
-    return {"compStats": []}
+    """Average placement per archetype, over the boards players finished on.
+
+    Every game with a final board and a placement is classified by the client's
+    own rule (bgtracker.classify_board: the board belongs to the tribe it is
+    mostly made of, and only if that family's engine piece is standing on it).
+    A board that matches nothing is counted under "none" and its placement goes
+    nowhere - forcing piles into the nearest bucket would drag every archetype's
+    average toward the middle and make the whole table say nothing.
+
+    The counts are always reported, rows only above COMP_MIN_GAMES. That gap is
+    the honest state of a young pool: "we classified 39 boards and no archetype
+    has 30 games yet" is a fact; a table of four-game averages is not.
+    """
+    boarded = [g for g in games if g["final_board"] and g["place"]]
+    info = {"boards": len(boarded), "classified": 0, "unclassified": 0,
+            "minGames": COMP_MIN_GAMES, "classifier": None}
+    if bg is None:
+        info["classifier"] = "unavailable: the client module is not importable here"
+        return {"compStats": [], "compClassification": info}
+    try:
+        bg.bg_pool()                    # the live card pool the rule reads
+    except Exception as e:
+        info["classifier"] = f"unavailable: no card pool ({type(e).__name__})"
+        return {"compStats": [], "compClassification": info}
+    if not bg.comp_roles():
+        # Without the roles file no board can prove a core piece, so every
+        # board would come back "none" - which reads as "nobody plays comps"
+        # instead of "this deploy is missing data/comp_roles.json".
+        info["classifier"] = "unavailable: data/comp_roles.json is missing"
+        return {"compStats": [], "compClassification": info}
+    info["classifier"] = "bgtracker.classify_board"
+
+    places = defaultdict(list)
+    tribes = {}
+    boards = defaultdict(list)
+    for g in boarded:
+        try:
+            hit = bg.classify_board(g["final_board"])
+        except Exception:
+            hit = None
+        if not hit:
+            info["unclassified"] += 1
+            continue
+        info["classified"] += 1
+        a = hit["archetype"]
+        places[a].append(g["place"])
+        tribes[a] = hit["tribe"]
+        boards[a].append(g["final_board"])
+
+    info["byArchetype"] = {a: len(v) for a, v in sorted(places.items(),
+                                                        key=lambda kv: -len(kv[1]))}
+    out = []
+    for a, pl in places.items():
+        if len(pl) < COMP_MIN_GAMES:
+            continue
+        out.append({
+            "archetype": a,
+            "tribe": tribes[a],
+            "averagePlacement": round(mean(pl), 3),
+            "averagePlacementAtMmr": [],       # no MMR split until the pool asks for one
+            "dataPoints": len(pl),
+            "frequency": round(len(pl) / len(boarded), 4),
+            # The client reads its "key minions" and their % of boards out of
+            # this shape (bgtracker.comp_minion_counts), so the example boards
+            # are real finished boards from this very pool - nobody else's.
+            "heroStats": [{"finalBoards": [
+                {"finalComp": {"board": [{"cardID": c} for c in b]}}
+                for b in boards[a][-COMP_MAX_BOARDS:]]}],
+        })
+    out.sort(key=lambda r: r["averagePlacement"])
+    return {"compStats": out, "compClassification": info}
 
 
 def write(name, obj):
@@ -352,16 +516,28 @@ def emit_period(games, period, stamp, verbose=True, infix="", mode="solo"):
                 rows = at_mmr.get(row["trinketCardId"])
                 if rows:
                     row["averagePlacementAtMmr"] = rows
+        comps = comp_stats(sub)
         for base, obj in (("heroes", {**hero_stats(sub), **meta}),
+                          ("heropowers", {**hero_power_stats(sub), **meta}),
                           ("trinkets", {**trink, **meta}),
                           ("cards", {**card_stats(sub), **meta}),
-                          ("comps", {**comp_stats(sub), **meta})):
+                          ("comps", {**comps, **meta})):
             write(f"{base}{infix}-{b}-{period}", obj)
             if b == 100:
                 write(f"{base}{infix}-{period}", obj)   # pre-bucket names still work
         if verbose:
             floor = "any rating" if cut is None else f">= {cut}"
             print(f"  {period:11} {mode:4} top {b:>3}% ({floor:>11}) {len(sub):6} games")
+            # Say what the comps file actually contains. An empty compStats can
+            # mean three different things - no boards, no classifier, or nothing
+            # over the floor yet - and only the counts tell them apart.
+            info = comps["compClassification"]
+            if info["boards"]:
+                print(f"  {period:11} {mode:4} comps: {info['classified']} boards "
+                      f"classified, {info['unclassified']} matched nothing, "
+                      f"{len(comps['compStats'])} archetypes over "
+                      f"{COMP_MIN_GAMES} games"
+                      + (f" [{info['classifier']}]" if not info.get("byArchetype") else ""))
 
     if verbose:
         thin = [b for b in cuts if b not in [p[0] for p in published]]

@@ -417,6 +417,53 @@ def trinket_table(period: str, mmr: str, refresh: bool = False, duo: bool = Fals
     return out
 
 
+def hero_power_table(mmr: str, period: str, duo: bool = False,
+                     refresh: bool = False) -> dict:
+    """cardId -> {avg placement, pick rate, sample size} for HERO POWERS.
+
+    The pick panel has always been able to NAME the powers on offer and never
+    to rate them, because no feed publishes hero-power numbers. Ours does now
+    (server/aggregate.py hero_power_stats), built exactly like the hero table
+    out of the games players shared: the offer is the denominator, the pick is
+    the numerator, the placement is the game's own result.
+
+    Same shape and the same fallback as every other table - an unconfigured or
+    empty source means {} and every option keeps showing a dash, which is what
+    it showed before this existed.
+
+    THE SAMPLE FLOOR, and why this table enforces it where the others do not.
+    The aggregator publishes thin rows on purpose and leaves the flagging to
+    the client (server/aggregate.py says so), which works for heroes and
+    trinkets because their window draws the sample size right under the number
+    and writes "thin!" beside it (ui/base.offer_rows, called with MIN_SAMPLE).
+    The hero-power window draws the number alone - no sample, nowhere to put a
+    flag - so an average built on one game would be shown there as a plain
+    fact. Rows under MIN_SAMPLE therefore keep their `n` and lose their number:
+    a dash, which is the same thing the window showed when no feed existed.
+    Rows with dataPoints 0 (a power offered but never picked - the aggregator
+    publishes those for the pick rate) fall out under exactly this rule.
+    """
+    data = load_bucket(source_kind("heropowers", duo), "heroPowerStats",
+                       mmr, period, refresh)
+    out = {}
+    for h in data.get("heroPowerStats", []):
+        offered = h.get("totalOffered") or 0
+        n = h.get("dataPoints", 0) or 0
+        thin = n < MIN_SAMPLE
+        out[h["heroPowerCardId"]] = {
+            "avg": None if thin else h.get("averagePosition"),
+            # The pick rate rides on the same floor. It has its own, larger
+            # denominator (every showing, not every finished game), but a rate
+            # printed next to a suppressed average would read as the number the
+            # dash is refusing to give.
+            "pick": None if thin or not offered else 100.0 * h.get("totalPicked", 0) / offered,
+            "n": n,
+            "thin": thin,
+            "dist": [] if thin else (h.get("placementDistribution") or []),
+        }
+    return out
+
+
 def card_table(mmr: str, period: str, refresh: bool = False, duo: bool = False) -> dict:
     """cardId -> {avg placement when played, sample}. Powers the tavern panel."""
     data = load_bucket(source_kind("cards", duo), "cardStats", mmr, period, refresh)
@@ -519,9 +566,9 @@ def hero_power_universe(refresh: bool = False) -> dict:
 
 # Community hero tips: written text, not collected data, so unlike every stats
 # table this one SHIPS with the tool. It is a plain file people edit by pull
-# request (data/hero_tips.schema.json + CONTRIBUTING.md) - that review is the
-# whole quality mechanism, and it is why nothing here may be copied from
-# anyone else's guide.
+# request (data/hero_tips.schema.json + CONTRIBUTING.md); that review, and the
+# vote below it, are the whole quality mechanism, and both are why nothing here
+# may be copied from anyone else's guide.
 _TIPS_CACHE = None
 
 
@@ -552,16 +599,118 @@ def hero_tips(refresh: bool = False) -> dict:
             bullets = [b for b in (e.get("bullets") or []) if isinstance(b, str)]
             tribes = [t for t in (e.get("tribes") or []) if t in TRIBES]
             out[cid] = {"name": e.get("name"), "when": e["when"].strip(),
-                        "bullets": bullets, "tribes": tribes}
+                        "bullets": bullets, "tribes": tribes, "source": "shipped"}
         break                    # first file found wins; they are not merged
     _TIPS_CACHE = out
     return out
 
 
+# The voted half of the same pipeline. server/tips.py collects submissions and
+# votes and publishes ONE file - the current best-voted line per hero, and only
+# for the heroes where the vote produced a clear winner (its floors: distinct
+# voters, score, and a margin over the shipped line). So this is read exactly
+# like every other feed, through the same sources.json key -> load_stats path,
+# and every failure lands in the same place: no key, no server, no network, a
+# corrupt file, an entry that breaks the shape - the shipped tip is shown.
+COMMUNITY_TIPS_FILE = "hero-tips-community.json"
+_COMMUNITY_TIPS = None
+
+
+def _community_tips_source():
+    """Where the voted tips come from, or None.
+
+    sources.json wins. A hand-written sources.json that does not name
+    `hero_tips` means that feed stays OFF, same law as every other table: a key
+    you left out is a table you asked to keep empty. With no sources.json at
+    all, a fresh install reads the community host, the one the uploader already
+    talks to - so giving and getting stay the same decision."""
+    src = raw_source("hero_tips")
+    if src:
+        return src
+    if SOURCES_FILE.exists():
+        return None
+    import settings as _settings
+    return f"{_settings.COMMUNITY_UPLOAD.rstrip('/')}/{COMMUNITY_TIPS_FILE}"
+
+
+def _community_doc(refresh: bool = False) -> dict:
+    """The published feed, parsed and bounded, or an empty one.
+
+    Everything in here was typed by a stranger and voted on by strangers, so it
+    is treated like any other untrusted feed rather than like the file that
+    ships: entries are re-checked against the same lengths the schema states,
+    and one that fails is dropped alone. A tip that is 5000 characters long is
+    not a long tip, it is a broken feed."""
+    global _COMMUNITY_TIPS
+    if _COMMUNITY_TIPS is not None and not refresh:
+        return _COMMUNITY_TIPS
+    out = {"tips": {}, "vote_url": None}
+    try:
+        src = _community_tips_source()
+        doc = load_stats(src, "hero-tips", refresh) if src else {}
+        for cid, e in ((doc or {}).get("tips") or {}).items():
+            if not isinstance(e, dict) or not isinstance(e.get("when"), str):
+                continue
+            when = " ".join(e["when"].split())
+            if not 8 <= len(when) <= 80:
+                continue
+            bullets = [" ".join(b.split()) for b in (e.get("bullets") or [])
+                       if isinstance(b, str) and 8 <= len(" ".join(b.split())) <= 100]
+            out["tips"][cid] = {"name": None, "when": when, "bullets": bullets[:3],
+                                "tribes": [], "source": "community",
+                                "votes": e.get("score"), "voters": e.get("voters")}
+        url = (doc or {}).get("vote_url")
+        if isinstance(url, str) and url.startswith(("http://", "https://")) and len(url) <= 120:
+            out["vote_url"] = url
+    except Exception:
+        out = {"tips": {}, "vote_url": None}
+    _COMMUNITY_TIPS = out
+    return out
+
+
+def community_tips(refresh: bool = False) -> dict:
+    """cardId -> the community's best-voted tip, for the heroes that have one.
+
+    The FIRST call can hit the network. Never make it from a drawing thread -
+    ask community_tips_ready() there and call warm_community_tips() early."""
+    return _community_doc(refresh)["tips"]
+
+
+def community_tips_ready() -> bool:
+    """True once the feed has been loaded (or failed) and asking is free."""
+    return _COMMUNITY_TIPS is not None
+
+
+def warm_community_tips():
+    """Load the feed on a background thread.
+
+    The draft window asks for tips inside a Tk callback, and this feed is the
+    one tip source that can be a URL. A 30 second urlopen on that thread would
+    freeze the overlay over the game for the whole hero select - the exact
+    moment the window exists for. So the fetch happens here, off to one side,
+    and every reader checks community_tips_ready() first and shows the shipped
+    line until the answer arrives. Nothing waits for it."""
+    if _COMMUNITY_TIPS is not None:
+        return
+    threading.Thread(target=_community_doc, daemon=True).start()
+
+
+def tips_vote_url() -> str | None:
+    """Where a person votes on these lines, if the feed names a page. None when
+    there is no feed, or the operator publishes one without a page - in which
+    case nothing about voting is shown, rather than a link to nowhere."""
+    return _community_doc()["vote_url"]
+
+
 def hero_tip(card_id: str) -> dict | None:
     """The tip for one hero, or None. Golden/skin suffixes never appear on a
-    hero cardId, so this is a plain lookup."""
-    return hero_tips().get(card_id)
+    hero cardId, so this is a plain lookup.
+
+    The community's line wins where the vote produced one, otherwise the line
+    that ships. Every entry says which it is in `source`, because a stranger's
+    voted line and a reviewed one are not the same claim and the draft window
+    has to be able to say so."""
+    return community_tips().get(card_id) or hero_tips().get(card_id)
 
 
 def comp_minion_counts(comp: dict) -> tuple:
@@ -925,6 +1074,122 @@ def comp_role_split(comp: dict) -> dict | None:
                                           comp.get("tribe"))}
 
 
+# -------------------------------------------------------- board -> archetype
+#
+# What a finished board WAS, so games can be counted per comp. The families and
+# the core roles are the ones already defined above (COMP_FAMILIES, and the core
+# role each family carries in data/comp_roles.json); nothing new is authored
+# here, because a second list of archetypes would drift from the one the panels
+# draw and the two would disagree on screen.
+#
+# The rule, in one line: a board belongs to the tribe it is mostly made of, and
+# only if the family's own engine is standing on it.
+#
+# Both halves are needed. Tribe share alone calls every pile of Beasts "beast
+# summons"; the core role alone fires on any board holding one card with the
+# right words. A board that satisfies neither is "none" - a genuine pile, and
+# forcing it into a bucket is exactly the kind of invented number this project
+# does not print.
+
+# How much of a board must share one tribe before the board IS that tribe's
+# comp. Half, measured: see the numbers in classify_board's docstring.
+COMP_TRIBE_SHARE = 0.5
+# Menagerie is the comp with no tribe, so it cannot be recognised by share -
+# it is recognised by BREADTH: this many different tribes standing together.
+COMP_MENAGERIE_TRIBES = 5
+# A board too small to have had an identity. Below this a single minion decides
+# the tribe share, which is a coin toss, not a comp.
+COMP_MIN_BOARD = 4
+
+
+def golden_aliases(refresh: bool = False) -> dict:
+    """golden cardId -> the plain cardId it upgrades.
+
+    A golden minion is a different card in the log - either the plain id with a
+    _G suffix or an old-scheme id of its own (TB_BaconUps_nnn) - and a comp is
+    the same comp whether its pieces are golden. The card database states the
+    link (battlegroundsNormalDbfId), so it is read, not guessed. Cached a day
+    like every other card fact; offline with no cache this is {} and golden
+    pieces simply go unrecognised rather than being mapped by a hunch."""
+    CACHE_DIR.mkdir(exist_ok=True)
+    path = CACHE_DIR / "goldens.json"
+    if not refresh and path.exists() and time.time() - path.stat().st_mtime < 86400:
+        return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        cards = _fetch(CARDS_URL)
+    except Exception:
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    by_dbf = {c["dbfId"]: c["id"] for c in cards if c.get("dbfId") and c.get("id")}
+    out = {c["id"]: by_dbf[c["battlegroundsNormalDbfId"]] for c in cards
+           if c.get("id") and c.get("battlegroundsNormalDbfId") in by_dbf}
+    path.write_text(json.dumps(out), encoding="utf-8")
+    return out
+
+
+_POOL_BY_ID = None
+
+
+def pool_by_id(refresh: bool = False) -> dict:
+    """cardId -> the pool minion it is, golden ids folded onto the plain card."""
+    global _POOL_BY_ID
+    if _POOL_BY_ID is None or refresh:
+        pool = {m["id"]: m for m in bg_pool(refresh)}
+        for gid, base in golden_aliases(refresh).items():
+            if base in pool:
+                pool.setdefault(gid, pool[base])
+        _POOL_BY_ID = pool
+    return _POOL_BY_ID
+
+
+def _board_minions(board, refresh: bool = False) -> list:
+    """The pool minions behind a list of board cardIds. Ids the pool does not
+    carry (a summoned token, a card from another mode) are dropped rather than
+    counted as tribeless - they were never a comp decision."""
+    pool = pool_by_id(refresh)
+    return [m for m in (pool.get(c) for c in board or []) if m]
+
+
+def classify_board(board, refresh: bool = False) -> dict | None:
+    """Which archetype a finished board was built as, or None for a pile.
+
+    `board` is a list of cardIds (golden ids welcome). Returns
+    {archetype, tribe, share, core, minions} or None.
+
+    Measured over the 44 real games whose logs survive (2026-08-12) - see the
+    numbers the aggregator prints, and tests/test_compclass.py, which holds
+    this rule to hand-checked boards.
+
+    Why "none" has to be a real answer: a Battlegrounds board is often just the
+    six strongest minions the shop offered, and the whole point of a measured
+    comp table is to say which archetypes place well. Sweeping the piles into
+    the nearest bucket would move their placements into that bucket's average
+    and quietly make every comp look like every other comp.
+    """
+    minions = _board_minions(board, refresh)
+    n = len(minions)
+    if n < COMP_MIN_BOARD:
+        return None
+    hits = {t: sum(1 for m in minions
+                   if t in m["races"] or "ALL" in m["races"]) for t in TRIBES}
+    tribe = max(hits, key=lambda t: hits[t])
+    share = hits[tribe] / n
+    if share >= COMP_TRIBE_SHARE:
+        fam = next((f for f in COMP_FAMILIES if f[2] == tribe), None)
+        if fam is not None:
+            entry = comp_roles().get(fam[1])
+            core = sum(1 for m in minions
+                       if (tribe in m["races"] or "ALL" in m["races"])
+                       and _role_hit(m, entry["core"] if entry else None))
+            if core:
+                return {"archetype": fam[1], "tribe": tribe,
+                        "share": round(share, 3), "core": core, "minions": n}
+    spread = sum(1 for t, c in hits.items() if c)
+    if spread >= COMP_MENAGERIE_TRIBES and share < COMP_TRIBE_SHARE:
+        return {"archetype": "menagerie", "tribe": None,
+                "share": round(share, 3), "core": spread, "minions": n}
+    return None
+
+
 def normalize(card_id: str, table: dict) -> str:
     """Hero skins carry a suffix the stats table doesn't use."""
     if card_id in table:
@@ -1071,21 +1336,140 @@ class MemoryTribes(threading.Thread):
             pass
 
 
+class TribeProver:
+    """What the log PROVES about a lobby's tribes, one line at a time.
+
+    A `tag=CARDRACE` line says what a CARD is, not what the LOBBY holds, and
+    counting every one of them is wrong in two measured ways: a card generated
+    into a hand (a Get, a discover, a Dark Gift reward) and a token summoned
+    mid fight (Skeleton, Beetle, Golem) both carry a tribe the lobby never
+    dealt. Measured over 60 real games, that made six of them claim 9 tribes.
+
+    So a race counts only when it is stated for a BUYABLE pool minion standing
+    in PLAY, and, once the log has named Bartender Bob, only under his
+    controller, which is the shop itself.
+
+    This is the one implementation: collect.lobby_tribes mines finished games
+    with it and the overlay's LobbyTracker follows a live game with it, so the
+    number on screen and the number that reaches the shared pool cannot drift
+    apart. The live case has one unavoidable difference, stated rather than
+    hidden: Bob is not known until his first shop is written, so anything
+    proven in those first few lines is accepted on the looser board rule.
+
+    It never claims a tribe is OUT. An unseen tribe is unconfirmed, and only
+    the memory reader can be exact.
+    """
+
+    _HEAD = re.compile(
+        r"(?:FULL_ENTITY - Creating ID|SHOW_ENTITY - Updating Entity)=\d+ CardID=(\S+)")
+    _TAG = re.compile(r"\(\) - \s*tag=(\w+) value=(\S+)")
+    _BOB = re.compile(r"cardId=TB_BaconShopBob player=(\d+)")
+    # The one-line form: a minion states its race in a TAG_CHANGE that carries
+    # its zone and card id inline. It has no controller, so it can only ever be
+    # board-grade evidence, which is why it is read only while Bob is unknown.
+    _BRACKET = re.compile(
+        r"\[entityName=.+? id=\d+ zone=(\S+) zonePos=\d+ cardId=(\S*)")
+
+    def __init__(self, bob=None, pool=None):
+        self.tribes = set()
+        self.bob = bob
+        self._pool = pool
+        self._card = self._zone = self._race = self._ctrl = None
+
+    def _pool_ids(self):
+        # Lazy, because a tracker is built before the card database is needed
+        # and an unreachable database must not stop a game being followed.
+        if self._pool is None:
+            try:
+                self._pool = {m["id"] for m in bg_pool()}
+            except Exception:
+                self._pool = set()
+        return self._pool
+
+    def _keep(self):
+        """A block just ended: was it proof?"""
+        if (self._race in TRIBES and self._zone == "PLAY"
+                and (self.bob is None or self._ctrl == self.bob)):
+            card = self._card or ""
+            base = card[:-2] if card.endswith("_G") else card
+            if base in self._pool_ids():
+                self.tribes.add(self._race)
+
+    def feed(self, line):
+        """One log line. True when the proven set changed."""
+        before = len(self.tribes)
+        # Cheap substring guards first: this runs on every line of a live game.
+        if self.bob is None and "TB_BaconShopBob" in line:
+            m = self._BOB.search(line)
+            if m:
+                self.bob = m.group(1)
+        if "CardID=" in line:
+            m = self._HEAD.search(line)
+            if m:
+                self._keep()
+                self._card, self._zone = m.group(1), None
+                self._race = self._ctrl = None
+                return len(self.tribes) != before
+        if self._card is not None and "tag=" in line:
+            t = self._TAG.search(line)
+            if t:
+                k, v = t.group(1), t.group(2)
+                if k == "ZONE":
+                    self._zone = v
+                elif k == "CARDRACE":
+                    self._race = v
+                elif k == "CONTROLLER":
+                    self._ctrl = v
+                return len(self.tribes) != before
+        if self.bob is None and "CARDRACE" in line and "[entityName=" in line:
+            b = self._BRACKET.search(line)
+            r = RACE_RE.search(line)
+            if b and r and r.group(1) in TRIBES and b.group(1) == "PLAY":
+                cid = b.group(2)
+                cid = cid[:-2] if cid.endswith("_G") else cid
+                if cid in self._pool_ids():
+                    self.tribes.add(r.group(1))
+        self._keep()
+        self._card = self._zone = self._race = self._ctrl = None
+        return len(self.tribes) != before
+
+    def flush(self):
+        """Close the block still open at the end of a finished game.
+
+        A block is only judged when the NEXT line proves it has ended, so the
+        last one in a slice would never be counted. Live this does nothing,
+        because the log keeps coming.
+        """
+        self._keep()
+        self._card = self._zone = self._race = self._ctrl = None
+        return sorted(self.tribes)
+
+    def reset(self):
+        self.tribes = set()
+        self.bob = None
+        self._card = self._zone = self._race = self._ctrl = None
+
+
 class LobbyTracker:
     """
     Which tribes this lobby is running, from the best source available.
 
     With the memory reader: the exact list, from hero select onward.
-    Without it: inference from the log. Every minion carries its tribe, so
-    seeing one PROVES that tribe is in - but an unseen tribe is merely
-    unconfirmed, never provably excluded, and in a real game only 6 of 7 were
-    identified within 6 minutes (~turn 5).
+    Without it: inference from the log, through TribeProver - which counts a
+    tribe only from a buyable minion in play (and, once Bob is named, only
+    from his shop). Seeing one PROVES that tribe is in; an unseen tribe is
+    merely unconfirmed, never provably excluded.
     """
 
     def __init__(self, memory: "MemoryTribes | None" = None):
-        self.seen = set()          # what the log has proven
+        self._prover = TribeProver()
         self.memory = memory
         self._last = set()
+
+    @property
+    def seen(self) -> set:
+        """What the log has PROVEN so far."""
+        return self._prover.tribes
 
     @property
     def tribes(self) -> set:
@@ -1100,9 +1484,7 @@ class LobbyTracker:
 
     def feed(self, line: str) -> bool:
         """True when the effective tribe list changed, from either source."""
-        m = RACE_RE.search(line)
-        if m and m.group(1) in TRIBES:
-            self.seen.add(m.group(1))
+        self._prover.feed(line)
         current = self.tribes
         if current != self._last:
             self._last = set(current)
@@ -1110,7 +1492,7 @@ class LobbyTracker:
         return False
 
     def reset(self):
-        self.seen = set()
+        self._prover.reset()
         self._last = set()
 
 

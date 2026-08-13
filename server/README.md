@@ -76,10 +76,11 @@ Copy `sources.example.json` (repo root) to `sources.json` and point it at your h
 
 ```json
 {
-  "heroes":   "https://stats.example.com/heroes-{mmr}-{time}.json",
-  "trinkets": "https://stats.example.com/trinkets-{mmr}-{time}.json",
-  "cards":    "https://stats.example.com/cards-{mmr}-{time}.json",
-  "comps":    "https://stats.example.com/comps-{mmr}-{time}.json"
+  "heroes":     "https://stats.example.com/heroes-{mmr}-{time}.json",
+  "heropowers": "https://stats.example.com/heropowers-{mmr}-{time}.json",
+  "trinkets":   "https://stats.example.com/trinkets-{mmr}-{time}.json",
+  "cards":      "https://stats.example.com/cards-{mmr}-{time}.json",
+  "comps":      "https://stats.example.com/comps-{mmr}-{time}.json"
 }
 ```
 
@@ -141,11 +142,32 @@ Nothing here invents a number. Empty beats fake.
 
 - **heroes** - `averagePosition`, placement spread, sample. Pick-rate only once
   clients upload `offered_heroes`.
+- **heropowers** - the same numbers for the hero **power**, from the games whose
+  hero offered a choice of one. No stats site publishes these at any price, so
+  before this the pick panel could name your three options and rate none of
+  them. Only some heroes offer a choice, so the table is small by nature. One
+  game can pick several powers (a power that hands out another power re-offers),
+  so a placement counts once per distinct power per game, while `totalOffered` /
+  `totalPicked` count every showing - pick rate is asking "how often is this
+  taken when it is on screen".
 - **trinkets** - `averagePlacement`, sample. Pick-rate needs `offered_trinkets`.
 - **cards** - played-vs-not placement delta, from games that upload `final_board`.
-- **comps** - **not yet.** Archetype labelling (Beasts / Murlocs / Menagerie ...)
-  needs a classifier we haven't built; the file is written empty so the client
-  shows "no comp data" instead of erroring.
+- **comps** - **yes, from the boards players finished on.** Each board is
+  labelled with the client's own families and core roles
+  (`bgtracker.classify_board`, over `COMP_FAMILIES` + `data/comp_roles.json`),
+  imported rather than restated so the feed and the panels cannot drift apart.
+  The rule: a board belongs to the tribe it is mostly made of, and only if that
+  family's engine piece is standing on it. A board that matches nothing is
+  counted as `none` and its placement goes nowhere - sweeping piles into the
+  nearest bucket would drag every archetype's average toward the middle.
+  Rows are published only once an archetype has `BGTRACKER_COMP_MIN` (30) games;
+  below that the file carries the counts (`compClassification`) and no rows, and
+  the client falls back to its curated family list. That gap is deliberate: the
+  client drops the curated list the moment one measured row arrives, so a
+  four-game ranking would replace something useful with something misleading.
+  The image needs `bgtracker.py`, `paths.py` and `data/comp_roles.json`, which
+  is why the Docker build context is the repo root; without them the file says
+  the classifier was unavailable rather than guessing.
 - **MMR buckets** - yes, five of them. See "MMR buckets" below for what the
   boundaries are and why.
 - **per-tribe hero impact** (`tribeStats`) - not split yet; turns on with volume.
@@ -157,7 +179,8 @@ players"), so the aggregator writes each table once per bracket:
 
 ```
 heroes-{mmr}-{time}.json      trinkets-{mmr}-{time}.json
-cards-{mmr}-{time}.json       comps-{mmr}-{time}.json
+heropowers-{mmr}-{time}.json  comps-{mmr}-{time}.json
+cards-{mmr}-{time}.json
 buckets.json                  # which brackets exist, per period, with counts
 ```
 

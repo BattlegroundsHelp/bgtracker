@@ -5,6 +5,14 @@ Lifecycle (independent of every other window):
                   SCREEN is in the recruit phase
   closes          on ``tavern_gone`` (the screen entered combat)
 
+Each row's right-hand slot carries ONE tag, and which one it carries is a
+ranking: "▶ yours" (this minion is already in the build you are on), then the
+mechanical read from ui/synergy.py ("Beasts 4" - this card pays off a tribe
+you are holding four of, which needs no stats source at all), then the comp
+tag, then the tavern tier. Most specific wins, and only one is ever drawn:
+the row is 22px and it stays 22px, because the window's band is 232px and the
+layout law in ui/__init__.py is what keeps it off the comps window.
+
 The reroll law: a refresh RE-USES the existing TB_BaconShop_DragBuy tokens, so
 drag counts are zero on a reroll and nothing in the log ever says "this minion
 entered the shop". The reader therefore samples the whole shop and pushes a
@@ -17,8 +25,8 @@ from __future__ import annotations
 
 import bgtracker as bg
 
-from .base import (ACCENT, AMBER, DIM, F_STARS, F_SUB, F_TITLE, SOFT,
-                   STAR_COLOR, TEXT, BaseWindow)
+from .base import (ACCENT, AMBER, DIM, F_STARS, F_SUB, F_TITLE, GOOD, SOFT,
+                   STAR_COLOR, TEXT, BaseWindow, art_frame, plate)
 
 
 class TavernWindow(BaseWindow):
@@ -75,9 +83,17 @@ class TavernWindow(BaseWindow):
             return y + 24
         for r in self.rows:
             s = r.get("stars", 0)
+            mine = bool(r.get("mine"))
+            # A shop row is 22px and there are up to seven of them, so this is
+            # the one window where a plate per row would be a wall of edges.
+            # Only the minion that is already in the build you are on gets
+            # one - it is the row the eye is looking for.
+            if mine:
+                plate(c, 8, y - 1, self.WIDTH - 8, y + 20, 7, best=True)
             ic = self.app.art.icon(r.get("card"), 18)
             if ic is not None:
                 c.create_image(22, y + 10, image=ic, anchor="w")
+                art_frame(c, 21, y + 1, 41, y + 20, mine)
             c.create_text(44, y + 10, text="★" * s, anchor="w",
                           fill=STAR_COLOR.get(s, DIM), font=F_STARS)
             c.create_text(90, y + 10, text=r["name"][:16], anchor="w",
@@ -85,6 +101,13 @@ class TavernWindow(BaseWindow):
             if r.get("mine"):
                 c.create_text(self.WIDTH - 14, y + 10, text="▶ yours", anchor="e",
                               fill=ACCENT, font=F_SUB)
+            elif r.get("syn"):
+                # The mechanical read, and it outranks the comp tag whenever it
+                # is here at all: overlay.py only fills it when there is a real
+                # count behind it ("Beasts 4"), which is a fact about THIS
+                # board, where the comp tag is a fact about the archetype.
+                c.create_text(self.WIDTH - 14, y + 10, text=r["syn"][:16],
+                              anchor="e", fill=GOOD, font=F_SUB)
             elif r.get("comp"):
                 c.create_text(self.WIDTH - 14, y + 10, text=r["comp"][:14],
                               anchor="e", fill=DIM, font=F_SUB)

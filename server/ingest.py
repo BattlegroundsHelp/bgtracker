@@ -46,9 +46,10 @@ MAX_BODY = int(os.environ.get("BGTRACKER_MAX_BODY", str(256 * 1024)))   # 256 KB
 RATE = int(os.environ.get("BGTRACKER_RATE", "120"))                     # uploads / minute / IP
 
 # What a valid game looks like. Everything past the core four is optional - the
-# log backfill fills {uid, date, hero, place, duo, tribes}; the live overlay can
-# later add offers / final board, which unlock pick-rate and card deltas in
-# aggregate.py.
+# log backfill fills {uid, date, hero, place, duo, tribes} plus the offers, the
+# hero powers and the final board, which are what unlock pick rate, the
+# hero-power table, card deltas and comp rankings in aggregate.py. A client too
+# old to send any of them is still a perfectly good game and is stored as one.
 # The characters between BG and _HERO_ are not always digits: Duos heroes are
 # BGDUO_HERO_223. The old `BG\d+` shape rejected every duos game outright as
 # "hero malformed", so no duos data could reach this server at all.
@@ -78,6 +79,8 @@ CREATE TABLE IF NOT EXISTS games (
     offered_heroes   TEXT,               -- json array of cardIds (pick-rate denominator)
     offered_trinkets TEXT,
     picked_trinkets  TEXT,
+    offered_hero_powers TEXT,            -- only heroes that offer a CHOICE of power
+    picked_hero_powers  TEXT,            -- a list: some powers hand out another power
     final_board      TEXT,               -- json array of cardIds (card stats)
     client           TEXT,               -- opaque client tag, for rate/abuse only
     cver             TEXT                -- which client version sent it
@@ -101,7 +104,9 @@ def migrate(conn):
     knows whether they were solo or duos, and the aggregator counts them in
     neither feed rather than guess."""
     have = {r[1] for r in conn.execute("PRAGMA table_info(games)")}
-    for col, decl in (("duo", "INTEGER"), ("cver", "TEXT")):
+    for col, decl in (("duo", "INTEGER"), ("cver", "TEXT"),
+                      ("offered_hero_powers", "TEXT"),
+                      ("picked_hero_powers", "TEXT")):
         if col not in have:
             conn.execute(f"ALTER TABLE games ADD COLUMN {col} {decl}")
 
@@ -163,6 +168,14 @@ def validate(rec):
 
     oh, ot, pt = _clean_ids(rec.get("offered_heroes")), _clean_ids(rec.get("offered_trinkets")), _clean_ids(rec.get("picked_trinkets"))
     fb = _clean_ids(rec.get("final_board"), limit=14)
+    # Hero powers, same whitelist treatment as every other id list: a bounded
+    # list of cardId-shaped strings or null. Absent is the normal case twice
+    # over - most heroes have a fixed power, and a client older than this field
+    # never sends it - so their absence must never cost a record. The limit is
+    # generous because one game really can hold several offers: a power that
+    # hands out another power re-offers every few turns.
+    ohp = _clean_ids(rec.get("offered_hero_powers"), limit=48)
+    php = _clean_ids(rec.get("picked_hero_powers"), limit=16)
     # An extra, so anything unusable falls to null instead of rejecting a real
     # game: the version is useful, the game is the point.
     cver = rec.get("v")
@@ -174,6 +187,8 @@ def validate(rec):
         "offered_heroes": json.dumps(oh) if oh else None,
         "offered_trinkets": json.dumps(ot) if ot else None,
         "picked_trinkets": json.dumps(pt) if pt else None,
+        "offered_hero_powers": json.dumps(ohp) if ohp else None,
+        "picked_hero_powers": json.dumps(php) if php else None,
         "final_board": json.dumps(fb) if fb else None,
         "client": (rec.get("client") or "")[:64] or None,
         "cver": cver,
@@ -181,7 +196,8 @@ def validate(rec):
 
 
 COLS = ("uid", "ts", "date", "hero", "place", "duo", "mmr", "tribes",
-        "offered_heroes", "offered_trinkets", "picked_trinkets", "final_board",
+        "offered_heroes", "offered_trinkets", "picked_trinkets",
+        "offered_hero_powers", "picked_hero_powers", "final_board",
         "client", "cver")
 INSERT = f"INSERT OR IGNORE INTO games ({','.join(COLS)}) VALUES ({','.join('?' * len(COLS))})"
 # Fills a gap; never rewrites a classification. Games stored before the client

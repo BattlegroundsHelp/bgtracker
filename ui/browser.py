@@ -25,6 +25,14 @@ Three rules it exists to keep:
    the footer says plainly that there is no stats source. A minion inside a
    configured table that has no row of its own shows a dash, never a guess.
 
+An opened row also answers WHEN a minion pays off, if the configured feed
+carries a per-turn breakdown: four stretches of the game, each showing the
+same buy-it-vs-skip-it difference the stars use. Splitting one card's games
+across fourteen turns is exactly how a healthy sample becomes fourteen small
+ones, so a stretch under the sample floor is drawn as the word "thin" with
+its game count and never as a number, and a stretch nobody played it in shows
+a dash. A feed with no breakdown says so in one line - see TURN_BANDS.
+
 Ratings, when there IS a table, use the same scale as the tavern stars: the
 buy-it-vs-skip-it DIFFERENTIAL (averagePlacement - averagePlacementOther)
 banded inside the minion's OWN tavern tier. Raw averages rate an entire
@@ -43,8 +51,9 @@ import threading
 import bgtracker as bg
 
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_STARS, F_SUB, F_TITLE,
-                   GOOD, LINE, PANEL, PANEL_HI, SOFT, STAR_COLOR, TEXT,
-                   TRIBE_COLOR, TRIBE_TAG, BaseWindow, rrect)
+                   GOOD, LINE, OFF_CHIP, ON_CHIP, PANEL, SHADE, SOFT,
+                   STAR_COLOR, TEXT, TRIBE_COLOR, TRIBE_TAG, BaseWindow,
+                   art_frame, plate, rrect)
 
 # A minion with no tribe at all is in EVERY lobby, so it is a filter of its
 # own rather than something the tribe chips can express.
@@ -68,6 +77,29 @@ TRAIT_LABELS = {
 }
 
 SORTS = ("tier", "name", "rating")
+
+# TURN-BY-TURN
+# ------------
+# A cards feed may carry a per-turn breakdown beside the whole-game numbers:
+#
+#   {"cardId": "BG00_000", "averagePlacement": 3.4, "averagePlacementOther": 3.9,
+#    "turnStats": [{"turn": 1, "totalPlayed": 40, "averagePlacement": 3.9,
+#                   "totalOther": 60, "averagePlacementOther": 3.8}, ...]}
+#
+# ``bgtracker.card_table`` keeps only avg/n/delta, so nothing in the overlay
+# ever saw this; the browser reads the same feed a second time, raw, to get at
+# it. Fourteen separate turns will not fit a 336px panel and would be mostly
+# noise anyway, so they are aggregated into four stretches of the game. A
+# stretch is scored the way the stars are - the buy-it-vs-skip-it DIFFERENTIAL
+# - because a raw average by turn mostly measures who is still alive by then.
+#
+# A stretch under MIN_SAMPLE is drawn as "thin" and NOT as a number. That is
+# exactly the case a per-turn split creates: splitting one card's games
+# fourteen ways turns a healthy sample into fourteen small ones.
+TURN_BANDS = ((1, 4), (5, 8), (9, 12), (13, 99))
+
+# A marker in the detail list: draw the turn strip here, not a line of text.
+TURNS = object()
 
 _MARKUP = re.compile(r"<[^>]+>|\[x\]")
 # The status line the reader emits states the stats slice: "top 25% · all-time".
@@ -109,6 +141,7 @@ class BrowserWindow(BaseWindow):
         super().__init__(app)
         self.pool = []               # the live minion pool, loaded once
         self.cards = {}              # cardId -> stats row; {} with no source
+        self.turns = {}              # cardId -> [(turn, avg, other, n, other_n)]
         self.bands = {}              # tavern tier -> star cut points
         self.traits = [(None, "any trait", 0)]
         self.trait_i = 0
@@ -203,6 +236,10 @@ class BrowserWindow(BaseWindow):
         except Exception:
             cards = {}                    # no source configured -> no numbers
         try:
+            turns = self._read_turns(mmr, period)
+        except Exception:
+            turns = {}                    # the breakdown is optional, always
+        try:
             tiers = bg.card_tiers()
         except Exception:
             tiers = {}
@@ -210,11 +247,72 @@ class BrowserWindow(BaseWindow):
             tiers.setdefault(m["id"], m["techLevel"])
         self.pool = pool
         self.cards = cards
+        self.turns = turns
         self.bands = self._make_bands(cards, tiers)
         self.traits = self._make_traits(pool)
         self.trait_i = min(self.trait_i, len(self.traits) - 1)
         self._key = (mmr, period)
         self.loading, self._dirty = False, True
+
+    @staticmethod
+    def _read_turns(mmr, period):
+        """cardId -> [(turn, avg, other, played)] from the raw cards feed.
+
+        Read raw because ``card_table`` throws the breakdown away. Anything
+        malformed is skipped rather than repaired: a turn with no placement or
+        no turn number cannot be plotted, and guessing which one it meant
+        would be inventing the number this panel exists to report honestly.
+        The whole feed is already in memory from card_table's own call, so
+        this costs a dict walk, not a fetch.
+        """
+        data = bg.load_bucket(bg.source_kind("cards", False), "cardStats",
+                              mmr, period)
+        out = {}
+        for row in data.get("cardStats") or ():
+            cid, ts = row.get("cardId"), row.get("turnStats")
+            if not cid or not isinstance(ts, list):
+                continue
+            got = []
+            for t in ts:
+                if not isinstance(t, dict):
+                    continue
+                turn, avg = t.get("turn"), t.get("averagePlacement")
+                other = t.get("averagePlacementOther")
+                if not isinstance(turn, int) or avg is None or other is None:
+                    continue
+                got.append((turn, float(avg), float(other),
+                            int(t.get("totalPlayed") or 0),
+                            int(t.get("totalOther") or 0)))
+            if got:
+                out[cid] = sorted(got)
+        return out
+
+    @staticmethod
+    def _turn_bands(rows):
+        """The four stretches of a game: (label, delta|None, played, thin).
+
+        ``delta`` is None when the stretch has no games at all - a dash, not a
+        zero. ``thin`` says the stretch has games but not enough of them, and
+        the caller draws that as the word rather than as a number.
+        """
+        out = []
+        for lo, hi in TURN_BANDS:
+            got = [r for r in rows if lo <= r[0] <= hi]
+            played = sum(r[3] for r in got)
+            label = f"t{lo}-{hi}" if hi < 99 else f"t{lo}+"
+            if not got or not played:
+                out.append((label, None, 0, False))
+                continue
+            # Each side is weighted by ITS OWN game count - the played average
+            # by how many bought it that turn, the comparison average by how
+            # many did not. Using one weight for both would silently reweight
+            # the comparison group into something nobody measured.
+            other_n = sum(r[4] for r in got)
+            avg = sum(r[1] * r[3] for r in got) / played
+            other = (sum(r[2] * r[4] for r in got) / other_n if other_n
+                     else sum(r[2] for r in got) / len(got))
+            out.append((label, avg - other, played, played < bg.MIN_SAMPLE))
+        return out
 
     @staticmethod
     def _make_bands(cards, tiers):
@@ -378,11 +476,11 @@ class BrowserWindow(BaseWindow):
     def _chip(self, c, x, y, w, label, on, key, color=ACCENT, h=15, font=F_CHIP):
         if on:
             rrect(c, x, y, x + w, y + h, 7, fill=color, outline="")
-            c.create_text(x + w / 2, y + h / 2 + 1, text=label, fill="#101116",
+            c.create_text(x + w / 2, y + h / 2 + 1, text=label, fill=ON_CHIP,
                           font=font)
         else:
-            rrect(c, x, y, x + w, y + h, 7, fill=PANEL, outline=LINE)
-            c.create_text(x + w / 2, y + h / 2 + 1, text=label, fill="#767c88",
+            rrect(c, x, y, x + w, y + h, 7, fill=SHADE, outline=LINE)
+            c.create_text(x + w / 2, y + h / 2 + 1, text=label, fill=OFF_CHIP,
                           font=font)
         if key is not None:
             self._hit(key, x, y, x + w, y + h)
@@ -467,16 +565,20 @@ class BrowserWindow(BaseWindow):
         for m in rows[self.top:]:
             opened = self.open_id == m["id"]
             detail = self._detail(m) if opened else []
-            need = self.ROW_H + (len(detail) * self.LINE_H + 6 if opened else 0)
+            need = self.ROW_H + (self._detail_h(detail) + 6 if opened else 0)
             if y + need > limit:
                 break
             if opened:
-                rrect(c, 8, y, self.WIDTH - 8, y + need - 2, 8,
-                      fill=PANEL_HI, outline="")
+                # The opened card is the one thing this window is pointing
+                # at, so it gets the gold-edged plate the offer rows use.
+                plate(c, 8, y, self.WIDTH - 8, y + need - 2, 8, best=True)
             self._row(c, y, m, opened)
             self._hit(("row", m["id"]), 8, y, self.WIDTH - 8, y + self.ROW_H)
             y += self.ROW_H
             for text, fill in detail:
+                if text is TURNS:
+                    y = self._turn_strip(c, y, fill)
+                    continue
                 c.create_text(44, y + 5, text=text, anchor="w", fill=fill,
                               font=F_SUB)
                 y += self.LINE_H
@@ -496,6 +598,7 @@ class BrowserWindow(BaseWindow):
         ic = self.app.art.icon(m["id"], 22) or self.app.art.icon_for_name(m["name"], 22)
         if ic is not None:
             c.create_image(14, y + 14, image=ic, anchor="w")
+            art_frame(c, 13, y + 3, 37, y + 25, opened)
         else:                              # no art on disk: keep the column
             col = TRIBE_COLOR.get(m["races"][0] if m["races"] else "", LINE)
             rrect(c, 14, y + 3, 36, y + 25, 5, fill=PANEL, outline=col)
@@ -524,7 +627,7 @@ class BrowserWindow(BaseWindow):
 
     def _detail(self, m):
         """The opened row: what it is, what it does, and - only with a real
-        table behind it - what buying it actually did."""
+        table behind it - what buying it actually did, and when."""
         out = []
         races = ", ".join(r.title() for r in m["races"]) or "No tribe"
         meta = f"Tier {m['techLevel']} · {races}"
@@ -539,15 +642,57 @@ class BrowserWindow(BaseWindow):
             out.append((f"{st['avg']:.2f} avg when bought vs "
                         f"{st['avg'] - st['delta']:.2f} without · "
                         f"{st.get('n', 0):,} games", ACCENT))
+        rows = self.turns.get(m["id"])
+        if rows:
+            out.append((TURNS, self._turn_bands(rows)))
+        elif st.get("delta") is not None:
+            # There IS a stats source and it rated this card, it just carries
+            # no per-turn split. Say which of the two it is rather than
+            # leaving a silence that reads like "this card is never good".
+            out.append(("no turn-by-turn split in this source", DIM))
         return out
+
+    def _detail_h(self, detail):
+        """How tall the opened block will be. The turn strip is two lines."""
+        return sum(self.LINE_H * (2 if text is TURNS else 1)
+                   for text, _ in detail)
+
+    def _turn_strip(self, c, y, bands):
+        """WHEN this minion pays: four stretches of the game, each showing the
+        buy-it-vs-skip-it difference, a dash where nothing was measured and
+        the word "thin" where too little was."""
+        c.create_text(44, y + 5, text="BY TURN", anchor="w", fill=DIM,
+                      font=F_TITLE)
+        c.create_text(self.WIDTH - 14, y + 5, anchor="e", fill=DIM, font=F_SUB,
+                      text="placement vs not buying it")
+        y += self.LINE_H
+        x, w = 44, (self.WIDTH - 58 - 44) / len(bands)
+        for label, delta, played, thin in bands:
+            c.create_text(x, y + 5, text=label, anchor="w", fill=DIM, font=F_CHIP)
+            if delta is None:
+                c.create_text(x + 30, y + 5, text="—", anchor="w", fill=DIM,
+                              font=F_SUB)
+            elif thin:
+                c.create_text(x + 30, y + 5, text=f"thin {played}", anchor="w",
+                              fill=AMBER, font=F_CHIP)
+            else:
+                c.create_text(x + 30, y + 5, text=f"{delta:+.2f}", anchor="w",
+                              fill=GOOD if delta < 0 else BAD, font=F_SUB)
+            x += w
+        return y + self.LINE_H
 
     def _footer(self, c, y, total, drawn):
         c.create_line(12, y + 2, self.WIDTH - 12, y + 2, fill=LINE)
         y += 6
         self._chip(c, 14, y, 26, "▲", False, "up")
         self._chip(c, 44, y, 26, "▼", False, "down")
+        # "1-20", with a plain hyphen. No em or en dashes anywhere the player
+        # can read them - the same rule the rest of this project's text
+        # follows, and a range is the one place a typographer's dash sneaks
+        # back in. (The lone "—" this file draws for a missing number is not
+        # text: it is the no-data marker, and it stays.)
         c.create_text(78, y + 8, anchor="w", fill=DIM, font=F_SUB,
-                      text=f"{self.top + 1 if drawn else 0}–{self.top + drawn}"
+                      text=f"{self.top + 1 if drawn else 0}-{self.top + drawn}"
                            f" of {total}")
         c.create_text(self.WIDTH - 14, y + 8, anchor="e", font=F_SUB,
                       fill=DIM if self.rated else AMBER,

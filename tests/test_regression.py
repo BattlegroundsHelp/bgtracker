@@ -27,6 +27,10 @@ import bgtracker as bg
 
 EXPECTED_HEROES = 19
 EXPECTED_TRINKETS = 36
+# Every hero in the frozen id fixture now has a tip. It is a floor, not an
+# equality: a patch that adds heroes must not fail CI before anyone has had the
+# chance to write their lines, but LOSING a tip is a regression and fails here.
+EXPECTED_TIPS = 121
 
 TRIBES = {"BEAST", "DEMON", "DRAGON", "ELEMENTAL", "MECHANICAL",
           "MURLOC", "NAGA", "PIRATE", "QUILBOAR", "UNDEAD"}
@@ -89,6 +93,8 @@ def check_tips(hero_ids: set) -> bool:
                 errs.append(f"{cid}: 'tribes' must be unique names from {sorted(TRIBES)}")
         if "name" in e and (not isinstance(e["name"], str) or len(e["name"]) > 60):
             errs.append(f"{cid}: 'name' must be a string of at most 60 characters")
+    if len(tips) < EXPECTED_TIPS:
+        errs.append(f"coverage fell to {len(tips)} tips, {EXPECTED_TIPS} expected")
     print(f"hero tips:      {len(tips):3} of {len(hero_ids)} heroes, "
           f"{len(errs)} problem(s)")
     for m in errs[:20]:

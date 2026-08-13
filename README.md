@@ -29,7 +29,7 @@ unzip, run `bgtracker.exe`. No Python, no install, Windows only. It tells you
 when a newer build exists and never installs one behind your back
 ([how updates work](docs/USAGE.md#2c-new-versions)).
 
-**New here? Start with [docs/USAGE.md](docs/USAGE.md)** — what you need, the
+**New here? Start with [docs/USAGE.md](docs/USAGE.md)** - what you need, the
 three steps to running it, what each window shows on the first run, how to get
 numbers, and what to do when something looks wrong.
 [docs/FEATURES.md](docs/FEATURES.md) is the reference for every surface: what it
@@ -49,17 +49,17 @@ The tool has two halves that sit on opposite sides of Blizzard's rules, and the
   reading the game's RAM is against the letter of Blizzard's EULA (§1.C.vi
   prohibits software that "reads or mines information stored by the Platform").
   Established trackers do this for some features and bans are unheard of, but it is
-  the one component that crosses the written line. **It is not bundled** — the
+  the one component that crosses the written line. **It is not bundled** - the
   overlay falls back to log inference without it, and building `msync` is a
   knowing opt-in. Leave it unbuilt for a strictly-log-only, zero-risk setup.
 
-Keep it free and ad-free (it is) — that removes any commercial-competition angle
+Keep it free and ad-free (it is) - that removes any commercial-competition angle
 and is the strongest protection. It never injects code, modifies the client, or
 automates anything.
 
 ### Where the numbers come from (and where they go)
 
-Aggregate placement data belongs to whoever collected it — the numbers on the
+Aggregate placement data belongs to whoever collected it - the numbers on the
 big stats sites are their collectors' property, and none of them permit
 third-party redistribution. A public URL is not a licence, and respecting that
 is a design decision here, not a technicality. So this tool touches no third
@@ -86,19 +86,19 @@ rather than slipped in quietly.
 To read different numbers instead:
 
 - **Your own games only.** `python collect.py` mines every finished game out
-  of your own log history into `data/games.jsonl` — your own gameplay, fully
+  of your own log history into `data/games.jsonl` - your own gameplay, fully
   yours. Then `python collect.py --local-feed` turns those games into a
   personal stats feed and points `sources.json` at it, so the overlay shows
   **your own numbers** with no third party involved (thin samples are flagged
   until they fill in).
 - **Any source you have the right to use.** Create `sources.json` next to
-  `bgtracker.py` — see "Stats side" below for the keys and the expected JSON
+  `bgtracker.py` - see "Stats side" below for the keys and the expected JSON
   shape. It can be a URL or a local file. Your `sources.json` is gitignored, so
   a personal source never ends up in a commit. Writing the file replaces the
   community default entirely; a key you leave out stays empty.
 
 Comps never need a data source to be useful: with no comps data the tool
-shows **curated comp families** — evergreen tribe archetypes whose core minions
+shows **curated comp families** - evergreen tribe archetypes whose core minions
 are computed from the live card pool, so they are always current-patch. They are
 labelled `curated`, and measured comp rows replace them the moment a comps
 source has data.
@@ -150,31 +150,37 @@ is **a set of small windows, one per thing you might want to know**, and each
 opens and closes on its own trigger, at the moment it is about the thing in
 front of you.
 
-Down the **right** edge of the game — the state of play:
+Down the **right** edge of the game - the state of play:
 
 | window | what it shows | when |
 |---|---|---|
 | **COUNTERS** | turn, gold `cur/max`, your tavern tier and what the next tier costs *right now*, gold banked for next turn, elemental and Blood Gem buffs, what tribes your board is made of, free rerolls, triples, turns until the next trinket | whenever the log has stated any of it |
 | **COMBAT** | which round is fighting, and one clearly-flagged BETA line of win / tie / loss odds for the fight on screen | from the fight starting to the tavern coming back |
-| **TAVERN** | the shop you are looking at — a star rating per minion, which ones feed the comp you are building, gold. With a `cards` source the stars are measured inside the minion's own tavern tier; without one they fall back to a coarse curated signal | every roll, buy and sell, in the tavern only |
+| **TAVERN** | the shop you are looking at - a star rating per minion, which ones feed the comp you are building, what each one pays off against your board ("Beasts 4", read from the card's own text so it needs no stats source), gold. With a `cards` source the stars are measured inside the minion's own tavern tier; without one they fall back to a coarse curated signal | every roll, buy and sell, in the tavern only |
 | **bgtracker** | tribe chips (colored = in this lobby), the comps still open to you, your board's synergy with them. Click a comp to expand its core minions | always |
 
-Down the **left** edge — the cards you are choosing between, so nothing sits on
+Down the **left** edge - the cards you are choosing between, so nothing sits on
 top of them:
 
 | window | what it shows | when |
 |---|---|---|
-| **MINIONS** | a slim bar until you click `browse`, then the whole current minion pool filtered by tier / tribe / mechanic, with card text and art | on click |
+| **MINIONS** | a slim bar until you click `browse`, then the whole current minion pool filtered by tier / tribe / mechanic, with card text and art. Open a row and, when the feed carries a per-turn breakdown, it splits the buy-it-vs-skip-it difference across four stretches of the game, marking any stretch under the sample floor `thin` rather than printing a number | on click |
 | **SESSION** | this sitting: MMR now vs when you started, every game that finished while it was running with its placement and hero, and this lobby's tribes | always, except while the draft is up |
-| **PICK YOUR HERO** | the four heroes ranked, one big color-graded number each (green = better finish), best highlighted, pick% and sample size, plus a badge on each portrait, and one line of community-written advice per hero saying when it is the pick. With the memory reader the lobby's tribes re-score them and the delta is shown ("−0.06 here") | hero select |
-| **PICK YOUR HERO POWER** | one row per hero power on offer | that choice only |
+| **PICK YOUR HERO** | the four heroes ranked, one big color-graded number each (green = better finish), best highlighted, pick% and sample size, plus a badge on each portrait, and one line of community-written advice per hero saying when it is the pick (all 121 heroes have one). With the memory reader the lobby's tribes re-score them and the delta is shown ("−0.06 here") | hero select |
+| **PICK YOUR HERO POWER** | one row per hero power on offer, named and lined up. The pool publishes hero-power numbers now, but this panel does not read that table yet, so the options usually show a dash | that choice only |
 | **PICK YOUR TRINKET** | the four trinkets ranked, badges on the cards | trinket offers |
-| **PICK ONE** | discovers and Dark Gifts, rated per option; the shop's stars step out of the way while it is up | that choice only |
-| **OTHER PLAYERS** | the leaderboard — every other player's hero, tavern tier and health — and, for anyone you have fought, the board they were last seen holding, stamped with the round and how long ago that was. Click a player to see that board. Needs the memory reader; without it the window never appears | while a lobby is running, except while a trinket offer is up |
+| **PICK ONE** | discovers and Dark Gifts, rated per option with a star badge on each real card, plus what each one pays off against your board ("Beasts 4"); the shop's stars step out of the way while it is up | that choice only |
+| **OTHER PLAYERS** | the leaderboard - every other player's hero, tavern tier and health - and, for anyone you have fought, the board they were last seen holding, stamped with the round and how long ago that was. Click a player to see that board. Needs the memory reader; without it the window never appears | while a lobby is running, except while a trinket offer is up |
 
 - **Every window anchors itself to the Hearthstone window** and is draggable on
-  its own — each remembers its own place in `.overlay.json`, so moving the
+  its own - each remembers its own place in `.overlay.json`, so moving the
   tavern never moves anything else. Click `✕` on the bgtracker window to quit.
+- **The numbers printed on the cards** are separate click-through strips, so
+  every click still reaches the game. To move them, the `⇕ badges` chip in the
+  bgtracker window's header turns on a calibrate mode that drops click-through
+  while it is on, lets you drag each strip into place, and puts click-through
+  back when you press `⇕ done`
+  ([how](docs/USAGE.md#moving-the-badges-calibrate-mode)).
 - **They close themselves**: the hero panel the moment shopping starts, the
   trinket panel shortly after, the combat window when the tavern is back. A
   window is never left showing a moment that is no longer on screen.
@@ -206,7 +212,7 @@ Start it before or during a game and leave it running. Options:
 |---|---|
 | `--mmr 100\|50\|25\|10\|1` | MMR bracket. `100` = everyone (default), `1` = top 1% |
 | `--time last-patch\|past-seven\|past-three\|all-time` | how far back the stats go |
-| `--duo` | use Duos stats instead of solo — heroes, trinkets, cards and comps all come from Duos games only, never pooled with solo |
+| `--duo` | use Duos stats instead of solo - heroes, trinkets, cards and comps all come from Duos games only, never pooled with solo |
 | `--replay [path]` | scan a finished log instead of following live (defaults to newest) |
 | `--refresh` | ignore the 1-hour cache and re-download |
 | `--comps` | print the comp/archetype rankings and exit |
@@ -249,13 +255,13 @@ the comps down to the ones you can actually build:
 
 There are two ways it learns the tribes.
 
-**From the log** — always available, partial. Every minion carries its tribe, so
+**From the log** - always available, partial. Every minion carries its tribe, so
 seeing one proves that tribe is in; an unseen tribe is merely unconfirmed, never
 provably out. It fills in as minions appear: in a real game 6 of 7 were known
 within about 6 minutes (roughly turn 5), the last one much later. The panel says
 "seen so far" in this mode.
 
-**From game memory** — exact, and available at hero select. Build the helper in
+**From game memory** - exact, and available at hero select. Build the helper in
 `native/msync` (below) and the full list is known from turn zero, the panel says
 "exact", and hero offers are **re-scored for the lobby you're actually in**
 instead of ranked on a global average.
@@ -275,14 +281,14 @@ FULL_ENTITY - Updating [entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=B
 ```
 
 - Heroes on offer land in **`zone=HAND`** under your own player id.
-- Trinkets land in **`zone=SETASIDE`** — but so does a lot that is *not* an offer.
+- Trinkets land in **`zone=SETASIDE`** - but so does a lot that is *not* an offer.
   As you fight each opponent, their two trinkets get staged under your own player
   id, and repeat every time you re-fight them.
 - All options in one offer share a single timestamp, which is how they get
   grouped into one event.
 - A genuine trinket offer is **always exactly four options**, and that is what
   separates it from the noise. Across 19 real games: 36 bursts of four (two per
-  game — one if you die before the greater trinket, three with a hero like Marin
+  game - one if you die before the greater trinket, three with a hero like Marin
   that grants an extra), against 65 twos, 43 ones, 18 threes and 15 sixes of
   opponent reveals.
 
@@ -293,24 +299,34 @@ FULL_ENTITY - Updating [entityName=Lady Vashj id=96 zone=HAND zonePos=4 cardId=B
 
 ```json
 {
-  "heroes":   "path/or/url/to/hero-stats-{mmr}-{time}.json",
-  "trinkets": "path/or/url/to/trinket-stats.json",
-  "comps":    "path/or/url/to/comp-stats.json",
-  "cards":    "path/or/url/to/card-stats.json",
+  "heroes":     "path/or/url/to/hero-stats-{mmr}-{time}.json",
+  "heropowers": "path/or/url/to/heropower-stats-{mmr}-{time}.json",
+  "trinkets":   "path/or/url/to/trinket-stats.json",
+  "comps":      "path/or/url/to/comp-stats.json",
+  "cards":      "path/or/url/to/card-stats.json",
+  "hero_tips":  "optional, the voted hero tips feed",
 
-  "heroes_duo":   "optional, the same four tables from DUOS games only",
-  "trinkets_duo": "optional",
-  "comps_duo":    "optional",
-  "cards_duo":    "optional"
+  "heroes_duo":     "optional, the same tables from DUOS games only",
+  "heropowers_duo": "optional",
+  "trinkets_duo":   "optional",
+  "comps_duo":      "optional",
+  "cards_duo":      "optional"
 }
 ```
 
-The four `*_duo` keys are what `--duo` reads, and there is no fallback from
-them to the solo tables: Duos is four teams finishing 1st–4th where solo is
-eight players finishing 1st–8th, on its own hero pool, so a solo number under a
+The `*_duo` keys are what `--duo` reads, and there is no fallback from
+them to the solo tables: Duos is four teams finishing 1st-4th where solo is
+eight players finishing 1st-8th, on its own hero pool, so a solo number under a
 Duos heading would be the wrong game's answer. Leave them out and `--duo` shows
 no numbers instead. `collect.py --local-feed` builds both sets from your own
 games and fills these keys in for you.
+
+`heropowers` is the hero **power** table: average placement and pick rate for
+the power you choose between when a hero offers one. No stats site publishes
+that at any price, so the community pool computes its own. It is small by
+nature, and the pick panel does not read it yet, so setting the key changes
+nothing on screen today ([roadmap](ROADMAP.md)). `hero_tips` is the voted tips
+feed; leave it out and the tips that ship with the tool are the only ones shown.
 
 Expected shapes (any source in this shape works, including one you compute
 yourself from `collect.py` output): hero records carry `heroCardId`,
@@ -322,7 +338,7 @@ yourself from `collect.py` output): hero records carry `heroCardId`,
 URL responses are cached in `.cache/` for an hour, per source, so pointing at a
 different feed takes effect immediately. With no `sources.json`, the community
 feed answers; with one, only what it names is read, and an offer whose table is
-empty still appears — named, ranked by nothing, numbers hidden.
+empty still appears - named, ranked by nothing, numbers hidden.
 
 **MMR brackets.** `--mmr` only means something if your source URL carries
 `{mmr}`. A feed publishes a bracket once it holds enough games, so `top 1%` may
@@ -338,7 +354,7 @@ wins over what was asked for.
 python tests/test_regression.py
 ```
 
-The offline regression CI runs on every push — no network, frozen cardId lists
+The offline regression CI runs on every push - no network, frozen cardId lists
 stand in for the live stats tables. Must print `PASS`.
 
 ```bash
@@ -352,10 +368,11 @@ through the real Reader → Router → real windows and compares. It also replay
 the counters parser separately, paints every window with real payloads, and
 checks the default layout for overlapping bands. Needs a real log; it skips
 cleanly on a machine with none (real logs are player data and are not in the
-repository). Last run, on a 2,007,405-line log: 234 refreshes → 234 tavern
-rebuilds, 82 screen fights → 82 opens / 81 closes with the odds still on screen
-at the closing instant of 80 of 80 judged fights, every pick window firing only
-for its own dialog, zero windows raising.
+repository). Last run, on a 2,643,818-line log: 299 shop refreshes → 299 tavern
+rebuilds landing before the next refresh, 113 screen fights → 113 opens / 112
+closes with the odds still on screen at the closing instant of 107 of 107 judged
+fights, every pick window firing only for its own dialog (18 hero, 22 trinket, 3
+hero power, 100 discover blocks), and zero windows raising.
 
 ```bash
 python tests/test_live.py
@@ -366,7 +383,7 @@ a watched file, then drops a newer session folder in mid-run to prove log rotati
 works. Prints `PASS`/`FAIL`. Fetches the card database once (cached a day); works
 with or without a `sources.json`.
 
-`tests/fixture.log` is a 26k-line extract of one real day — 19 games, boiled down
+`tests/fixture.log` is a 26k-line extract of one real day - 19 games, boiled down
 to just the lines that matter, so a full regression runs in seconds instead of
 chewing through 886 MB. You can also replay it through the full console app:
 
@@ -388,7 +405,7 @@ python bgtracker.py --replay
 
 ## Building the memory reader
 
-The tribe list is the one thing Hearthstone never writes to any log — verified by
+The tribe list is the one thing Hearthstone never writes to any log - verified by
 checking every tag before hero select (including unnamed numeric ones) and every
 other log file. The same is true of the other players' boards while you are
 shopping. Both *are* in the game's memory, which is where the established
@@ -420,7 +437,7 @@ the OTHER PLAYERS window is made of. Full detail:
 **On fragility:** this does *not* break on balance or content patches. It resolves
 fields by name (`m_availableRacesInBattlegroundsExcludingAmalgam`), so new cards and
 number changes are invisible to it. What moves the offsets is a Unity **engine**
-upgrade — a few times a year. The offsets in `native/msync/Offsets.cs` are each
+upgrade - a few times a year. The offsets in `native/msync/Offsets.cs` are each
 annotated with the public Mono struct field they come from, so re-deriving them
 against a new engine is mechanical (`DumpFields` in `Mono.cs` is the diagnostic aid).
 
@@ -430,11 +447,11 @@ HDT is the incumbent. It is free, it is fine, and it does things this does not.
 
 | | HDT / Tier7 | this |
 |---|---|---|
-| Combat odds (Bob's Buddy) | free, mature | **beta** — log-only, clearly flagged, about 86% of fights called correctly over 339 real logged fights; run Bob's Buddy alongside if you want the mature one |
+| Combat odds (Bob's Buddy) | free, mature | **beta** - log-only, clearly flagged, about 86% of fights called correctly over 339 real logged fights; run Bob's Buddy alongside if you want the mature one |
 | Counters (gold, tier price, buffs, tribes) | free | yes |
-| Minion browser | free | yes — the live pool, no stats needed |
+| Minion browser | free | yes - the live pool, no stats needed |
 | MMR session tracker | free | yes, with the memory reader for the rating |
-| Opponents' last-seen boards | free | yes, with the memory reader — stamped with the round it was seen |
+| Opponents' last-seen boards | free | yes, with the memory reader - stamped with the round it was seen |
 | Hero pick stats | overlay is Tier7 | yes, from your own data source |
 | Trinket pick stats | Tier7 | yes, from your own data source |
 | Comps filtered to your lobby, with key minions | Tier7 | yes, from your own data source |
@@ -446,7 +463,7 @@ HDT is the incumbent. It is free, it is fine, and it does things this does not.
 The last row needs `native/msync` built. The lobby-scoring arithmetic is
 standard and documented in open-source trackers (`averagePosition +
 Σ impactAveragePosition` over the tribes present, dropping tribe rows with too
-little data on either side) — what you bring is a data source with
+little data on either side) - what you bring is a data source with
 `tribeStats` on each hero. The other thing that was ever missing is knowing
 the tribes at turn zero, and that comes out of memory.
 
@@ -460,14 +477,16 @@ the tribes at turn zero, and that comes out of memory.
   deathrattle summons and hand-written scripts for the highest-impact cards
   (Rally attacks, deathrattle buffs, Reborn watchers, Titus). Plenty of cards
   are still unscripted, so when the board holds one the sim deliberately
-  **widens** its odds rather than pretending — it never prints 0% or 100%. It is
+  **widens** its odds rather than pretending - it never prints 0% or 100%. It is
   labelled BETA on screen for exactly that reason, and it never shows a number
   when either board could not be fully recovered.
 - **The default numbers are young.** Out of the box the stats come from the
   community pool, which is small so far: many rows are flagged thin (read: no
-  signal) and most MMR brackets are not published yet. Your own feed
-  (`collect.py --local-feed`) or any source you have the right to use replaces
-  it via `sources.json`.
+  signal) and most MMR brackets are not published yet. Comps are classified now,
+  but an archetype is only published once 30 games have been classified into it,
+  so today that file carries no rows at all and the curated families stand in.
+  Your own feed (`collect.py --local-feed`) or any source you have the right to
+  use replaces it via `sources.json`.
 - **Dark Gifts have no stats to show.** They are live this patch, but nobody
   publishes placement data for them. **Quests are dead this patch** entirely.
   So heroes, trinkets, tribes and comps is the complete set of what can be shown.
@@ -482,19 +501,24 @@ the tribes at turn zero, and that comes out of memory.
 
 **The easiest thing to contribute is a hero tip.**
 [`data/hero_tips.json`](data/hero_tips.json) is the one line of advice shown
-under each hero at the draft: 111 of the 121 heroes have one, and adding or
-fixing one is a pull request against a plain text file. That review is the
-voting mechanism for now. The rules are in [CONTRIBUTING.md](CONTRIBUTING.md),
-the contract is [`data/hero_tips.schema.json`](data/hero_tips.schema.json), and
-CI checks every entry, so a typo in a hero id fails the build instead of
-silently never showing up. Write your own words — nothing here is copied from
-anyone's paid guides.
+under each hero at the draft. All 121 heroes have one now, so the work is
+**improving** them, and that is a pull request against a plain text file. The
+rules are in [CONTRIBUTING.md](CONTRIBUTING.md), the contract is
+[`data/hero_tips.schema.json`](data/hero_tips.schema.json), and CI checks every
+entry, so a typo in a hero id fails the build instead of silently never showing
+up. Write your own words - nothing here is copied from anyone's paid guides.
+
+There is a second route that needs no pull request: `server/tips.py` takes
+submissions and votes and publishes a community tips feed the client reads like
+any other source. A line only reaches it once distinct voters, its score and a
+margin over the shipped line have all cleared a floor, and the draft marks a
+voted line `▲` so it is never mistaken for a reviewed one.
 
 [docs/FEATURES.md](docs/FEATURES.md) is the reference for every surface (what it
 shows, why it helps, where the data comes from, what it needs),
 [CONTRIBUTING.md](CONTRIBUTING.md) has the ground rules,
 [ROADMAP.md](ROADMAP.md) what's open and why the not-built things aren't built,
-and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the full map — including every
+and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) the full map - including every
 log-parsing gotcha that cost real debugging time, so you don't pay for them
 twice.
 
@@ -505,7 +529,7 @@ art © Blizzard Entertainment.
 
 Standing on the shoulders of:
 
-- **[Unity-Technologies/mono](https://github.com/Unity-Technologies/mono)** — the
+- **[Unity-Technologies/mono](https://github.com/Unity-Technologies/mono)** - the
   public Mono runtime source whose struct layout the optional memory reader
   (`native/msync`) walks. The reader is clean-room; the layout facts are Mono's.
-- **[HearthstoneJSON](https://hearthstonejson.com/)** — card database and art CDN.
+- **[HearthstoneJSON](https://hearthstonejson.com/)** - card database and art CDN.

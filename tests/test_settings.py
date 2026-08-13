@@ -345,6 +345,12 @@ def test_panel():
               "offered_heroes": "the heroes you were offered",
               "offered_trinkets": "the trinkets you were offered",
               "picked_trinkets": "the trinkets you picked",
+              # The hero-power table and the comp ranking are built from these
+              # three and from nothing else, so they leave the machine and the
+              # copy has to say so in as many words.
+              "offered_hero_powers": "the hero powers you were offered",
+              "picked_hero_powers": "the hero powers you picked",
+              "final_board": "the board you finished on",
               "client": "client id", "v": "version"}
     txt = panel.data_lbl.cget("text")
     net = panel.netcheck_lbl.cget("text")

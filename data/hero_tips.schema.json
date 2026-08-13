@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "hero_tips.schema.json",
   "title": "bgtracker hero tips",
-  "description": "Community-written strategy tips shown under each hero in the draft. One entry per Battlegrounds hero cardId. Every tip must be ORIGINAL text or contributed under the repository licence - never copied, paraphrased or machine-reworded from anyone else's guide. tests/test_regression.py enforces this file's shape offline, so a pull request that breaks it fails CI.",
+  "description": "Community-written strategy tips shown under each hero in the draft. One entry per Battlegrounds hero cardId. Every tip must be ORIGINAL text or contributed under the repository licence - never copied, paraphrased or machine-reworded from anyone else's guide. tests/test_regression.py enforces this file's shape offline, so a pull request that breaks it fails CI. This file is what SHIPS, and what the overlay falls back to whenever anything else is missing. There is a second, voted route: server/tips.py takes submissions and votes and publishes hero-tips-community.json, whose entries obey the same 'when' and 'bullets' rules stated here; a hero appears in that file only once the vote cleared its floors, and the overlay marks such a line so it is never mistaken for a reviewed one.",
   "type": "object",
   "required": ["version", "tips"],
   "additionalProperties": false,

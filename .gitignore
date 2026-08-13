@@ -58,3 +58,8 @@ server/.env
 
 # local notes
 EMAIL_FIRESTONE.md
+
+# the disconnect/reconnect experiment: needs Administrator, undecided, unpublished
+dcrc.py
+tools/dcrc_trial.*
+tests/test_dcrc.py

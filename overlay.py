@@ -52,6 +52,7 @@ import update
 from version import VERSION
 from sim import boards as sim_boards
 from sim import engine as sim_engine
+from ui import synergy as mech
 from ui.base import WindowManager
 from ui.comps import COMP_MIN
 from ui.settings import SettingsPanel
@@ -194,6 +195,10 @@ class Reader(threading.Thread):
             trinkets = bg.trinket_table(self.period, self.mmr)
             comps = bg.comp_table(self.period, self.mmr)
             cards = bg.card_table(self.mmr, self.period)
+            # The hero-power feed. Its own table, because a hero power is not a
+            # minion and the CARD table has never held one: the old code looked
+            # every option up in `cards` and so could only ever find nothing.
+            powers = bg.hero_power_table(self.mmr, self.period, duo=self.duo)
             # Recognition is card-database driven; stats only decorate it.
             hero_ids = bg.hero_universe()
             trinket_ids = bg.trinket_universe()
@@ -243,10 +248,22 @@ class Reader(threading.Thread):
         me_name, last_gold, id_names = None, None, {}
         synergy = {}
         viable_tribes = set()
+        # The card database itself, indexed both ways: by name for the comp
+        # engine, by cardId for the mechanical-synergy read (ui/synergy.py),
+        # which needs each card's mechanics and printed text. One fetch, and it
+        # is day-cached - never on the Tk thread, this is the reader's thread.
+        pool_by_id = {}
         try:
-            name_tribes = {m["name"]: set(m["races"]) for m in bg.bg_pool()}
+            _pool = bg.bg_pool()
+            name_tribes = {m["name"]: set(m["races"]) for m in _pool}
+            pool_by_id = {m["id"]: m for m in _pool}
         except Exception:
             name_tribes = {}
+        # What the board is made of, for the synergy read. board_known is NOT
+        # "the board is non-empty": with no memory reader there is no board at
+        # all, and an unknown board must print no count rather than a zero.
+        held_tribes, held_wild = {}, [0]
+        board_known = memory is not None
 
         # ------------------------------------------------------ hero draft
         def emit_hero(ev, event="hero"):
@@ -295,6 +312,10 @@ class Reader(threading.Thread):
             # Which viable comp is his CURRENT BOARD leaning into? The mean
             # frequency of his minions on that comp's real finished boards.
             nonlocal lean, lean_freq
+            counts, wild = mech.held_counts(board, name_tribes)
+            held_tribes.clear()
+            held_tribes.update(counts)
+            held_wild[0] = wild
             ranked = []
             tribes = lobby.tribes
             for c in comps:
@@ -522,10 +543,19 @@ class Reader(threading.Thread):
             base = card[:-2] if card.endswith("_G") else card
             st = cards.get(base) or {}
             tier = tiers.get(base, 0)
+            # Two different signals, and they are kept apart on purpose:
+            # "comp" is statistical (this minion shows up on that archetype's
+            # winning boards) and needs a stats source or the curated
+            # fallback; "syn"/"syn_full" is mechanical (what the card itself
+            # says it pays off, against what you are holding) and needs
+            # nothing but the card database. See ui/synergy.py.
+            short, full = mech.format_synergy(
+                mech.synergy(pool_by_id.get(base), held_tribes, held_wild[0],
+                             board_known=board_known))
             return {"pos": pos, "name": name, "card": card,
                     "avg": st.get("avg"), "n": st.get("n", 0),
                     "tier": tier, "stars": star(st, name, tier),
-                    "comp": synergy.get(name),
+                    "comp": synergy.get(name), "syn": short, "syn_full": full,
                     "mine": lean is not None and lean_freq.get(name, 0) >= 0.10}
 
         # ---------------------------------------------------------- tavern
@@ -596,14 +626,18 @@ class Reader(threading.Thread):
                 self.q.put(("trinket", {"rows": rows, "tuned": False,
                                         "roll": rolls[0]}))
             elif kind == "heropower":
-                # No hero-power feed exists. Show a row per option and a number
-                # only if a configured source happens to carry that cardId -
-                # never the owning hero's average.
+                # The hero-power feed, and nothing else: never the owning
+                # hero's average, and never the CARD table (a hero power is not
+                # a minion, so that lookup found nothing by construction). An
+                # option the feed does not carry, or carries too thinly to
+                # stand behind, has avg None and the window draws a dash.
                 rows = []
                 for i, nm, cid in blk:
-                    st = cards.get(cid) or {}
+                    st = powers.get(bg.normalize(cid, powers)) or {}
                     rows.append({"pos": i + 1, "name": nm, "card": cid,
-                                 "avg": st.get("avg"), "n": st.get("n", 0)})
+                                 "avg": st.get("avg"), "pick": st.get("pick"),
+                                 "n": st.get("n", 0), "thin": st.get("thin", False)})
+                rows.sort(key=lambda r: (r["avg"] is None, r["avg"] or 0))
                 self.q.put(("heropower", {"rows": rows, "roll": rolls[0]}))
             else:
                 # Minion discover / Dark Gift. Score every option we CAN and
@@ -633,6 +667,27 @@ class Reader(threading.Thread):
                 pending_choice[0] = None
 
         # ------------------------------------------------------- the stream
+        def clear_board_state():
+            """Forget everything DERIVED from the board, with the board.
+
+            `board` is not the only thing the board produces: held_tribes /
+            held_wild (what tribes you are holding) and lean / lean_freq (which
+            comp you are building) are all computed from it in recompute_lean,
+            and every one of them is read by minion_row. Clearing the list
+            alone left the rest describing the LAST game, and the first shop of
+            a new game was scored against it - measured on a two-game slice of
+            a real log: game 1 ended holding four Beasts and the first row of
+            game 2 was still told "held={'BEAST': 4}". A stale number stated as
+            fact is the one failure this project treats as worse than a crash,
+            so the whole derived set is emptied here rather than field by field
+            at the reset, where the next one added would be forgotten again.
+            """
+            nonlocal lean, lean_freq
+            board.clear()
+            held_tribes.clear()
+            held_wild[0] = 0
+            lean, lean_freq = None, {}
+
         def consume(line):
             nonlocal hero_open, shop_ts, me_name, last_gold
             odds.feed(line)              # combat boards -> BETA win/tie/loss
@@ -665,7 +720,7 @@ class Reader(threading.Thread):
             if det.new_game:
                 det.new_game = False
                 lobby.reset()
-                board.clear()
+                clear_board_state()      # and everything computed from it
                 shop_ents.clear()
                 seen_boards.clear()      # last game's boards belong to last game
                 last_players[0] = None
@@ -949,7 +1004,7 @@ def diag(settings=None):
     print(f"  sources     {'configured' if bg.SOURCES_FILE.exists() else 'none'}"
           f"  ({bg.SOURCES_FILE})")
     print(f"  updates     {'checked on start' if update.checks_enabled() else 'off'}"
-          f"  ({update.manifest_url()})")
+          f"  ({update.manifest_url() or 'no manifest - sources.json unreadable'})")
 
     print(f"  sim         {sim_boards.__name__} + {sim_engine.__name__} loaded "
           f"({len(sim_engine.SCRIPTS)} hand-written card scripts)")
@@ -960,7 +1015,9 @@ def diag(settings=None):
     print(f"\nsettings    {settings.path} "
           f"({'present' if settings.path.exists() else 'not written yet, all defaults'})")
     print("\n".join(settings.describe()))
-    for problem in settings.problems:
+    # Both problem lists, because a bug report about updates is usually a
+    # report about a file that could not be read.
+    for problem in list(settings.problems) + update.problems():
         print(f"  ! {problem}")
 
     print(f"\nui.WINDOWS registry: {len(ui.WINDOWS)} windows")

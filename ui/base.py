@@ -44,6 +44,20 @@ and they are the only ones anything outside this package needs:
     ui.base.get_badge_scale() -> 1.2    what is in force
     ui.base.BADGE_USER_MIN, BADGE_USER_MAX   0.5 and 2.0
 
+MOVING the badges is a mode rather than a slider, because a click-through
+window cannot be dragged - see the block above BadgeStrip:
+
+    ui.base.set_badge_edit(True)  -> True  drop click-through on every strip,
+                                           show a numberless pattern, let the
+                                           player drag each band onto its cards
+    ui.base.set_badge_edit(False) -> False put click-through back and restore
+                                           whatever was really on screen
+    ui.base.badge_edit()          -> bool  is it on
+
+The offsets are saved per badge KIND in .overlay.json under "badge", as
+fractions of the game window, and applied on top of the measured SLOT_X /
+BAND_Y.
+
 Nothing here is persisted and no config file is read: storing the chosen value
 and calling ``set_scale`` at startup belongs to the settings window, not to the
 drawing code. A one-line wiring is the whole integration::
@@ -72,6 +86,7 @@ from __future__ import annotations
 import ctypes
 import json
 import sys
+import time
 import tkinter as tk
 import traceback
 import weakref
@@ -103,16 +118,65 @@ except Exception:
 # ------------------------------------------------------------------ palette
 
 TRANS = "#000001"             # transparent-color key: this exact color is a hole
-PANEL = "#14161c"
-PANEL_HI = "#1c1f27"
-LINE = "#262a33"
-TEXT = "#e9e7e2"
-SOFT = "#b9b6b0"
-DIM = "#7c818c"
-ACCENT = "#4aa3e2"
+#
+# THE COLOUR KEY IS LOAD-BEARING. Every window is built on a canvas whose
+# background is TRANS and whose whole visible body is one filled shape on top
+# of it, and the strips are nothing BUT that background - which is what makes
+# them click-through holes. So TRANS never changes and nothing else in this
+# table may drift onto #000001: a panel colour that collided with the key
+# would punch the panel out of the screen, and a badge that painted the key
+# would eat the click it is sitting on.
+#
+# The rest of the table moved 2026-08-12, from flat cool charcoal to the warm
+# dark the game itself is lit in. Battlegrounds is stained wood, stone, aged
+# parchment and lamplight, so a blue-grey slab beside it always read as a
+# different program's window sitting on top of the game. Nothing here changes
+# what a colour MEANS: the data colours (GOOD / AMBER / BAD, avg_color,
+# STAR_COLOR, TRIBE_COLOR) are untouched, because their hue is the number.
+PANEL = "#191410"             # stained wood, the panel face
+PANEL_HI = "#241d15"          # a raised plate on that face
+LINE = "#3b3126"              # a rule, warm rather than blue-grey
+TEXT = "#f2ece0"              # parchment
+SOFT = "#c6b89f"              # aged parchment
+DIM = "#93876f"               # the quiet line. Measured against the new face
+                              # it keeps the contrast the old #7c818c had on
+                              # the old one (4.6:1), so nothing got harder to
+                              # read in exchange for the warmth.
+ACCENT = "#5fb2dc"            # "yours", links, anything clickable. Deliberately
+                              # still cool: it is the one thing on a gold-and-
+                              # wood panel that has to be found instantly, and
+                              # a second gold would hide in the first.
 AMBER = "#e0b45c"
 GOOD = "#6fd693"
 BAD = "#e07a5f"
+
+# The metal. A rim that reads as a rim is three tones deep - a dark outline to
+# sit in, a lit top and a shaded bottom - and that is drawn with concentric
+# filled shapes rather than a gradient, because these panels repaint on every
+# shop roll and a gradient on a Tk canvas is hundreds of line items per frame.
+EDGE = "#0b0906"              # the dark the rim is set into
+GOLD = "#a8854a"              # the rim body. Darker than the gold the game
+                              # uses on its own frames on purpose: this sits
+                              # OVER the board, and a bright ring around
+                              # eleven panels was the loudest thing on the
+                              # screen when it was tried at #c9a45c.
+GOLD_HI = "#d8bd82"           # its lit top edge - one line, not a ring
+GOLD_LO = "#5f4722"           # its shaded underside
+GOLD_TEXT = "#d9bd80"         # window titles, struck in the same metal
+                              # (not TITLE: every window class already owns a
+                              # TITLE, and that one is words)
+HEADER_BG = "#241c13"         # the header slab
+BEVEL = "#3f3325"             # the highlight along a bevelled edge
+SHADE = "#120e09"             # the shadow under one
+ROW = "#1e1811"               # a card plate on the panel face
+HALO = "#0b0805"              # the dark a badge is outlined in, over card art
+
+# Chips - the little filled pills (tribes, the placement badge, the toggles).
+# A lit chip's label sits IN the light, so it is near-black rather than the
+# panel colour; warm, because the old #101116 read blue beside gold.
+ON_CHIP = "#140f08"           # label on a lit chip
+OFF_CHIP = "#8a7f6c"          # label on an unlit one
+OFF_TRIBE = "#5a5045"         # ... and on a tribe that has not been seen
 
 TRIBE_COLOR = {
     "BEAST": "#57a05e", "DEMON": "#a05ec2", "DRAGON": "#d1793e",
@@ -410,11 +474,30 @@ SLOT_X = {
     # 0.0703 apart around 0.5165.
     "shop": {n: [0.5165 + (i - (n - 1) / 2) * 0.0703 for i in range(n)]
              for n in range(2, 8)},
-    # Discover / Choose-One cards are centred on the game window.
-    "choice": {n: [0.5 + (i - (n - 1) / 2) * 0.165 for i in range(n)]
+    # Discover / Choose-One cards, MEASURED 2026-08-12 off a live three-option
+    # dialog in a 1892x1000 game window - the same way the hero and shop rows
+    # were measured, and the method reproduces the hero row's recorded
+    # fractions to within 0.003 on the same recording. The dialog draws each
+    # card inside a green glow, so the edges are findable to the pixel: the
+    # glow columns sit at 448-465 / 708-731, 803-825 / 1066-1087, 1164-1184 /
+    # 1424-1447, which puts the card centres at 588.0, 945.2, 1304.8 = 0.3108,
+    # 0.4996, 0.6897 of the window - spacing 0.1894 about the centre. The old
+    # value here was a guess of 0.165, and the same frame shows what that cost:
+    # the first card's badge sat 46px right of its card, in the gap.
+    # Only n=3 could be measured (three is what the game deals for a discover
+    # or a Dark Gift), so the other counts keep the MEASURED spacing about the
+    # same centre rather than inventing a second number.
+    "choice": {n: [0.4996 + (i - (n - 1) / 2) * 0.1894 for i in range(n)]
                for n in range(2, 5)},
 }
-BAND_Y = {"hero": 0.235, "trinket": 0.775, "shop": 0.305, "choice": 0.63}
+# Where a badge band sits inside the game window, as a fraction of its height.
+# "choice" measured on the same frame: the dialog's cards run y 302-617 (side
+# glow), with the name banner at ~475, the text box at 530-620 and the tribe
+# and stat banners at 630-670 - so 0.63, the old value, landed the stars on
+# top of the tribe banner. 0.30 puts them across the top of the card art,
+# clear of the tier gems in the card's top-left corner and clear of every line
+# of text the card itself prints.
+BAND_Y = {"hero": 0.235, "trinket": 0.775, "shop": 0.305, "choice": 0.30}
 
 
 def avg_color(v):
@@ -437,6 +520,79 @@ def rrect(c, x1, y1, x2, y2, r, **kw):
     return c.create_polygon(pts, smooth=True, **kw)
 
 
+def panel_frame(c, w, h, r=RADIUS):
+    """The slab a panel is drawn on: a gold rim with depth, then the face.
+
+    Six items, flat fills, no gradient - and that is the whole budget. These
+    windows repaint on every shop roll (the tavern rebuilds itself on every
+    refresh, a buy and a sell), so anything that costs per-frame work in
+    proportion to the panel's SIZE - a gradient faked with one line per pixel
+    row, a drop shadow drawn as rings - would be paid for on every one of
+    those repaints. Concentric shapes cost the same six items at 316px as at
+    4K, and Canvas.scale resizes them for free.
+
+    Why three tones instead of the 1px outline this replaced: a single hairline
+    reads as a border on a web page. Metal reads as metal because it is set
+    into something dark, catches the light along its top edge and falls into
+    shadow along its bottom, and those are exactly the three shapes below.
+    Everything is inset in BASE pixels, so the rim thickens with the scale
+    instead of staying a hairline on a 4K screen.
+
+    Tagged "frame" so redraw() can drop the whole thing underneath the body in
+    one call, with its own layers still in order.
+    """
+    t = ("frame",)
+    rrect(c, 0, 0, w, h, r, fill=EDGE, outline="", tags=t)
+    rrect(c, 1, 1, w - 1, h - 1, r - 1, fill=GOLD_LO, outline="", tags=t)
+    rrect(c, 1.6, 1.6, w - 1.6, h - 1.6, r - 2, fill=GOLD, outline="", tags=t)
+    # The lit top and the shaded bottom of the rim: short of the corners at
+    # both ends, so the highlight dies out where the curve turns away from the
+    # light instead of ringing the whole panel.
+    c.create_line(r, 2, w - r, 2, fill=GOLD_HI, tags=t)
+    c.create_line(r, h - 2, w - r, h - 2, fill=EDGE, tags=t)
+    rrect(c, 3, 3, w - 3, h - 3, r - 3, fill=PANEL, outline="", tags=t)
+
+
+def header_slab(c, w, h=HEADER_H):
+    """The raised bar the title sits on, and the groove under it.
+
+    Four items. The slab is a rounded rectangle squared off along its bottom
+    (a second rectangle over the lower corners), so it follows the panel's own
+    corner radius at the top and butts flat into the body underneath - which
+    is what makes it read as a bar laid ON the panel rather than a differently
+    coloured stripe. The groove is one dark line with one lit line under it:
+    a two-pixel bevel is the cheapest thing that has an edge.
+    """
+    t = ("header",)
+    rrect(c, 3, 3, w - 3, h + 3, RADIUS - 3, fill=HEADER_BG, outline="",
+          tags=t)
+    c.create_rectangle(3, h - 6, w - 3, h + 3, fill=HEADER_BG, outline="",
+                       tags=t)
+    c.create_line(4, h + 3, w - 4, h + 3, fill=SHADE, tags=t)
+    c.create_line(4, h + 4, w - 4, h + 4, fill=BEVEL, tags=t)
+
+
+def plate(c, x1, y1, x2, y2, r=9, best=False, tags=()):
+    """One row drawn as a plate on the panel face.
+
+    Two items: the plate and the hairline along its top edge that gives it a
+    lip. ``best`` is the ONE place a gold outline is spent inside a panel -
+    the row the player is being pointed at - so the accent still means
+    something when it appears. Every other row is the same quiet plate.
+    """
+    rrect(c, x1, y1, x2, y2, r, fill=PANEL_HI if best else ROW,
+          outline=GOLD if best else "", tags=tags)
+    c.create_line(x1 + r, y1 + 0.5, x2 - r, y1 + 0.5,
+                  fill=BEVEL if best else LINE, tags=tags)
+
+
+def art_frame(c, x1, y1, x2, y2, best=False):
+    """A thin metal edge around a piece of card art - the game frames every
+    card it draws, and unframed art on a dark panel reads as a sticker."""
+    c.create_rectangle(x1, y1, x2, y2, outline=GOLD if best else GOLD_LO,
+                       fill="")
+
+
 def shadow_text(c, cx, cy, text, fill, font, anchor="center"):
     """Text with a dark halo so it reads over any card art - no backdrop box.
 
@@ -446,7 +602,7 @@ def shadow_text(c, cx, cy, text, fill, font, anchor="center"):
     """
     o = max(1, int(round(getattr(font, "ratio", 1.0))))
     for dx, dy in ((-o, -o), (o, -o), (-o, o), (o, o), (0, 0)):
-        col = "#0a0b0e" if (dx or dy) else fill
+        col = HALO if (dx or dy) else fill
         c.create_text(cx + dx, cy + dy, text=text, fill=col, font=font, anchor=anchor)
 
 
@@ -540,13 +696,19 @@ def offer_rows(c, y, rows, width, art, min_sample=0):
     for r in rows:
         shown = r.get("adj") if r.get("adj") is not None else r.get("avg")
         is_best = r is best
+        # Every row is a plate now, not just the standout - a list of floating
+        # text on a dark face is what made this panel read as a debug console.
+        # What still separates the standout is what always did: it is lighter,
+        # it is the only thing in the panel wearing the gold edge, and it keeps
+        # the colour-graded bar down its left side.
+        plate(c, 8, y + 1, width - 8, y + 45, 9, best=is_best)
         if is_best:
-            rrect(c, 8, y + 1, width - 8, y + 45, 9, fill=PANEL_HI, outline="")
             c.create_rectangle(8, y + 8, 11, y + 38, fill=avg_color(shown), outline="")
         ic = art.icon(r.get("card"), 30) or art.icon_for_name(r["name"], 30)
         tx = 20
         if ic is not None:
             c.create_image(18, y + 22, image=ic, anchor="w")
+            art_frame(c, 17, y + 6, 49, y + 38, is_best)
             tx = 54
         c.create_text(tx, y + 14, text=r["name"][:22], anchor="w",
                       fill=TEXT if is_best else SOFT, font=F_NAME)
@@ -706,6 +868,9 @@ class PosStore:
         self.win = self.data.setdefault("win", {})
         if not isinstance(self.win, dict):
             self.win = self.data["win"] = {}
+        self.badge = self.data.setdefault("badge", {})
+        if not isinstance(self.badge, dict):
+            self.badge = self.data["badge"] = {}
 
     def get(self, key):
         v = self.win.get(key)
@@ -713,6 +878,29 @@ class PosStore:
 
     def set(self, key, **kw):
         self.win.setdefault(key, {}).update(kw)
+        self._write()
+
+    def get_badge(self, kind):
+        """(ox, oy) for one badge strip, as FRACTIONS of the game window.
+
+        Fractions, not pixels, for the same reason SLOT_X and BAND_Y are
+        fractions: the whole badge geometry follows the game window, so a
+        correction saved on a 1080p window has to still be the same correction
+        when the game is opened at 4K.
+        """
+        v = self.badge.get(kind)
+        if not isinstance(v, dict):
+            return 0.0, 0.0
+        try:
+            return float(v.get("ox", 0.0)), float(v.get("oy", 0.0))
+        except (TypeError, ValueError):
+            return 0.0, 0.0
+
+    def set_badge(self, kind, ox, oy):
+        self.badge[kind] = {"ox": round(float(ox), 5), "oy": round(float(oy), 5)}
+        self._write()
+
+    def _write(self):
         try:
             self.path.write_text(json.dumps(self.data))
         except Exception:
@@ -722,6 +910,219 @@ class PosStore:
 # -------------------------------------------------------------- badge strips
 
 _STRIPS: list["BadgeStrip"] = []
+
+# MOVING THE BADGES
+# -----------------
+# The strips are click-through so the game gets every click - which is exactly
+# what makes them impossible to drag, because a drag is a click. The way out
+# is a mode, not a permanent compromise: CALIBRATE MODE drops WS_EX_TRANSPARENT
+# on every strip for as long as it is on, so the strips can be dragged, and
+# puts it back on the way out. Normal play never runs with click-through off.
+#
+# WS_EX_NOACTIVATE deliberately STAYS on during calibration: the strip then
+# receives the mouse without taking focus, so Hearthstone remains the
+# foreground window and the overlay does not hide itself mid-drag (visibility
+# follows the real foreground window - see _apply_visibility).
+#
+# What is saved is a per-KIND offset in fractions of the game window, on top of
+# the measured SLOT_X / BAND_Y. Fractions, because everything else about a
+# badge follows the game window; per kind, because the four bands sit on four
+# different dialogs and being wrong about one says nothing about the others.
+#
+# THE MODE MUST CLOSE ITSELF. It is the one state in the whole overlay where a
+# window deliberately stops being click-through. Measured on a 1920x1080 game
+# by asking Windows itself (WindowFromPoint, the same hit test a real click
+# goes through): with the mode ON, the point over a drawn marker answers with
+# the strip; with it off, the same point answers with the window underneath.
+# The blank parts of a band still pass through either way - the colour key
+# makes untouched pixels holes - so the dead area is the glyphs themselves,
+# and the glyphs are drawn exactly on the cards, which is the worst possible
+# place for them. A player who opens the mode and forgets is playing with dead
+# spots on his own board. (tests/test_badges.py checks the property this rests
+# on, WS_EX_TRANSPARENT, read back out of Win32 before, during and after.)
+# So there are three ways out and only one of them needs the player: the chip
+# again, the next combat, or the deadline below.
+_badge_edit = False
+_badge_edit_at = 0.0            # monotonic time the mode closes itself at
+
+# The cap. Every drag re-arms it (see nudge), so this is time spent doing
+# NOTHING, not a limit on how long positioning may take: 90s of an untouched
+# open mode is already longer than the four drags the job consists of, and it
+# is short enough that a mode left on at the menu is gone before the next
+# lobby. The countdown is drawn as a shrinking bar rather than a number,
+# because a digit on a badge strip is the one thing this mode refuses to print
+# (see _calib_rows).
+BADGE_EDIT_MAX_S = 90.0
+
+# Events that end the mode on their own. Combat is the honest boundary: the
+# player got the whole recruit phase to line his badges up, and the fight is
+# the moment the overlay must be out of the way again. Routed through
+# BaseWindow.handle, so this needs no cooperation from overlay.py's router.
+BADGE_EDIT_END_EVENTS = ("combat",)
+
+# How far a badge may be nudged. Wide enough to fix a real mismatch (the worst
+# measured error was 46px on a 1892px window = 0.024), tight enough that a
+# fumbled drag cannot fling a strip off the game window and out of reach.
+BADGE_OFF_MAX_X = 0.20
+BADGE_OFF_MAX_Y = 0.40
+
+
+def badge_edit() -> bool:
+    """True while the badge strips are draggable (and NOT click-through)."""
+    return _badge_edit
+
+
+def badge_edit_left(now=None) -> float:
+    """Seconds before the mode closes itself. 0 when it is not on."""
+    if not _badge_edit:
+        return 0.0
+    return max(0.0, _badge_edit_at - (time.monotonic() if now is None else now))
+
+
+def badge_edit_keepalive():
+    """Push the deadline back: the player is still working the mode."""
+    global _badge_edit_at
+    if _badge_edit:
+        _badge_edit_at = time.monotonic() + BADGE_EDIT_MAX_S
+
+
+def badge_edit_tick(now=None) -> bool:
+    """Close the mode if its time is up. True if this call closed it.
+
+    Called from the manager poll (badge_edit_poll) and safe to call from
+    anywhere: it does nothing at all while the mode is off.
+    """
+    if not _badge_edit:
+        return False
+    if (time.monotonic() if now is None else now) < _badge_edit_at:
+        return False
+    set_badge_edit(False)
+    print("badge calibrate mode timed out - click-through restored",
+          flush=True)
+    return True
+
+
+def badge_edit_event(name) -> bool:
+    """End the mode on an event that means the game needs its clicks back.
+    True if this call closed it."""
+    if not _badge_edit or name not in BADGE_EDIT_END_EVENTS:
+        return False
+    set_badge_edit(False)
+    print(f"badge calibrate mode closed by {name} - click-through restored",
+          flush=True)
+    return True
+
+
+def set_badge_edit(on: bool) -> bool:
+    """Enter or leave calibrate mode. Returns the state actually in force.
+
+    Entering: every strip drops click-through, shows a calibration pattern -
+    a marker per slot, carrying no numbers at all, because a placeholder
+    number is still a made-up number - and starts listening for a drag.
+    Leaving: click-through goes back on every strip, the calibration pattern
+    is dropped, and whatever the strip was really showing comes back.
+    """
+    global _badge_edit, _badge_edit_at
+    on = bool(on)
+    if on == _badge_edit:
+        return _badge_edit
+    _badge_edit = on
+    _badge_edit_at = time.monotonic() + BADGE_EDIT_MAX_S if on else 0.0
+    rect = hs_rect()
+    for s in list(_STRIPS):
+        try:
+            if on:
+                s.calibrate_on(rect)
+            else:
+                s.calibrate_off()
+        except Exception:
+            traceback.print_exc()
+    if not on:
+        # calibrate_off puts each strip back to what IT was doing when the mode
+        # opened, and a strip that was suppressed then (outranked, or an offer
+        # that arrived while the mode was up) was doing nothing. Without this
+        # the rows survive off screen until their own next event, which for the
+        # tavern stars is a whole shop away. revive_strips is the arbiter that
+        # decides who is on top now; it no-ops while _badge_edit is still set,
+        # which is why it is called here rather than inside calibrate_off.
+        revive_strips(rect)
+    return _badge_edit
+
+
+def badge_edit_poll(rect, game_front):
+    """Keep the calibration strips honest about the game window.
+
+    Called from the manager's poll. Calibration strips belong to windows that
+    may well be closed, so nothing else re-anchors them or hides them when the
+    game stops being the foreground window.
+
+    This is also what enforces the deadline, and it runs whether or not the
+    game is in front: a mode left on behind an alt-tab must still close, or it
+    would be waiting with its dead spots when the player comes back.
+    """
+    if not _badge_edit or badge_edit_tick():
+        return
+    for s in list(_STRIPS):
+        try:
+            if not s.calib:
+                continue
+            if game_front and rect is not None:
+                s.show(s.rows, rect)
+            elif s.visible:
+                s.visible = False
+                s.withdraw()
+        except Exception:
+            traceback.print_exc()
+
+
+# How many markers to show per kind while positioning: the count that dialog
+# usually deals, so the pattern sits where the real badges will. The slots for
+# three cards are not the slots for four, and lining a strip up against the
+# wrong count would build the error back in.
+_CALIB_N = {"hero": 4, "trinket": 4, "shop": 5, "choice": 3}
+
+
+def revive_strips(rect=None):
+    """Put back the best strip that still holds rows and is no longer
+    outranked.
+
+    Showing a strip SUPPRESSES the lower-priority ones (rows kept, see
+    BadgeStrip.suppress), and nothing else would bring the victims back before
+    their next event - for the tavern stars that is the next roll, a whole
+    shop away. So whoever is now on top is re-shown here, and its own show()
+    re-suppresses anything under it.
+    """
+    if _badge_edit:
+        return                       # the mode owns every strip while it is on
+    for s in sorted(_STRIPS, key=lambda s: -s.priority):
+        r = rect if rect is not None else s.rect
+        if s.visible or s.calib or not s.rows or r is None:
+            continue
+        # Never bring a strip back onto a screen the game is not on. A strip
+        # is withdrawn on alt-tab with its rows intact, so without this a
+        # dialog closing in the background would paint badges over whatever
+        # the player switched to. (headless keeps game_front True by design.)
+        app = getattr(s.master, "app", None)
+        if app is not None and not getattr(app, "game_front", True):
+            continue
+        if any(o.visible and o.priority > s.priority for o in _STRIPS):
+            continue
+        try:
+            s.show(s.rows, r)
+        except Exception:
+            traceback.print_exc()
+
+
+def _calib_rows(kind):
+    """The pattern a strip shows while it is being positioned.
+
+    Markers and the strip's own name - never a number, not even a fake one:
+    the point of the mode is to line the badges up with the cards, and a
+    plausible-looking 4.21 sitting on a card the player is about to click is
+    exactly the lie this project refuses to tell.
+    """
+    return [{"pos": i + 1, "name": kind, "calib": True}
+            for i in range(_CALIB_N.get(kind, 3))]
 
 
 class BadgeStrip(tk.Toplevel):
@@ -735,9 +1136,10 @@ class BadgeStrip(tk.Toplevel):
     the other exists.
     """
 
-    def __init__(self, master, kind, priority=0):
+    def __init__(self, master, kind, priority=0, store=None):
         super().__init__(master)
         self.kind, self.priority = kind, priority
+        self.store = store
         self.overrideredirect(True)
         self.attributes("-topmost", True)
         self.attributes("-alpha", 0.97)
@@ -748,12 +1150,46 @@ class BadgeStrip(tk.Toplevel):
         self.rows, self.rect = [], None
         self.min_sample = 0
         self.visible = False
+        self.calib = False          # showing the calibration pattern
+        self._saved = None          # the real rows, parked during calibration
+        self._drag = None
+        self.ox, self.oy = (store.get_badge(kind) if store is not None
+                            else (0.0, 0.0))
+        self.canvas.bind("<Button-1>", self._press)
+        self.canvas.bind("<B1-Motion>", self._motion)
+        self.canvas.bind("<ButtonRelease-1>", self._release)
         self.withdraw()
         _STRIPS.append(self)
         self.after(120, self.clickthrough)
 
+    # -- click-through -----------------------------------------------------
+
+    def _hwnd(self):
+        """The wrapper window Windows actually hit-tests, not the Tk child."""
+        u = ctypes.windll.user32
+        return u.GetParent(self.winfo_id()) or self.winfo_id()
+
+    def ex_style(self):
+        """The strip's current extended window style, or None if it cannot be
+        read. Exists so the click-through property can be CHECKED - by the
+        window test, and by anyone debugging a strip that eats clicks - rather
+        than assumed from the fact that we called SetWindowLongPtrW once."""
+        try:
+            u = ctypes.windll.user32
+            u.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+            u.GetWindowLongPtrW.argtypes = (wintypes.HWND, ctypes.c_int)
+            return u.GetWindowLongPtrW(self._hwnd(), -20)     # GWL_EXSTYLE
+        except Exception:
+            return None
+
     def clickthrough(self):
-        """Let clicks pass through to the game underneath."""
+        """Let clicks pass through to the game underneath.
+
+        Except while calibrate mode is on, which is the one state where the
+        strip has to receive the mouse itself so it can be dragged onto the
+        cards. WS_EX_NOACTIVATE stays on either way, so even a strip that is
+        taking clicks never takes FOCUS away from the game.
+        """
         try:
             GWL_EXSTYLE = -20
             WS_EX_LAYERED, WS_EX_TRANSPARENT, WS_EX_NOACTIVATE = 0x80000, 0x20, 0x8000000
@@ -764,12 +1200,103 @@ class BadgeStrip(tk.Toplevel):
             u.GetWindowLongPtrW.argtypes = (wintypes.HWND, ctypes.c_int)
             u.SetWindowLongPtrW.restype = ctypes.c_ssize_t
             u.SetWindowLongPtrW.argtypes = (wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t)
-            hwnd = u.GetParent(self.winfo_id()) or self.winfo_id()
+            hwnd = self._hwnd()
             style = u.GetWindowLongPtrW(hwnd, GWL_EXSTYLE)
-            u.SetWindowLongPtrW(hwnd, GWL_EXSTYLE,
-                                style | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE)
+            style |= WS_EX_LAYERED | WS_EX_NOACTIVATE
+            if _badge_edit:
+                style &= ~WS_EX_TRANSPARENT
+            else:
+                style |= WS_EX_TRANSPARENT
+            u.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style)
         except Exception:
             pass    # worst case the badges eat clicks in their own band
+
+    # -- calibrate mode ----------------------------------------------------
+
+    def calibrate_on(self, rect):
+        """Take the click-through off and show the positioning pattern.
+
+        ``rect`` may be None when the game window cannot be found this
+        instant; the strip's own last known rect is used instead, so the mode
+        still comes up while the game is mid-loading screen. With neither, the
+        manager's next poll brings it up (badge_edit_poll).
+        """
+        self.calib = True
+        if self._saved is None:
+            self._saved = (list(self.rows), self.min_sample, self.visible)
+        self.clickthrough()
+        self.rows = _calib_rows(self.kind)
+        rect = rect if rect is not None else self.rect
+        if rect is not None:
+            self.show(self.rows, rect)
+
+    def calibrate_off(self):
+        """Put the click-through back and restore whatever was really up."""
+        self.calib = False
+        self._drag = None
+        rows, min_sample, was_visible = self._saved or ([], 0, False)
+        self._saved = None
+        self.rows, self.min_sample = rows, min_sample
+        if was_visible and rows and self.rect is not None:
+            self.show(rows, self.rect)
+        else:
+            self.visible = False
+            self.withdraw()
+        # After the withdraw, and unconditionally: the style must be back on
+        # even for a strip that is not on screen, because the next show() of a
+        # hidden strip happens on an offer, in the middle of a game.
+        self.clickthrough()
+
+    def nudge(self, ox, oy, save=True):
+        """Move this KIND of badge by a fraction of the game window.
+
+        Kind, not strip: two windows can own the same band (the discover panel
+        and the hero-power panel are both dealt on the Choose-One frame, so
+        both carry kind "choice"), they share one saved offset, and dragging
+        one of them has to move the other or the correction would apply to
+        whichever dialog happened to be open when it was made.
+        """
+        self.ox = max(-BADGE_OFF_MAX_X, min(BADGE_OFF_MAX_X, float(ox)))
+        self.oy = max(-BADGE_OFF_MAX_Y, min(BADGE_OFF_MAX_Y, float(oy)))
+        if save and self.store is not None:
+            self.store.set_badge(self.kind, self.ox, self.oy)
+        for s in _STRIPS:
+            if s is self or s.kind != self.kind:
+                continue
+            s.ox, s.oy = self.ox, self.oy
+            if s.visible and s.rows and s.rect is not None:
+                s.show(s.rows, s.rect)
+        if self.visible and self.rows and self.rect is not None:
+            self.show(self.rows, self.rect)
+        return self.ox, self.oy
+
+    def _press(self, e):
+        if not (_badge_edit and self.calib):
+            return
+        # Touching a strip is the player saying he is still on the job, so the
+        # auto-close deadline starts again from here. Without this a careful
+        # drag could be interrupted by the very timeout that exists to protect
+        # somebody who walked away.
+        badge_edit_keepalive()
+        self._drag = (e.x_root, e.y_root, self.ox, self.oy)
+
+    def _motion(self, e):
+        if not self._drag or self.rect is None:
+            return
+        badge_edit_keepalive()
+        px, py, ox0, oy0 = self._drag
+        gw = max(1, self.rect.right - self.rect.left)
+        gh = max(1, self.rect.bottom - self.rect.top)
+        self.nudge(ox0 + (e.x_root - px) / gw, oy0 + (e.y_root - py) / gh,
+                   save=False)
+
+    def _release(self, e):
+        if not self._drag:
+            return
+        badge_edit_keepalive()
+        self._drag = None
+        if self.store is not None:
+            self.store.set_badge(self.kind, self.ox, self.oy)
 
     def show(self, rows, rect, min_sample=None):
         """Draw one badge per row. Rows carry either stars (shop/discover) or
@@ -792,18 +1319,58 @@ class BadgeStrip(tk.Toplevel):
         """
         if rect is None or not rows:
             return
+        if self.calib and not rows[0].get("calib"):
+            # A REAL offer arrived while this band is being positioned. It is
+            # parked, not drawn and not dropped: drawing it would replace the
+            # pattern the player is dragging (and with the offer's own slot
+            # count, so he would be lining up markers that move under him),
+            # and dropping it would cost him the badges on a dialog that is
+            # open right now the moment the mode closes. calibrate_off shows
+            # whatever is parked here.
+            self._saved = (list(rows),
+                           self.min_sample if min_sample is None else min_sample,
+                           True)
+            self.rect = rect
+            # The offer still tells us where the game window is, which is the
+            # one thing a strip needs and may not have yet (calibrate_on runs
+            # with whatever hs_rect answered, and that can be nothing during a
+            # loading screen). So the band comes up now, with the PATTERN -
+            # self.rows are the calibration rows, so this recurses exactly one
+            # level and takes the branch below. The test is on the rows rather
+            # than on self.calib: anything else would call itself forever if a
+            # strip ever reached this line holding real rows.
+            if self.rows and self.rows[0].get("calib"):
+                self.show(self.rows, rect)
+            return
         if min_sample is not None:
             self.min_sample = min_sample
         min_sample = self.min_sample
         self.rows, self.rect = rows, rect
-        for s in _STRIPS:
-            if s is not self and s.visible and s.priority < self.priority:
-                try:
-                    # Suppressed, not hidden: the rows stay, so the strip can
-                    # come back if this one goes away (WindowManager.disable).
-                    s.suppress()
-                except Exception:
-                    s.visible = False      # already destroyed; drop the claim
+        # Priority arbitration is about which OFFER matters, and in calibrate
+        # mode no offer is up: every band is deliberately on screen at once so
+        # all four can be positioned in one pass.
+        #
+        # It has to work in BOTH directions. Suppressing everything lower only
+        # covers the strip that comes up last; a shop roll arriving UNDER an
+        # open discover used to draw itself anyway, and since the two bands are
+        # 5px apart on a 1080p game (BAND_Y shop 0.305, choice 0.30) that is
+        # two sets of badges printed over each other. So a strip that is
+        # outranked right now keeps its rows and stays off screen instead -
+        # hide() brings it back when the winner goes away.
+        if not _badge_edit:
+            for s in _STRIPS:
+                if s is not self and s.visible and s.priority < self.priority:
+                    try:
+                        # Suppressed, not hidden: the rows stay, so the strip
+                        # can come back if this one goes away (hide, and
+                        # WindowManager.disable).
+                        s.suppress()
+                    except Exception:
+                        s.visible = False  # already destroyed; drop the claim
+            if any(s is not self and s.visible and s.priority > self.priority
+                   for s in _STRIPS):
+                self.suppress()
+                return
         rows = sorted(rows, key=lambda r: r.get("pos") or 0)
         n = len(rows)
         xs = (SLOT_X.get(self.kind, {}).get(n)
@@ -818,12 +1385,20 @@ class BadgeStrip(tk.Toplevel):
             return int(round(v * bs))
 
         band_h = b(40)
-        y0 = rect.top + int(gh * BAND_Y.get(self.kind, 0.7))
+        y0 = rect.top + int(gh * (BAND_Y.get(self.kind, 0.7) + self.oy))
 
         c = self.canvas
         c.delete("all")
         self.geometry(f"{gw}x{band_h}+{rect.left}+{y0}")
         c.config(width=gw, height=band_h)
+
+        if self.calib:
+            self._draw_calibration(c, gw, xs, b)
+            self.visible = True
+            self.deiconify()
+            self.lift()
+            self.clickthrough()
+            return
 
         def score(r):
             return r.get("adj") if r.get("adj") is not None else r.get("avg")
@@ -832,15 +1407,20 @@ class BadgeStrip(tk.Toplevel):
                   if score(r) is not None and r.get("n", 0) >= min_sample]
         best = min(scored, key=score, default=None)
         for r, fx in zip(rows, xs):
-            cx = int(gw * fx)
+            cx = int(gw * (fx + self.ox))
             shown = score(r)
             col = avg_color(shown)
             if r.get("stars") is not None:
                 s = r.get("stars", 0)
                 shadow_text(c, cx, b(12), "★" * s, STAR_COLOR.get(s, DIM),
                             F_BADGE_STARS)
+                # Same ranking as the tavern row: the mechanical read wins the
+                # one line under the stars whenever it has a count behind it,
+                # because that one is about the board in front of the player.
                 if r.get("mine"):
                     shadow_text(c, cx, b(28), "▶ your build", ACCENT, F_BADGE_CHIP)
+                elif r.get("syn"):
+                    shadow_text(c, cx, b(28), r["syn"][:16], GOOD, F_BADGE_CHIP)
                 elif r.get("comp"):
                     shadow_text(c, cx, b(28), r["comp"][:14], SOFT, F_BADGE_CHIP)
             elif shown is None:
@@ -862,7 +1442,54 @@ class BadgeStrip(tk.Toplevel):
         # Measured with the timer suppressed: set before the deiconify the
         # wrapper reads 0x80088 (no WS_EX_TRANSPARENT, so the strip eats clicks
         # in its band); set after it, 0x80800A8. Four Win32 calls per show.
+        #
+        # And once more on the next idle, because deiconify() only QUEUES the
+        # map: on the very first show of a strip the window is still unmapped
+        # when the line above runs, GetParent still answers 0, and the style
+        # lands on the Tk child instead of the wrapper Windows hit-tests -
+        # i.e. the first offer of a session would have had a strip eating
+        # clicks in its band. Measured by reading the style back (see
+        # tests/test_badges.py): without this line the first show of the
+        # discover strip reads 0x80088.
         self.clickthrough()
+        self.after_idle(self.clickthrough)
+
+    def _draw_calibration(self, c, gw, xs, b):
+        """The positioning pattern: one marker per slot, this strip's own name,
+        what the mode is costing the player, and how long it has left.
+
+        No numbers - see _calib_rows - and that includes the countdown, which
+        is a bar that shrinks rather than a digit: this strip sits on the
+        cards, and the rule that nothing here may look like a rating does not
+        get an exception for a clock.
+        """
+        label = {"hero": "hero badges", "trinket": "trinket badges",
+                 "shop": "shop badges", "choice": "pick badges"}.get(
+                     self.kind, self.kind)
+        # Hard against the left edge of the band rather than beside the first
+        # marker: the leftmost slot moves with the offset, and a label that
+        # follows it ends up printed over its own "here" (seen on screen).
+        #
+        # "clicks blocked" is the important half. With the mode on, a click on
+        # any pixel drawn here is answered by the strip instead of by the game
+        # (measured with WindowFromPoint - see the mode's own note above), so
+        # the player is told, on every one of the four bands, in the same
+        # place he is being asked to drag.
+        shadow_text(c, b(12), b(14), f"⇕ {label} · drag", ACCENT,
+                    F_BADGE_CHIP, anchor="w")
+        shadow_text(c, b(12), b(26), "clicks blocked here", BAD,
+                    F_BADGE_CHIP, anchor="w")
+        # The deadline as a bar under the words: full when the mode opens or a
+        # drag re-arms it, empty when it is about to close itself.
+        left = badge_edit_left() / BADGE_EDIT_MAX_S if BADGE_EDIT_MAX_S else 0
+        x0, x1 = b(12), b(12) + b(96)
+        c.create_rectangle(x0, b(33), x1, b(36), fill=HALO, outline="")
+        c.create_rectangle(x0, b(33), x0 + (x1 - x0) * max(0.0, min(1.0, left)),
+                           b(36), fill=ACCENT, outline="")
+        for fx in xs:
+            cx = int(gw * (fx + self.ox))
+            shadow_text(c, cx, b(12), "▼", ACCENT, F_BADGE_STARS)
+            shadow_text(c, cx, b(28), "here", ACCENT, F_BADGE_CHIP)
 
     def reposition(self, rect):
         """The game window moved: redraw in place, keeping the same rows (and
@@ -873,18 +1500,31 @@ class BadgeStrip(tk.Toplevel):
 
     def suppress(self):
         """Outranked by a higher-priority strip: off screen, but the rows and
-        the threshold are KEPT so this strip can be revived if the winner is
-        destroyed mid-offer (WindowManager.disable does exactly that).
+        the threshold are KEPT so this strip can be revived when the winner
+        goes away (hide, and WindowManager.disable).
         ``hide()`` is the owning window saying "these rows are done" - this is
         the arbiter saying "not right now"."""
         self.visible = False
         self.withdraw()
 
     def hide(self):
+        if self.calib:
+            # The owning window closed while the player is positioning this
+            # band. Park the real rows and keep the pattern on screen - the
+            # alternative is a strip that vanishes the moment you go to move
+            # it, which is the bug this mode exists to fix.
+            self._saved = ([], 0, False)
+            return
+        was_visible = self.visible
         self.visible = False
         self.rows = []
         self.min_sample = 0
         self.withdraw()
+        if was_visible:
+            # This strip may have been the arbiter holding somebody down: the
+            # tavern stars are suppressed by a discover, and their next event
+            # is a whole shop away.
+            revive_strips()
 
 
 # ------------------------------------------------------------------- windows
@@ -973,7 +1613,8 @@ class BaseWindow(tk.Toplevel):
         self.withdraw()
 
         if self.BADGE_KIND and not self.headless:
-            self.badges = BadgeStrip(self, self.BADGE_KIND, self.BADGE_PRIORITY)
+            self.badges = BadgeStrip(self, self.BADGE_KIND, self.BADGE_PRIORITY,
+                                     store=app.pos)
         _LIVE.add(self)
 
     # -------------------------------------------------------------- scaling
@@ -1019,6 +1660,15 @@ class BaseWindow(tk.Toplevel):
     def handle(self, name, payload):
         """Router entry point. A window that throws is reported and skipped -
         it must never break the dispatch chain for the other windows."""
+        # The badge calibrate mode is the one state where the strips are not
+        # click-through, and the router is the only thing in the overlay that
+        # knows the game moved on. This runs before the window's own handler
+        # so the click-through is back BEFORE anything paints for the new
+        # phase; it is a no-op unless the mode is on (badge_edit_event).
+        try:
+            badge_edit_event(name)
+        except Exception:
+            traceback.print_exc()
         try:
             self.on_event(name, payload)
         except Exception:
@@ -1067,8 +1717,11 @@ class BaseWindow(tk.Toplevel):
         c.delete("all")
         h = int(self.draw(c) or 80)
         h = max(40, min(h, self.MAX_H))
-        bg = rrect(c, 0, 0, self.WIDTH, h, RADIUS, fill=PANEL, outline=LINE)
-        c.tag_lower(bg)
+        panel_frame(c, self.WIDTH, h)
+        # One call, and the frame's own six layers keep their order underneath
+        # everything draw() put down (Tk's lower preserves relative order
+        # inside the tag).
+        c.tag_lower("frame")
         if _scale != 1.0:
             c.scale("all", 0, 0, _scale, _scale)
             # Canvas.scale moves coordinates and nothing else, so a 1px rule
@@ -1093,13 +1746,36 @@ class BaseWindow(tk.Toplevel):
 
     # -- header ------------------------------------------------------------
 
-    def header(self, c, right_text=None, right_fill=DIM, dot=None):
-        """The 24px title bar every window shares. Returns the body's top y."""
+    def header(self, c, right_text=None, right_fill=DIM, dot=None,
+               right_from=None):
+        """The 24px title bar every window shares. Returns the body's top y.
+
+        Same 24px, same text, same right-hand slot: what changed is that the
+        bar is now a raised slab with a groove under it (header_slab) and the
+        title is struck in the rim's metal instead of the link colour. The
+        link colour had to move off the title - it is the overlay's "you can
+        click this", and spending it on eleven headings that are not clickable
+        is what made the panels read as a wall of blue labels.
+
+        ``right_from`` is the x a caller has already spent inside this same
+        row - the comps window draws its badge chip there - and the right-hand
+        text is FITTED into what is left of it rather than trusted to be
+        short. The status is whatever the reader hands over, including
+        "loading failed: <whatever python said>", so a layout that only works
+        for the short ones is a layout that collides the first time something
+        goes wrong. Base pixels on both sides (fit_text measures that way), so
+        the clearance is the same at every UI scale.
+        """
+        header_slab(c, self.WIDTH)
         x = 14
         if dot is not None:
+            # The status dot gets a dark socket so it reads as a lamp set into
+            # the bar rather than a coloured pixel floating on it.
+            c.create_oval(11, 9, 21, 19, fill=SHADE, outline="")
             c.create_oval(12, 10, 20, 18, fill=dot, outline="")
             x = 26
-        c.create_text(x, 14, text=self.TITLE, anchor="w", fill=ACCENT, font=F_BRAND)
+        c.create_text(x, 14, text=self.TITLE, anchor="w", fill=GOLD_TEXT,
+                      font=F_BRAND)
         rx = self.WIDTH - 14
         if self.QUIT_BUTTON:
             c.create_text(self.WIDTH - 14, 13, text="✕", fill=DIM, font=F_STATUS)
@@ -1113,6 +1789,9 @@ class BaseWindow(tk.Toplevel):
                 c.create_text(self.WIDTH - 32, 13, text="⚙", fill=DIM, font=F_STATUS)
                 rx = self.WIDTH - 48
         if right_text:
+            if right_from is not None:
+                right_text = fit_text(right_text, max(24, rx - right_from),
+                                      F_SUB)
             c.create_text(rx, 14, text=right_text, anchor="e",
                           fill=right_fill, font=F_SUB)
         return HEADER_H + 4
@@ -1225,7 +1904,10 @@ class BaseWindow(tk.Toplevel):
         elif not want and self._mapped:
             self._mapped = False
             self.withdraw()
-            if self.badges is not None:
+            if self.badges is not None and not self.badges.calib:
+                # A calibration strip is owned by the mode, not by this
+                # window: badge_edit_poll hides it when the game is not in
+                # front and brings it back when it is.
                 self.badges.withdraw()
                 self.badges.visible = False
 
@@ -1361,24 +2043,9 @@ class WindowManager:
         except Exception:
             traceback.print_exc()
         # The strip that just died may have been the arbiter holding others
-        # down: showing a strip SUPPRESSES every lower-priority one (rows
-        # kept, see BadgeStrip.suppress), and nothing else would bring the
-        # victims back before their next event - for the tavern stars that is
-        # the next roll, a whole shop away. So whatever still holds rows and
-        # is no longer outranked is re-shown here, highest priority first
-        # (show() re-suppresses anything below whatever comes back on top).
+        # down - same job as after a strip hides, so it is the same helper.
         if not self.headless and self.game_front:
-            rect = self.rect or hs_rect()
-            if rect is not None:
-                for s in sorted(_STRIPS, key=lambda s: -s.priority):
-                    if not s.rows or s.visible:
-                        continue
-                    if any(o.visible and o.priority > s.priority for o in _STRIPS):
-                        continue
-                    try:
-                        s.show(s.rows, rect)
-                    except Exception:
-                        traceback.print_exc()
+            revive_strips(self.rect or hs_rect())
         if self.on_windows_changed is not None:
             self.on_windows_changed()
         return True
@@ -1448,6 +2115,7 @@ class WindowManager:
                 w.tick(self.rect, self.game_front)
             except Exception:
                 traceback.print_exc()
+        badge_edit_poll(self.rect, self.game_front)
         self._tick += 1
         if self._tick % 6 == 0:      # heartbeat for post-mortems, ~4s apart
             print("hb " + " ".join(w.heartbeat() for w in self.windows)

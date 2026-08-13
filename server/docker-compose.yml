@@ -9,10 +9,22 @@
 #
 # Optional shared secret so only your clients can upload:
 #   echo "BGTRACKER_UPLOAD_TOKEN=$(openssl rand -hex 16)" > server/.env
+#
+# Four services, two pairs, and each pair is split the same way: a small public
+# endpoint doing one validated write per request, and a sidecar doing the heavy
+# grouping off the request path into static files.
+#   ingest  + aggregate    the game pool  -> heroes/trinkets/cards/comps json
+#   tips    + tips-publish the voted hero tips -> hero-tips-community.json
+# The reverse proxy needs one more location for the tips port; see
+# server/README.md and server/deploy/nginx-bgtracker.conf.
 
 services:
   ingest:
-    build: .
+    build:
+      # The repo root, so the image can carry the client's own archetype
+      # definitions - see the note at the top of server/Dockerfile.
+      context: ..
+      dockerfile: server/Dockerfile
     command: python ingest.py
     environment:
       BGTRACKER_DB: /data/games.db
@@ -32,7 +44,11 @@ services:
       - no-new-privileges:true
 
   aggregate:
-    build: .
+    build:
+      # The repo root, so the image can carry the client's own archetype
+      # definitions - see the note at the top of server/Dockerfile.
+      context: ..
+      dockerfile: server/Dockerfile
     # Recompute on an interval, then sleep. Cheap: reads the DB, writes /out, idles.
     command: sh -c "while true; do python aggregate.py; sleep ${AGG_INTERVAL:-3600}; done"
     environment:
@@ -47,3 +63,66 @@ services:
     cpus: 0.50
     depends_on:
       - ingest
+
+  # The voted hero tips: submissions and votes in, one static file out. Its own
+  # database and its own port, because it shares nothing with the game pool -
+  # different data, different write path, and a tips outage must not stop games
+  # being collected.
+  tips:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    command: python tips.py
+    environment:
+      BGTRACKER_TIPS_DB: /data/tips.db
+      BGTRACKER_TIPS_BIND: 0.0.0.0       # inside the container; published only to 127.0.0.1 below
+      BGTRACKER_TIPS_PORT: "8788"
+      BGTRACKER_TIPS_TOKEN: ${BGTRACKER_TIPS_TOKEN:-}
+      BGTRACKER_TIPS_RATE: ${BGTRACKER_TIPS_RATE:-60}
+      # The salt behind the voter key. Set it in server/.env and the one vote
+      # per tip rule survives a rebuild; leave it and tips.py writes one next
+      # to the database, which survives a restart but not a wiped volume.
+      BGTRACKER_TIPS_SALT: ${BGTRACKER_TIPS_SALT:-}
+      # Where the client sends someone who wants to vote. It is published
+      # inside hero-tips-community.json, so it must be the address a browser
+      # can reach, not the loopback port.
+      BGTRACKER_TIPS_VOTE_URL: ${BGTRACKER_TIPS_VOTE_URL:-}
+    ports:
+      - "127.0.0.1:8788:8788"           # loopback only; the host nginx/Caddy proxies to it
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.50
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+
+  tips-publish:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    # Seed first, then publish on an interval. --seed is INSERT OR IGNORE, so
+    # running it on every restart is free and it is what puts the lines that
+    # ship with the client on the ballot: without them people can only rank
+    # submissions against each other, never against the line already on screen.
+    command: sh -c "python tips.py --seed data/hero_tips.json; while true; do python tips.py --publish; sleep ${TIPS_INTERVAL:-3600}; done"
+    environment:
+      BGTRACKER_TIPS_DB: /data/tips.db
+      BGTRACKER_OUT: /out
+      BGTRACKER_TIPS_SALT: ${BGTRACKER_TIPS_SALT:-}
+      BGTRACKER_TIPS_VOTE_URL: ${BGTRACKER_TIPS_VOTE_URL:-}
+      # The publish floors. A community line REPLACES a written, reviewed one
+      # on a stranger's screen, so they are deliberately higher than "most
+      # upvotes"; tips.py explains what each one buys.
+      BGTRACKER_TIPS_MIN_VOTERS: ${BGTRACKER_TIPS_MIN_VOTERS:-5}
+      BGTRACKER_TIPS_MIN_SCORE: ${BGTRACKER_TIPS_MIN_SCORE:-3}
+      BGTRACKER_TIPS_MARGIN: ${BGTRACKER_TIPS_MARGIN:-2}
+    volumes:
+      - ./data:/data
+      - ./out:/out                       # the same directory nginx serves
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.25
+    depends_on:
+      - tips

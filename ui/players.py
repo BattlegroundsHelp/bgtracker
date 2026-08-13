@@ -40,7 +40,7 @@ no clipping.
 from __future__ import annotations
 
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_NAME, F_SUB, F_TITLE,
-                   GOOD, LINE, PANEL_HI, SOFT, TEXT, BaseWindow, rrect)
+                   GOOD, LINE, SOFT, TEXT, BaseWindow, art_frame, plate)
 
 # Backstop for the shared band: if the trinket window's "picks are over" event
 # never arrives, come back on our own instead of staying hidden all game.
@@ -166,8 +166,7 @@ class PlayersWindow(BaseWindow):
             top = y
             seen = self._ago(r.get("seen_round"))
             if seen and not dead:
-                rrect(c, 8, y + 1, self.WIDTH - 8, y + self.ROW_H - 3, 7,
-                      fill=PANEL_HI, outline="")
+                plate(c, 8, y + 1, self.WIDTH - 8, y + self.ROW_H - 3, 7)
 
             c.create_text(16, y + 12, text=str(r["place"]), anchor="w",
                           fill=DIM, font=F_CHIP)
@@ -175,6 +174,7 @@ class PlayersWindow(BaseWindow):
             tx = 28
             if ic is not None:
                 c.create_image(28, y + 12, image=ic, anchor="w")
+                art_frame(c, 27, y + 3, 47, y + 22)
                 tx = 50
             name = r.get("name") or r.get("card") or "?"
             c.create_text(tx, y + 12, text=name[:18], anchor="w",

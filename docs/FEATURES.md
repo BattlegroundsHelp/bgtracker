@@ -3,7 +3,7 @@
 What every surface shows, why it helps you play better, where the information
 comes from, and what it needs to work.
 
-The overlay is **eleven small independent windows** — ten without the optional
+The overlay is **eleven small independent windows** - ten without the optional
 memory reader, since OTHER PLAYERS cannot exist without it. Each one opens and
 closes on its own trigger and is dragged and remembered on its own
 (`.overlay.json`).
@@ -32,7 +32,7 @@ Two rules run through everything below:
 | [Counters](#counters) | COUNTERS | nothing; memory reader for board tribe counts |
 | [Minion browser](#minion-browser) | MINIONS | nothing; a cards source for star ratings |
 | [Session](#session) | SESSION | nothing; memory reader for MMR |
-| [The other players](#the-other-players) | OTHER PLAYERS | the memory reader — without it the window never appears |
+| [The other players](#the-other-players) | OTHER PLAYERS | the memory reader - without it the window never appears |
 | [Combat odds BETA](#combat-odds-beta) | COMBAT | nothing |
 | [Your own data](#your-own-data-and-the-community-dataset) | `collect.py`, `server/` | nothing |
 
@@ -66,9 +66,20 @@ choosing between (the trinket row reaches x 0.79 of the game window).
 
 Ranked panels also draw a **badge strip**: a click through, transparent band
 that writes each option's number over the actual card on screen, so the number
-is attached to the thing it belongs to instead of being a list in a corner. A
-higher priority strip hides a lower one, which is how the shop's stars step out
-of the way while a pick is up.
+is attached to the thing it belongs to instead of being a list in a corner. All
+four pick windows have one, and so does the tavern. A higher priority strip
+hides a lower one, which is how the shop's stars step out of the way while a
+pick is up.
+
+Being click through is what makes a strip impossible to drag, since a drag is a
+click. The way out is a mode: the `⇕ badges` chip in the bgtracker window's
+header turns **calibrate mode** on, drops click through on every strip for as
+long as it is on so the strips can be dragged into place, and puts it back when
+you press `⇕ done`. While it is on the strips show a marker per slot and no
+numbers at all, because a placeholder number is still a made up number. The
+offset is saved per kind of strip as a fraction of the game window, so it
+survives a resolution change. [USAGE.md](USAGE.md#3b-the-settings-panel) walks
+through it.
 
 ### Heroes (PICK YOUR HERO)
 
@@ -93,26 +104,45 @@ just after the burst, so the badges land on the right portraits.
 numbers.
 
 **Tips.** Under each hero's name, one line of written advice saying when that
-hero is the pick — `strongest when the lobby has Beasts`, and so on. It is
+hero is the pick - `strongest when the lobby has Beasts`, and so on. It is
 drawn in the strip the placement bar would use, so the panel is exactly as tall
 with tips as without and cannot grow past its band. **A hero with no tip shows
 nothing at all**: no placeholder, no "no tip yet".
 
 The tips are not data, they are text, so unlike every stats table they **ship
-with the tool** — [`data/hero_tips.json`](../data/hero_tips.json), a plain file
+with the tool** - [`data/hero_tips.json`](../data/hero_tips.json), a plain file
 you can edit next to the exe (your copy wins over the bundled one, so an edit
-survives an update). 111 of the 121 heroes have a line. The ten that do not are
-the ones whose hero power names a reward the card itself never describes, and
-an empty line beats an invented one.
+survives an update). **All 121 heroes have a line.** The last ten to be written
+were the awkward ones, whose printed power names a reward the card itself never
+spells out (a Quest, a Timewarp, a Darkmoon Prize); those lines say what the
+power costs, when it pays out and what it asks of you, and stop where the card
+stops rather than inventing the reward. A hero the file has no entry for still
+shows nothing at all, which is what happens the first time a patch adds one.
 
-Anyone can add or fix one: open a pull request against that file, and that
-review is the voting mechanism until something better exists. The rules are in
-[CONTRIBUTING.md](../CONTRIBUTING.md), the contract is
+Anyone can add or fix one: open a pull request against that file. The rules are
+in [CONTRIBUTING.md](../CONTRIBUTING.md), the contract is
 [`data/hero_tips.schema.json`](../data/hero_tips.schema.json), and CI checks
-every entry against it — including that the hero id actually exists, so a typo
-fails the build instead of silently never appearing. Every seeded line was
-written from the hero's own printed hero-power text; nothing is taken from
-anyone else's guide, because those are that site's paid product.
+every entry against it - including that the hero id actually exists, so a typo
+fails the build instead of silently never appearing, and that coverage has not
+fallen. Every line was written from the hero's own printed hero-power text;
+nothing is taken from anyone else's guide, because those are that site's paid
+product.
+
+**Voted lines.** There is a second route that needs no pull request:
+`server/tips.py` takes submissions and votes and publishes
+`hero-tips-community.json`, which the client reads like any other feed (the
+`hero_tips` key in `sources.json`; leave it out and the feed stays off). A line
+only reaches that file once distinct voters, its score, and a margin over the
+shipped line have all cleared a floor, so a handful of manufactured voters
+changes nothing anybody sees, and below the floor the shipped line stands. The
+two claims are not the same, so the window says which: a voted line is marked
+`▲` on the row and named in the header, an unmarked line is the reviewed one
+that ships. With no feed, an unreachable feed or a corrupt one, you get the
+shipped tips. There is deliberately **no vote button in the draft**: a hero
+pick is a sixty second decision, the panel's band is already full at four
+heroes, and a one click vote from an anonymous overlay is a ballot box with no
+lock. The header carries the feed's own voting page instead, when the feed
+names one and the header has room to print it.
 
 **Lobby tuned scores.** When the tribes in the lobby are known *at draft time*
 and your hero rows carry per tribe data (`tribeStats`), each hero is re scored
@@ -128,19 +158,34 @@ picked), with a 75 second backstop.
 
 ### Hero powers (PICK YOUR HERO POWER)
 
-**Shows.** One row per option: art, name, and a placement number or a dash. When
-no option has a number the panel says `no hero-power stats - names only`.
+**Shows.** One row per option: art, name, and a placement number or a dash.
+Every option gets the same plate, because with no ranking there is no best row
+to point at and none is invented. When no option has a number the panel says
+`no hero-power stats - names only`.
 
-**Why it helps.** It names and lines up the options while the dialog is up,
-which is the whole honest job when no data for them exists anywhere.
+**Why it helps.** Only some heroes make you choose a power, and it is the one
+choice in the game that no stats site sells numbers for at any price. Naming
+and lining up the options is worth doing on its own.
 
 **From.** Its own choose one block in the log, classified by card identity
 against the card database (a hero power reads `TB_BaconShop_HP_...`, or the
 hero id with a trailing `p`).
 
-**Needs.** Nothing. **There is no hero power stats feed anywhere.** A number
-appears only if a source you configured happens to carry a row for that exact
-cardId. A power never borrows the average of the hero that owns it.
+**The feed exists now, and the panel does not read it yet.** No third party
+publishes hero-power numbers, so the community pool computes its own: the
+collector mines which powers you were offered and which you took
+(`offered_hero_powers` / `picked_hero_powers`), the aggregator builds a
+`heropowers` table exactly the way it builds the hero table (the offer is the
+denominator, the pick is the numerator, the placement is the game's own
+result), and `bgtracker.hero_power_table` reads it. `sources.example.json`
+documents the key and `collect.py --local-feed` writes it for your own games.
+What is not wired is the last hop: this window still scores its options against
+the `cards` table, so today a number appears only when that source happens to
+carry a row for the power's exact cardId. It is tracked in
+[ROADMAP.md](../ROADMAP.md) under Partial.
+
+**Needs.** Nothing to open, name and line up the options. A power never borrows
+the average of the hero that owns it, whatever is configured.
 
 ### Trinkets (PICK YOUR TRINKET)
 
@@ -164,8 +209,11 @@ the row for your MMR bracket when the source carries per bracket placements.
 
 **Shows.** One row per option: art, a star rating, the name, and on the right
 either `▶ yours` (it feeds the build your board is already on), or the comp it
-belongs to, or its tavern tier. While this panel is up, the tavern's now stale
-star badges hide themselves.
+belongs to, or its tavern tier. Under each option, on its own line, the
+mechanical read described in the tavern section above: what this card's own text
+pays off, against what your board is made of. The star rating is also **badged
+over the real cards** on the Choose One frame. While this panel is up, the
+tavern's now stale star badges hide themselves.
 
 **Why it helps.** A discover is a free card you get to read once, under a clock,
 and the useful question is not "is this good" but "is this good *for what I am
@@ -176,16 +224,25 @@ tavern minions are (see below). Every option that can be scored is scored and
 the rest show as no data, rather than dropping the whole panel because one token
 or one brand new card is unknown.
 
-**Needs.** Nothing to open and list. Stars behave as in the tavern. A **Dark
-Gift shows its name only**: gifts are not pool minions and nobody publishes
-placement data for them, so there is nothing honest to rate them with.
+**Needs.** Nothing to open, list and read the mechanics. Stars behave as in the
+tavern. A **Dark Gift shows its name only**: gifts are not pool minions and
+nobody publishes placement data for them, so there is nothing honest to rate
+them with.
+
+The badge band for this frame was measured rather than guessed: the dialog's
+cards run y 302 to 617, with the name banner around 475, the text box at 530 to
+620 and the tribe and stat banners at 630 to 670, so the first attempt at 0.63
+of the window height dropped the stars on top of the tribe banner. They sit at
+0.30 now, across the top of the card art, clear of the tier gem in the corner
+and of every line the card itself prints.
 
 ## The tavern: stars and comp tags
 
 **Shows.** The shop you are looking at right now, rebuilt from scratch on every
 roll, buy, sell and tavern spell. Each row: art, a 1 to 5 star rating, the name,
-and on the right `▶ yours`, or the comp that minion belongs to, or its tavern
-tier. The header carries the gold **already banked for next turn** (`+3g next`),
+and on the right `▶ yours`, or the comp that minion belongs to, or the
+mechanical read (`Beasts 4`), or its tavern tier. The header carries the gold
+**already banked for next turn** (`+3g next`),
 a `building <comp>` line when your board has a clear lean, and a `roll N`
 counter at the foot. The same stars are badged over the real shop cards in slot
 order, while the panel itself lists the best first.
@@ -209,13 +266,29 @@ minions show no stars rather than a rank invented out of three samples. A minion
 that appears on at least 10% of the winning boards of the comp you are leaning
 into gets one extra star.
 
-**Needs.** Nothing to list the shop and tag comps. With no stats at all, stars
-fall back to a coarse, deliberately blunt curated signal (3 stars for a core
-minion of a comp family this lobby can build, 4 if it also feeds your current
-build, 2 for a minion of a viable tribe, otherwise none), and the comp tags come
-from those same curated families. A `cards` source turns the stars into measured
-ratings. The `▶ yours` marker and the extra star need a `comps` source carrying
-winning board frequencies, plus the memory reader for your board.
+**The mechanical read.** Separate from the stars and from the comps, and the
+one rating in the panel that needs no stats source at all: what the card's own
+printed text says it pays off, against what your board is made of. `Beasts 4`
+means this card names Beasts and you are holding four. It comes out of the card
+database alone ([`ui/synergy.py`](../ui/synergy.py)), so it is this patch's data
+by definition. Exactly three things count: the text naming a tribe, **Magnetic**
+(which attaches to a Mech without ever saying the word), and **Blood Gems** (a
+Quilboar mechanic the text spells differently). "Your minions", "friendly
+minions" and Spellcraft are deliberately ignored, because a tag that fires on
+nearly every card says nothing, and simply belonging to a tribe is reported only
+once you already hold two of that tribe, where it stops being a fact about the
+card and becomes a fact about your board. The **count** needs your board, which
+needs the memory reader; without it the payoff is still named and no number is
+printed, because "how many Beasts do you hold" has no answer in Power.log.
+
+**Needs.** Nothing to list the shop, tag comps and read the mechanics. With no
+stats at all, stars fall back to a coarse, deliberately blunt curated signal
+(3 stars for a core minion of a comp family this lobby can build, 4 if it also
+feeds your current build, 2 for a minion of a viable tribe, otherwise none), and
+the comp tags come from those same curated families. A `cards` source turns the
+stars into measured ratings. The `▶ yours` marker and the extra star need a
+`comps` source carrying winning board frequencies, plus the memory reader for
+your board.
 
 ## Comps and your board
 
@@ -333,6 +406,15 @@ behind it, `3.92 avg when bought vs 4.21 without · 12,904 games`. Page with the
 up and down buttons or the mouse wheel; the footer reads `1-14 of 274` and
 either `rated vs own tier · top 100%` or `no stats source`.
 
+**When a minion pays off.** An opened row also splits that number across the
+game, when the configured feed carries a per turn breakdown: four stretches,
+each showing the same buy it versus skip it difference the stars use. Splitting
+one card's games across fourteen turns is exactly how a healthy sample becomes
+fourteen small ones, so a stretch under the sample floor is drawn as the word
+`thin` with its game count and never as a number, a stretch nobody played it in
+is a dash, and a feed with no breakdown says so in one line instead of drawing
+an empty grid.
+
 **Why it helps.** It answers the slow question between fights: what exists at
 tier 5 for this tribe, which minions actually have Divine Shield, what does that
 card you were just offered even do.
@@ -384,7 +466,7 @@ a **dash**, never the last reading dressed up as current.
 their hero, their tavern tier and their health (armour shown as `30+9`), with
 anyone who is out marked `out`. For each player you have already fought, the
 board they were **last seen holding**, stamped with the round it was seen in and
-how long ago that was — `seen r7 · 2 rounds ago`. Click a player to open that
+how long ago that was - `seen r7 · 2 rounds ago`. Click a player to open that
 board: their minions with the attack and health they had, in their real order.
 
 **Why it helps.** It is the one thing you cannot get from the log while you
@@ -392,7 +474,7 @@ shop: what the people you are about to face actually had. Combined with their
 tier and health it is the difference between "I think I am fine" and knowing.
 
 **From.** Game memory only, through the **memory reader**. Hearthstone does not
-write another player's board to Power.log during recruit — that has been checked
+write another player's board to Power.log during recruit - that has been checked
 against real logs repeatedly and it is still true.
 
 **Never invented.** A player you have not fought has no board line at all, not
@@ -404,8 +486,8 @@ offering is excluded (an early version reported the shop as somebody's board,
 caught by checking a capture against the log's own record of the same fight);
 and the warband is complete in memory before a fight animates and again after
 it, but is being killed off *during* it, so the reading kept is the first of
-each fight. Any reading that cannot be a board — more than seven minions, or
-positions that are not a clean 1..N — is discarded rather than shown.
+each fight. Any reading that cannot be a board - more than seven minions, or
+positions that are not a clean 1..N - is discarded rather than shown.
 
 **Needs.** The **memory reader**. Without it this window never appears at all,
 and nothing else in the overlay changes.
@@ -413,13 +495,21 @@ and nothing else in the overlay changes.
 ## Combat odds BETA
 
 **Shows.** The round that is fighting, and one clearly flagged BETA line of
-win / tie / loss percentages for the fight on screen, with the number of
-simulated fights (3,000 by default) and a `log-only sim` marker. It opens the
-instant the screen enters combat, holds for the whole fight, and closes the
-instant the tavern is back.
+win / tie / loss percentages for the fight on screen. Under it, when the log
+stated the hero facts the rest needs, a second row says how hard it lands:
+`hit ~7 · take ~4 · they die 12% · we die 3%`, with the rollout count
+(`10k sims`) at its end. Any one of those four is simply left out when the log
+did not state what it needs (an unknown tier or life, a ghost opponent), so the
+row never shows a guess, and when none of them can be drawn the line falls back
+to `10,000 simulated fights · log-only sim`. The damage figures are
+conditional, so `hit ~7` reads as "when this fight is won, about 7 lands on
+their hero". The window opens the instant the screen enters combat, holds for the whole
+fight, and closes the instant the tavern is back.
 
 **Why it helps.** Knowing you are 30% to win this fight is what tells you
 whether to take the hit and push tier, or spend everything on the board now.
+Knowing the hit is 12 rather than 4 is what tells you whether losing it ends
+the run.
 
 **From.** Both warbands are read out of the log **before the fight animates**.
 Hearthstone writes each combat twice: the server batch lands roughly 1.4 seconds
@@ -500,10 +590,17 @@ machine id, the aggregates are **free for everyone**, and the data is **never
 sold or paywalled**. The server half is
 deliberately tiny: stdlib Python, no pip install, its own SQLite file, a
 validated insert on the public endpoint and the heavy grouping on a timer off
-the request path. What it does not do yet is honest too: comp classification is
-not built (the comps file is written empty, so the client falls back to curated
-families instead of erroring), pick rates only appear once clients upload the
-offers, and per tribe hero impact is not split out yet. MMR brackets ARE split
+the request path. **Comps are classified now**, by the client's own rule
+(`bgtracker.classify_board`: a board belongs to the tribe it is mostly made of,
+and only when that family's engine piece is standing on it), with anything that
+matches nothing counted under "none" instead of forced into the nearest bucket.
+Archetype rows still only publish above a 30 game floor, so on today's pool
+**the comps file carries no rows at all** and carries the counts instead, saying
+how many boards were classified and what the floor is; the client falls back to
+curated families. What it does not do yet is honest too: pick rates only appear
+once clients upload the offers, per tribe hero impact is not split out, and the
+hero-power table it publishes is not read by the pick panel yet (see the hero
+powers section above). MMR brackets ARE split
 (five of them, the same `--mmr 100|50|25|10|1` the client asks for), but a
 bracket is only published once it holds 30 games, so on a young pool most of
 them do not exist and the client falls back to the all players numbers and says
@@ -539,11 +636,13 @@ described above, on by default; clear the panel's DATA box (or start with
   windowed.
 * **No injection, no client modification, no automation of any kind**, and no
   account, no subscription, no ads.
-* **Not built yet, tracked in [ROADMAP.md](../ROADMAP.md):** movable badges (the
-  strips are click through so clicks reach the game, which is exactly what makes
-  them undraggable), badges drawn on the discover cards themselves, turn by turn
-  minion advice, mechanical synergy ("you have 4 beasts, this buffs beasts"),
-  and opponent last seen boards.
+* **Not built yet, tracked in [ROADMAP.md](../ROADMAP.md):** hero-power numbers
+  in the pick panel (the pool computes and publishes them, the panel does not
+  read them yet), per tribe hero impact in our own feed, and a real defence
+  against a determined stats poisoner. macOS and Linux are open and unstarted.
+  A quick disconnect and reconnect button is open too, and held back on
+  purpose: it would need an Administrator shell, which is a lot to ask of a
+  free unsigned tool.
 * **Duos** is collected and counted separately from solo. The collector marks
   every game from the log itself, and `--duo` reads Duos-only heroes, trinkets,
   cards and comps. The two are never pooled - a Duos lobby is four teams

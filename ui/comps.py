@@ -27,9 +27,11 @@ import tkinter as tk
 
 import bgtracker as bg
 
-from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_NAME, F_STATUS, F_SUB,
-                   F_TITLE, GOOD, LINE, PANEL, SOFT, TEXT, TRIBE_COLOR,
-                   TRIBE_TAG, BaseWindow, avg_color, rrect)
+from .base import (ACCENT, AMBER, BAD, DIM, F_BRAND, F_CHIP, F_NAME, F_STATUS,
+                   F_SUB, F_TITLE, GOOD, LINE, OFF_CHIP, OFF_TRIBE, ON_CHIP,
+                   PANEL, SHADE, SOFT, TEXT, TRIBE_COLOR, TRIBE_TAG,
+                   BaseWindow, art_frame, avg_color, badge_edit, plate, rrect,
+                   set_badge_edit)
 
 # Difficulty word color: reads like the placement colors do - green is
 # comfortable, red is a commitment.
@@ -122,7 +124,7 @@ class CompsWindow(BaseWindow):
         self.status = "loading"
         self.open_key = None       # archetype expanded inline
         self.show_all = False
-        self._hits = []            # [(archetype|"__all__", y1, y2)] for clicks
+        self._hits = []            # [(key, y1, y2, x1, x2)] for clicks
         # Kick the role warmup off the draw path now, and repaint once when it
         # lands so the split appears without waiting for the next event.
         warm_comp_roles()
@@ -173,15 +175,68 @@ class CompsWindow(BaseWindow):
     # ------------------------------------------------------------- clicking
 
     def on_click(self, x, y):
-        for key, y1, y2 in self._hits:
-            if y1 <= y <= y2:
+        # Hit boxes are (key, y1, y2, x1, x2). Rows span the whole panel width,
+        # the header chip does not - so x is part of the test.
+        for key, y1, y2, x1, x2 in self._hits:
+            if y1 <= y <= y2 and x1 <= x <= x2:
                 if key == "__all__":
                     self.show_all = not self.show_all
+                elif key == "__badges__":
+                    # The badge strips are click-through, so no click can ever
+                    # land ON one. This window is the only surface that is
+                    # always up and cannot be switched off, which makes it the
+                    # only place the switch can live.
+                    set_badge_edit(not badge_edit())
                 else:
                     self.open_key = None if self.open_key == key else key
                 self.redraw()
                 return True
         return False
+
+    def _badge_chip(self):
+        """(label, x1, x2) for the badge chip, in base pixels.
+
+        MEASURED, not placed by hand: it starts after the title actually ends
+        (the dot puts the title at x 26, header()) and it is exactly as wide
+        as its own label needs. The old fixed 84-140 box was measured once,
+        for one status string, and any longer one ran straight under it - see
+        _status_room.
+
+        The ON label says what the mode COSTS, not just that it is on. This
+        window is always up, so it is the only place a player who alt-tabbed
+        back can be told that his badge strips are currently taking clicks
+        the game would otherwise get. It is wider than "done" and the status
+        line gives up the difference for as long as the mode lasts, which is
+        at most ui.base.BADGE_EDIT_MAX_S.
+        """
+        label = "⇕ done · clicks off" if badge_edit() else "⇕ badges"
+        x1 = 26 + F_BRAND.measure(self.TITLE) + 10
+        return label, x1, x1 + F_CHIP.measure(label) + 14
+
+    def _status_room(self):
+        """The x the header's status text may not run left of.
+
+        The chip sits INSIDE the 24px header - it costs the panel no height,
+        so it cannot push the comp list past the band this window is allowed
+        (the layout law in ui/__init__.py) - and the price of that is that the
+        status has to be fitted into what is left. header(right_from=...) does
+        the fitting, in base pixels, so it holds at every UI scale.
+        """
+        return self._badge_chip()[2] + 8
+
+    def _badge_switch(self, c):
+        """The one control that moves the badge strips."""
+        label, x1, x2 = self._badge_chip()
+        on = badge_edit()
+        if on:
+            rrect(c, x1, 4, x2, 19, 7, fill=ACCENT, outline="")
+            c.create_text((x1 + x2) / 2, 12, text=label, fill=ON_CHIP,
+                          font=F_CHIP)
+        else:
+            rrect(c, x1, 4, x2, 19, 7, fill=PANEL, outline=LINE)
+            c.create_text((x1 + x2) / 2, 12, text=label, fill=OFF_CHIP,
+                          font=F_CHIP)
+        self._hits.append(("__badges__", 2, 21, x1 - 4, x2 + 4))
 
     def _rows(self):
         if self.show_all:
@@ -195,8 +250,10 @@ class CompsWindow(BaseWindow):
 
     def draw(self, c):
         dot = GOOD if self.exact else (AMBER if self.tribes else DIM)
-        y = self.header(c, self.status, DIM, dot=dot)
+        y = self.header(c, self.status, DIM, dot=dot,
+                        right_from=self._status_room())
         self._hits = []
+        self._badge_switch(c)
 
         # tribe chips ------------------------------------------------------
         x = 12.0
@@ -206,11 +263,11 @@ class CompsWindow(BaseWindow):
             if on:
                 rrect(c, x, y, x + 27, y + 15, 7, fill=col, outline="")
                 c.create_text(x + 13.5, y + 8, text=TRIBE_TAG[t],
-                              fill="#101116", font=F_CHIP)
+                              fill=ON_CHIP, font=F_CHIP)
             else:
-                rrect(c, x, y, x + 27, y + 15, 7, fill=PANEL, outline=LINE)
+                rrect(c, x, y, x + 27, y + 15, 7, fill=SHADE, outline=LINE)
                 c.create_text(x + 13.5, y + 8, text=TRIBE_TAG[t],
-                              fill="#4a4f59", font=F_CHIP)
+                              fill=OFF_TRIBE, font=F_CHIP)
             x += 29.5
         y += 24
 
@@ -239,10 +296,16 @@ class CompsWindow(BaseWindow):
         c.create_text(14, y + 7, text=label, anchor="w", fill=DIM, font=F_TITLE)
         c.create_text(self.WIDTH - 14, y + 7, anchor="e", fill=ACCENT, font=F_SUB,
                       text="best per tribe ›" if self.show_all else "all ›")
-        self._hits.append(("__all__", y, y + 14))
+        self._hits.append(("__all__", y, y + 14, 0, self.WIDTH))
         y += 18
 
-        for comp in rows:
+        for i, comp in enumerate(rows):
+            if i:
+                # One groove between rows instead of a plate per row: this
+                # window carries up to a dozen comps and is the only one that
+                # is up for the whole game, so it is the one place where a
+                # plate each would be both noisy and the most expensive.
+                c.create_line(12, y, self.WIDTH - 12, y, fill=SHADE)
             base = comp.get("baseline")
             thin = (not base) and comp["n"] < COMP_MIN
             name = comp["archetype"].replace("_", " ")
@@ -309,6 +372,14 @@ class CompsWindow(BaseWindow):
                             y = self._minion(c, y, nm, freq,
                                              mark="○" if proven else None)
                 y += 4
+                # The plate goes down AFTER the block, because how tall the
+                # block is only becomes known once it has been drawn, and it
+                # is then lowered under its own contents. The panel frame is
+                # lowered under everything later (BaseWindow.redraw), so this
+                # cannot end up on top of the panel face.
+                plate(c, 8, top - 2, self.WIDTH - 8, y - 2, 9, best=True,
+                      tags=("plate",))
+                c.tag_lower("plate")
             else:
                 if comp.get("key"):
                     diff = _difficulty(comp["archetype"], comp["tribe"])
@@ -327,7 +398,7 @@ class CompsWindow(BaseWindow):
                     c.create_text(66, y + 26, text=line, anchor="w",
                                   fill=DIM, font=F_SUB)
                 y += 38
-            self._hits.append((comp["archetype"], top, y))
+            self._hits.append((comp["archetype"], top, y, 0, self.WIDTH))
         return y + 8
 
     def _minion(self, c, y, name, freq, mark=None, mark_fill=DIM):
@@ -340,6 +411,7 @@ class CompsWindow(BaseWindow):
         ic = self.app.art.icon_for_name(name, 18)
         if ic is not None:
             c.create_image(76, y + 9, image=ic, anchor="w")
+            art_frame(c, 75, y, 95, y + 19)
         c.create_text(98, y + 9, text=name[:24], anchor="w",
                       fill=SOFT, font=F_SUB)
         share = freq.get(name)

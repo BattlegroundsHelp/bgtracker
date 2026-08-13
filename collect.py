@@ -17,7 +17,8 @@ here is the player's own gameplay data from their own client - fully ours to kee
 
 Fields per record (JSONL):
     {date, game_id, hero, place, duo, tribes, source_log,
-     offered_heroes, offered_trinkets, picked_trinkets}
+     offered_heroes, offered_trinkets, picked_trinkets,
+     offered_hero_powers, picked_hero_powers, final_board}
 `duo` says whether the game was Duos (see DUO_RE) so the two modes can be
 counted apart - they place 1st-4th and 1st-8th respectively, so one average over
 both describes nothing. A record written before the detector existed has no
@@ -26,10 +27,13 @@ both describes nothing. A record written before the detector existed has no
 when the overlay records live (see WISHLIST). A record with a null field is still
 kept - partial data still aggregates.
 
-The three offer fields are what make PICK RATE and TRINKET numbers possible at
-all: an average placement needs only the game's result, but "how often is this
-taken when shown" needs the options you turned down. Field names match
-server/aggregate.py exactly (hero_stats / trinket_stats read them by name).
+The offer fields are what make PICK RATE and TRINKET numbers possible at all: an
+average placement needs only the game's result, but "how often is this taken
+when shown" needs the options you turned down. `final_board` is the warband you
+finished on, and it is what lets anyone rank COMPS and single minions from own
+data at all - without it the aggregator has nothing to classify and writes those
+files empty. Field names match server/aggregate.py exactly (hero_stats /
+hero_power_stats / trinket_stats / card_stats / comp_stats read them by name).
 """
 
 import argparse
@@ -65,12 +69,14 @@ HERO_RE = re.compile(r"(BG\w+?_HERO_\w+|TB_BaconShop_HERO_\d+)")
 # tool at a feed that is not there.
 LOCAL_FEED = {
     "heroes": "data/feed/heroes-{mmr}-{time}.json",
+    "heropowers": "data/feed/heropowers-{mmr}-{time}.json",
     "trinkets": "data/feed/trinkets-{mmr}-{time}.json",
     "cards": "data/feed/cards-{mmr}-{time}.json",
     "comps": "data/feed/comps-{mmr}-{time}.json",
-    # The same four tables built from your DUOS games only, which is what
-    # `--duo` reads. Separate files, never mixed with the above.
+    # The same tables built from your DUOS games only, which is what `--duo`
+    # reads. Separate files, never mixed with the above.
     "heroes_duo": "data/feed/heroes-duo-{mmr}-{time}.json",
+    "heropowers_duo": "data/feed/heropowers-duo-{mmr}-{time}.json",
     "trinkets_duo": "data/feed/trinkets-duo-{mmr}-{time}.json",
     "cards_duo": "data/feed/cards-duo-{mmr}-{time}.json",
     "comps_duo": "data/feed/comps-duo-{mmr}-{time}.json",
@@ -174,21 +180,32 @@ _SKIN_RE = re.compile(r"_SKIN_.*$")
 # trailing digits is also what keeps hero POWERS (BG25_HERO_103p) out.
 HERO_SHAPE = re.compile(r"^(?:BG[A-Z0-9]*_HERO_\d+|TB_BaconShop_HERO_\d+)(?:_SKIN_[A-Z0-9]+)?$")
 TRINKET_SHAPE = re.compile(r"^BG[A-Z0-9]*_(?:MagicItem|Trinket)_\w+$")
+# A hero POWER is the hero's id with a trailing p (BG23_HERO_306p) or one of the
+# old TB_BaconShop_HP_nnn ids. Same two shapes the live overlay classifies a
+# choose-one with (ui.classify_choice) - one rule, written once, so the miner and
+# the overlay can never disagree about what a hero-power dialog is.
+HP_SHAPE = re.compile(r"^(?:TB_BaconShop_HP_\d+|BG[A-Z0-9]*_HERO_\d+[a-z]?p)$")
 
 _UNIVERSE = []
 
 
 def universe():
-    """(heroes, trinkets): the cardId sets that tell those two card types apart
-    from every other card in the log, from HearthstoneJSON via bgtracker (cached a
-    day). Offline with no cache, either may be None - meaning "fall back to the id
-    shape", which is coarser but keeps a fresh clone able to mine."""
+    """(heroes, trinkets, hero powers): the cardId sets that tell those three
+    card types apart from every other card in the log, from HearthstoneJSON via
+    bgtracker (cached a day). Offline with no cache, any of them may be None -
+    meaning "fall back to the id shape", which is coarser but keeps a fresh clone
+    able to mine."""
     if not _UNIVERSE:
         try:
             ids = bg.bg_ids()
-            _UNIVERSE.append((set(ids["heroes"]), set(ids["trinkets"])))
+            heroes, trinkets = set(ids["heroes"]), set(ids["trinkets"])
         except Exception:
-            _UNIVERSE.append((None, None))
+            heroes = trinkets = None
+        try:
+            powers = set(bg.hero_power_universe())
+        except Exception:
+            powers = None
+        _UNIVERSE.append((heroes, trinkets, powers or None))
     return _UNIVERSE[0]
 
 
@@ -208,10 +225,17 @@ def is_trinket(card, trinkets):
     return bool(TRINKET_SHAPE.match(card)) if trinkets is None else card in trinkets
 
 
+def is_hero_power(card, powers):
+    """A hero power, never the hero that owns it. The card database answers it
+    outright (type HERO_POWER); the shape is the offline fallback."""
+    return bool(HP_SHAPE.match(card)) if powers is None else card in powers
+
+
 def offers(game, pid=None):
     """What the log PROVES about this game's options and what we took.
 
-    Returns (player_id, offered_heroes, offered_trinkets, picked_trinkets).
+    Returns (player_id, offered_heroes, offered_trinkets, picked_trinkets,
+             offered_hero_powers, picked_hero_powers).
 
     Verified against 23 real games (2026-08-11), two independent signals each:
 
@@ -234,8 +258,27 @@ def offers(game, pid=None):
 
     Rerolled heroes count as offered: the reroll swaps the card under the same
     entity id, and that new hero really was on screen to be taken.
+
+    HERO POWERS. Some heroes hand you a choice of hero power instead of a fixed
+    one, and it arrives as the same EntityChoices block, options staged in
+    SETASIDE, picked through the same SendChoices line - so a block whose every
+    option is a hero power IS a hero-power offer. That is the identity test the
+    live overlay already uses (ui.classify_choice), reused rather than rebuilt.
+    Measured over the 44 games in six real logs (2026-08-12): 6 games carried
+    one - only four heroes in that sample offer the choice at all - and those 6
+    games held 16 separate offers between them (43 options, and all 16 picks
+    recovered), because a hero whose power hands out another power re-offers
+    every few turns - one game alone picked five. Both fields are LISTS for
+    that reason, and a game with a fixed
+    hero power correctly carries two empty ones. The Source= line of an ordinary
+    discover also names a hero power (the power is what discovers), which is why
+    only Entities[i] lines are read - Source is never an option. Unlike trinkets
+    there is NO
+    fallback for a log that prints no choice blocks: hero powers pass through
+    SETASIDE alongside every opponent's, with no burst size to tell them apart,
+    so such a log records no hero powers rather than guessed ones.
     """
-    heroes, trinkets = universe()
+    heroes, trinkets, powers = universe()
     blocks, cur = [], None
     chosen = []          # (entity id, cardId) - our own picks, in order
     hand = {}            # entity id -> hero cardIds that occupied that draft slot
@@ -326,6 +369,27 @@ def offers(game, pid=None):
         if eid in slots and is_hero(card, heroes) and hero_id(card) not in offered_heroes:
             offered_heroes.append(hero_id(card))
 
+    # Hero powers: a block whose every option is a hero power, and ours. No
+    # count gate - the dialog is three options today, and a rule that hard-codes
+    # three would silently drop the day it is four.
+    offered_hero_powers, hp_ids = [], set()
+    for b in blocks:
+        if (len(b) >= 2 and ours(b)
+                and all(is_hero_power(c, powers) for _, _, c, _, _ in b)):
+            for _, eid, card, _, _ in sorted(b):
+                offered_hero_powers.append(card)
+                hp_ids.add(eid)
+    # One pick is logged TWICE - SendChoices (this client answering) and
+    # DebugPrintEntitiesChosen (the server echoing it back). Both are read on
+    # purpose, because a reconnect replays the echo without the send; the entity
+    # id is the same in both, so dedupe on it. Without this every hero power
+    # counted double and the pick rate came out at 200%.
+    picked_hero_powers, seen_hp = [], set()
+    for eid, card in chosen:
+        if eid in hp_ids and is_hero_power(card, powers) and (eid, card) not in seen_hp:
+            seen_hp.add((eid, card))
+            picked_hero_powers.append(card)
+
     picked_trinkets = []
     for eid, card in chosen:
         if eid in offer_ids and is_trinket(card, trinkets) and card not in picked_trinkets:
@@ -342,7 +406,8 @@ def offers(game, pid=None):
                     and m.group(1) not in picked_trinkets:
                 picked_trinkets.append(m.group(1))
 
-    return pid, offered_heroes, offered_trinkets, picked_trinkets
+    return (pid, offered_heroes, offered_trinkets, picked_trinkets,
+            offered_hero_powers, picked_hero_powers)
 
 
 # A tribe is PROVEN in the lobby by a minion you could have bought: a real pool
@@ -389,77 +454,93 @@ def pool_ids():
 def lobby_tribes(game):
     """The tribes this lobby PROVABLY had, from one pass over its lines.
 
-    Never claims a tribe is OUT: an unseen tribe is unconfirmed, exactly as
-    bgtracker.LobbyTracker treats it live. Exactness needs the memory reader.
+    The rule itself lives in bgtracker.TribeProver, because the overlay has to
+    apply exactly the same one to a live game: two implementations would mean
+    the chip on screen and the number that reaches the shared pool could
+    disagree, and one of them would be wrong without anybody noticing.
 
-    Three filters, each measured, in order of how much they were worth:
-
-      zone must be PLAY   - a card generated into a HAND (a Get, a discover, a
-                            Dark Gift reward) carries a tribe from outside the
-                            lobby. This is the big one.
-      the card must be    - a token summoned mid fight (Skeleton, Beetle,
-      a buyable minion      Golem) carries its own tribe regardless.
-      Bob's controller    - where the log names him, this drops a generated
-      where it is known     card that was then PLAYED onto a board.
-
-    Measured over 60 real games: six claimed 9 tribes before, one does now.
-    That last one is honest residual, not a miss to hunt: its four doubtful
-    tribes have 1, 2, 4 and 4 sightings against 42 to 71 for the five real
-    ones, and the log gives nothing that separates a single shop sighting from
-    a single played-from-hand sighting. Counting it IN is the safe direction,
-    because this function's whole contract is that a tribe seen is proven in
-    and an unseen tribe is merely unconfirmed.
+    A finished game has the whole log in hand, so Bob is found up front and
+    every line is judged against the shop. Live, he is not known until his
+    first shop is written; that is the only difference between the two.
     """
-    pool = pool_ids()
-    # Without Bob (a slice that begins after a reconnect) fall back to minions
-    # in play: looser, but better than a game with no tribes at all.
     bob = next((m.group(1) for line in game
-                for m in [_BOB.search(line)] if m), None)
-    tribes = set()
-    card = zone = race = ctrl = None
-
-    def keep():
-        # A block states its card up top and its zone, race and controller as
-        # sibling lines, so the verdict is only reachable once the block ends.
-        if race in bg.TRIBES and zone == "PLAY" and (bob is None or ctrl == bob):
-            base = card[:-2] if card and card.endswith("_G") else card
-            if base in pool:
-                tribes.add(race)
-
+                for m in [bg.TribeProver._BOB.search(line)] if m), None)
+    prover = bg.TribeProver(bob=bob, pool=pool_ids())
     for line in game:
-        h = _RACE_HEAD.search(line)
-        if h:
-            keep()
-            card, zone, race, ctrl = h.group(1), None, None, None
-            continue
-        b = _RACE_BRACKET.search(line)
-        if b:
-            keep()
-            card = zone = race = ctrl = None
-            # The one-line form carries zone and cardId inline but no
-            # controller, so it is only ever board-grade evidence: use it when
-            # there is no shop to key on, ignore it when there is.
-            r = re.search(r"tag=CARDRACE value=([A-Z_]+)", line)
-            if bob is None and r and r.group(1) in bg.TRIBES and b.group(1) == "PLAY":
-                cid = b.group(2)
-                cid = cid[:-2] if cid.endswith("_G") else cid
-                if cid in pool:
-                    tribes.add(r.group(1))
-            continue
-        t = _RACE_TAG.search(line)
-        if t and card is not None:
-            k, v = t.group(1), t.group(2)
-            if k == "ZONE":
-                zone = v
-            elif k == "CARDRACE":
-                race = v
-            elif k == "CONTROLLER":
-                ctrl = v
-            continue
-        keep()
-        card = zone = race = ctrl = None
-    keep()
-    return sorted(tribes)
+        prover.feed(line)
+    return prover.flush()
+
+
+# ------------------------------------------------------------ the final board
+#
+# The warband you finished on is the one thing a comp ranking cannot be built
+# without, and until now nothing mined it: every record went out with no board,
+# so server/aggregate.py had nothing to classify and wrote the comps and cards
+# files empty. It is NOT recoverable by pattern-matching a few lines - a bought
+# minion MOVES between zones by tag change, so the board only exists inside a
+# game-state machine. sim/boards.py already is that machine (verified: both
+# warbands recovered before the first attack in 149 of 149 round-5+ combats
+# across six real logs), so it is reused here rather than half-written again.
+#
+# WHICH board is "final": the one standing when the LAST fight of the game
+# began. Not the end-of-log state - by then that fight has already killed part
+# of it, and what a comp ranking is asking about is the board you built.
+PLAYER_ENT_RE = re.compile(r"Player EntityID=(\d+) PlayerID=(\d+) ")
+
+
+def _boards_parser(pid, eid, name):
+    """sim/boards.py's parser, pinned to OUR player.
+
+    It picks the local player as the first real Battle.net account in the file,
+    which is right for solo and a coin toss in Duos - a partner's account can
+    own a whole file (measured; it is the same trap that made the old battletag
+    heuristic mis-read places). The hero draft already proved who we are, so
+    pin it. Pinning has to happen inside _reset_game, because that is what runs
+    on the CREATE_GAME line, after which the Player block would otherwise claim
+    the seat.
+    """
+    from sim import boards
+
+    class Pinned(boards.GameLogParser):
+        def _reset_game(self):
+            super()._reset_game()
+            me = getattr(self, "_me", None)
+            if me:
+                self.local_ctrl, self.local_eid, self.local_name = me
+
+    p = Pinned.__new__(Pinned)
+    # Set before __init__ so the constructor's own reset already sees it.
+    p._me = (int(pid), int(eid), name) if (pid and eid) else None
+    p.__init__()
+    return p
+
+
+def final_board(game, pid, eid, name):
+    """The cardIds of our warband as the game's last fight started, or [].
+
+    Empty is a real answer and stays empty: a game whose last combat never
+    completed its reveal (a disconnect, a slice that starts mid-game) has no
+    board we can prove, and half a board would rank comps wrongly. Golden
+    minions keep their own cardId here; folding them onto the plain card is the
+    reader's job (bgtracker.pool_by_id), because the id the log wrote is the
+    fact and the mapping is a card-database opinion.
+    """
+    try:
+        p = _boards_parser(pid, eid, name)
+    except Exception:
+        return []                       # sim/ absent: no boards, nothing faked
+    for i, line in enumerate(game):
+        p.feed(line, i)
+    # The game's LAST combat is still the open one: a combat is only closed and
+    # appended by the marker going back to value=0, which the final fight of a
+    # game never prints (the game ends first).
+    for c in reversed(p.combats + ([p.combat] if p.combat else [])):
+        snap = c.get("boards_pre_attack") or c.get("boards_at_reveal")
+        rows = (snap or {}).get("friendly") or []
+        cards = [r["cardId"] for r in rows if r.get("cardId")]
+        if cards:
+            return cards
+    return []
 
 
 def extract(game, tag):
@@ -469,6 +550,7 @@ def extract(game, tag):
     drafted = set()                 # entity ids of OUR offered heroes
     pid = None                      # our PLAYER id, from those same lines
     names = {}                      # player id -> battletag
+    ents = {}                       # player id -> its PLAYER entity id
     for line in game:
         d = DRAFT_RE.search(line)
         if d:
@@ -477,11 +559,15 @@ def extract(game, tag):
         n = NAME_MAP_RE.search(line)
         if n:
             names[n.group(1)] = n.group(2)
+        pe = PLAYER_ENT_RE.search(line)
+        if pe:
+            ents[pe.group(2)] = pe.group(1)
 
     # Offers and picks. This also recovers our player id for a slice that begins
     # after a reconnect and so has no hero draft in it - those games still know
     # which trinkets they were shown, and now they keep their placement too.
-    pid, offered_heroes, offered_trinkets, picked_trinkets = offers(game, pid)
+    (pid, offered_heroes, offered_trinkets, picked_trinkets,
+     offered_hero_powers, picked_hero_powers) = offers(game, pid)
 
     # Our hero = the drafted entity that ends up IN PLAY with a real hero card
     # (a reroll swaps the card under the same entity, so take the LAST match).
@@ -506,12 +592,14 @@ def extract(game, tag):
         if p:
             place = int(p.group(1))
     tribes = lobby_tribes(game)
+    board = final_board(game, pid, ents.get(pid), names.get(pid))
 
     # An offer-only game still carries signal: pick rate needs the options you
     # turned down, not the result. Keep it rather than throw it away.
     if hero is None and place is None and not (offered_trinkets or offered_heroes):
         return None
-    return hero, place, sorted(tribes), offered_heroes, offered_trinkets, picked_trinkets
+    return (hero, place, sorted(tribes), offered_heroes, offered_trinkets,
+            picked_trinkets, offered_hero_powers, picked_hero_powers, board)
 
 
 def games_in(path):
@@ -526,7 +614,8 @@ def games_in(path):
         got = extract(game, tag)
         if not got:
             continue
-        hero, place, tribes, off_h, off_t, pick_t = got
+        (hero, place, tribes, off_h, off_t, pick_t,
+         off_hp, pick_hp, board) = got
         date = path.parent.name.replace("Hearthstone_", "")[:10]  # YYYY_MM_DD
         yield {
             "date": date,
@@ -544,6 +633,13 @@ def games_in(path):
             "offered_heroes": off_h,
             "offered_trinkets": off_t,
             "picked_trinkets": pick_t,
+            # Hero powers: only the heroes that offer a CHOICE produce these,
+            # so most games carry empty lists and that is the true answer.
+            "offered_hero_powers": off_hp,
+            "picked_hero_powers": pick_hp,
+            # The warband the game ended on - what comp and card rankings are
+            # computed from. Empty when the last fight left no provable board.
+            "final_board": board,
             "source_log": path.parent.name,
             # Which extraction rules produced this record. Local bookkeeping:
             # upload_records() never sends it, so a bump re-mines without
@@ -557,7 +653,9 @@ def games_in(path):
 # in - which is the whole reason collect() rewrites rather than appends. Adding a
 # key here is what makes the next run repair every record whose log still exists.
 FIELDS = ("date", "game_id", "hero", "place", "duo", "tribes",
-          "offered_heroes", "offered_trinkets", "picked_trinkets", "source_log")
+          "offered_heroes", "offered_trinkets", "picked_trinkets",
+          "offered_hero_powers", "picked_hero_powers", "final_board",
+          "source_log")
 
 # How this file MINES, as opposed to what it stores. Missing keys repair
 # themselves through FIELDS above, but a key whose VALUE was extracted wrongly
@@ -569,7 +667,11 @@ FIELDS = ("date", "game_id", "hero", "place", "duo", "tribes",
 #      game claimed 9 tribes, three of them impossible).
 #   3: lobby tribes key on BOB'S SHOP where the log names him, which also
 #      drops a generated card that was played onto a board.
-MINER_VERSION = 3
+#   4: hero-power offers and picks are mined (the choose-one block, same
+#      identity test the overlay uses), and the final board is reconstructed
+#      through sim/boards.py - two fields nothing had ever filled, which is why
+#      the aggregator could rate neither hero powers nor comps.
+MINER_VERSION = 4
 
 
 def collect(logs=None):
@@ -625,6 +727,11 @@ def collect(logs=None):
     print(f"  {with_t} carry trinket offers "
           f"({sum(len(r.get('offered_trinkets') or []) for r in kept.values())} options, "
           f"{sum(len(r.get('picked_trinkets') or []) for r in kept.values())} taken)")
+    with_hp = sum(1 for r in kept.values() if r.get("offered_hero_powers"))
+    with_b = sum(1 for r in kept.values() if r.get("final_board"))
+    print(f"  {with_hp} carry a hero-power offer "
+          f"({sum(len(r.get('picked_hero_powers') or []) for r in kept.values())} taken)"
+          f"; {with_b} carry the final board")
     duo = sum(1 for r in kept.values() if r.get("duo") is True)
     solo = sum(1 for r in kept.values() if r.get("duo") is False)
     unknown = len(kept) - duo - solo
@@ -655,6 +762,10 @@ def stats():
     picked = sum(len(r.get("picked_trinkets") or []) for r in recs)
     print(f"  {len(with_off)} carry the hero offer (pick rate needs it)")
     print(f"  {len(with_tri)} carry trinket offers - {picked} trinkets taken")
+    hp = [r for r in recs if r.get("offered_hero_powers")]
+    boards = [r for r in recs if r.get("final_board")]
+    print(f"  {len(hp)} carry a hero-power offer (only heroes that offer a choice do)")
+    print(f"  {len(boards)} carry the final board (comp and card rankings need it)")
     names = bg.card_names()
     # Solo and duos are listed apart for the same reason the feeds are: a duos
     # game finishes 1st-4th, a solo game 1st-8th, so one average over both is a
@@ -691,9 +802,17 @@ def upload_records():
     This list IS the privacy contract: every field that ever leaves the machine
     is built right here and nowhere else, the settings panel's DATA copy names
     each one, and tests/test_settings.py reads this function's source to hold
-    the two together. Only the aggregate signal (hero, placement, lobby tribes,
-    date, and the heroes and trinkets you were offered) under an opaque id -
-    never your battletag, never the logs themselves."""
+    the two together. Only the aggregate signal (the date, whether it was Duos,
+    the hero you played and where you finished, the lobby's tribes, the heroes,
+    trinkets and hero powers you were offered and which of them you took, and
+    the warband you finished on) under an opaque id - never your battletag,
+    never the logs themselves.
+
+    Every one of those fields is what some table on screen is built from, and
+    a field that is mined but not sent is a table that can never fill: the
+    hero-power numbers and the comp ranking sat dead for exactly that reason
+    until offered_hero_powers / picked_hero_powers / final_board were added
+    here. server/ingest.py has always had the columns."""
     if not OUT.exists():
         return []
     cid = client_id()
@@ -719,6 +838,18 @@ def upload_records():
             "offered_heroes": g.get("offered_heroes") or [],
             "offered_trinkets": g.get("offered_trinkets") or [],
             "picked_trinkets": g.get("picked_trinkets") or [],
+            # The hero-power choice, same idea: the options are the denominator
+            # and the pick is the numerator, and without them the hero-power
+            # table has nothing to be built from at all - no stats site
+            # publishes those numbers, so this feed is the only place they can
+            # come from. Most games send two empty lists, because most heroes
+            # have a fixed power and never offer the choice.
+            "offered_hero_powers": g.get("offered_hero_powers") or [],
+            "picked_hero_powers": g.get("picked_hero_powers") or [],
+            # The warband the game finished on, as cardIds. This is what lets
+            # the aggregator rank COMPS and single minions at all: without it
+            # it has nothing to classify and writes those two files empty.
+            "final_board": g.get("final_board") or [],
             "client": cid[:8],
             # Which client version mined this. Not about you - it is how the
             # server can tell "the numbers moved" from "a build with a parsing
@@ -822,7 +953,8 @@ def local_feed():
             for k in ("hero", "place", "mmr", "duo"):
                 g.setdefault(k, None)
             for k in ("tribes", "offered_heroes", "offered_trinkets",
-                      "picked_trinkets", "final_board"):
+                      "picked_trinkets", "offered_hero_powers",
+                      "picked_hero_powers", "final_board"):
                 g.setdefault(k, [])
             if g.get("date"):
                 g["date"] = g["date"].replace("_", "-")   # log dirs use underscores

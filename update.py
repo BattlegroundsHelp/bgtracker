@@ -52,6 +52,9 @@ The API the rest of the app uses:
                                                   then quit)
     checks_enabled() / set_checks_enabled(bool)
     skipped_version() / skip_version(v) / clear_skip()
+    problems()               -> list[str]        config this could not read,
+                                                 in plain words, for the
+                                                 settings panel's problems line
 
     python update.py --check        ask the real manifest, print what it says
     python update.py --selftest     the failure modes, offline
@@ -138,16 +141,64 @@ def settings_path() -> Path:
     return app_dir() / "data" / MANIFEST_NAME
 
 
-def _load_settings() -> dict:
+# Anything this module could not read, in the words a person would use - the
+# same shape settings.Settings.problems carries, and printed on the same line
+# of the settings panel. It exists because both files below are HAND-EDITABLE
+# and the old behaviour on a typo was to fall back to a DIFFERENT behaviour
+# than the file was asking for and say nothing: a private build quietly
+# checking the public box, a switched-off check quietly switching itself on.
+# Every line names the file and says what is being done INSTEAD.
+_PROBLEMS: list[str] = []
+
+
+def _problem(msg: str) -> None:
+    """Record one, once per run, and say it out loud - a console line is what
+    reaches somebody running from source or reading --diag."""
+    if msg not in _PROBLEMS:
+        _PROBLEMS.append(msg)
+        print(f"  ! {msg}", file=sys.stderr)
+
+
+def problems() -> list[str]:
+    """Every config file this module could not read, in plain words. Empty is
+    the normal answer."""
+    return list(_PROBLEMS)
+
+
+def _read_settings() -> tuple[dict, bool]:
+    """(settings, readable).
+
+    The second value is the point. "There is no file, so use the defaults" and
+    "there is a file and it is gibberish" were being collapsed into the same
+    empty dict, which is how a hand-edit typo silently switched the update
+    check back ON and forgot the version the user had skipped. They are
+    different states and the callers that must refuse need to tell them apart.
+    """
+    p = settings_path()
+    if not p.exists():
+        return {}, True
     try:
-        d = json.loads(settings_path().read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        _problem(f"{p.name} could not be read ({e}). The update check is off "
+                 f"until it is fixed, because there is no way to know what it "
+                 f"was asking for. Ticking the box in the settings panel "
+                 f"writes a fresh one.")
+        return {}, False
     # The docs invite hand-editing this file, and `false`, `[]` and `null` are
     # all valid JSON that is not a settings object. Calling .get on them used
     # to kill the MAIN thread on start, before any window existed - the same
     # shape check settings.py makes on its own file.
-    return d if isinstance(d, dict) else {}
+    if not isinstance(d, dict):
+        _problem(f"{p.name} is not a settings object ({type(d).__name__}). The "
+                 f"update check is off until it is fixed. Ticking the box in "
+                 f"the settings panel writes a fresh one.")
+        return {}, False
+    return d, True
+
+
+def _load_settings() -> dict:
+    return _read_settings()[0]
 
 
 def _save_settings(d: dict) -> None:
@@ -157,10 +208,18 @@ def _save_settings(d: dict) -> None:
 
 
 def checks_enabled() -> bool:
-    """False turns the on-start check off entirely: no request is made."""
+    """False turns the on-start check off entirely: no request is made.
+
+    A settings file that cannot be read is also False, and that is deliberate.
+    The check is a network request, this file is the only place to switch it
+    off, and defaulting a broken file back to ON would make the request the
+    user may have spent that file forbidding. Off plus a problems line says
+    what happened; on plus silence does not.
+    """
     if os.environ.get("BGTRACKER_NO_UPDATE_CHECK", "").strip() not in ("", "0"):
         return False
-    return bool(_load_settings().get("check_on_start", True))
+    d, ok = _read_settings()
+    return bool(d.get("check_on_start", True)) if ok else False
 
 
 def set_checks_enabled(on: bool) -> None:
@@ -187,24 +246,41 @@ def clear_skip() -> None:
     _save_settings(d)
 
 
-def manifest_url() -> str:
+def manifest_url() -> str | None:
     """Env var, then an `updates` key in sources.json, then the default.
 
     sources.json is already the file a user edits to point the tool at their
     own feed, so it is also where someone running a private build points the
     update check. Read directly rather than through bgtracker.py: this module
     has to stay importable with nothing else loaded.
+
+    None when the file EXISTS and cannot be read, and that is the whole point
+    of the return type. Falling back to the default in that case sends a build
+    that was deliberately pointed somewhere private to ask the public box
+    instead - a different server than the file was asking for, chosen silently,
+    on the strength of a missing comma. A missing file is not that: nothing was
+    configured, so the default is what was asked for.
     """
     env = os.environ.get("BGTRACKER_UPDATE_URL", "").strip()
     if env:
         return env
-    try:
-        src = json.loads((app_dir() / "sources.json").read_text(encoding="utf-8"))
+    p = app_dir() / "sources.json"
+    if p.exists():
+        try:
+            src = json.loads(p.read_text(encoding="utf-8"))
+        except Exception as e:
+            _problem(f"{p.name} could not be read ({e}). The update check is "
+                     f"off until it is fixed: this build will not fall back to "
+                     f"the public manifest when the file says to use another "
+                     f"one.")
+            return None
+        if not isinstance(src, dict):
+            _problem(f"{p.name} is not a sources object ({type(src).__name__}). "
+                     f"The update check is off until it is fixed.")
+            return None
         u = src.get("updates")
         if isinstance(u, str) and u.strip():
             return u.strip()
-    except Exception:
-        pass
     return DEFAULT_MANIFEST_URL
 
 
@@ -334,6 +410,17 @@ def check(url: str | None = None, timeout: float = CHECK_TIMEOUT) -> Update:
     """
     global _RESULT, _RESULT_AT
     src = url or manifest_url()
+    if not src:
+        # sources.json exists and could not be read, so there is no configured
+        # manifest to ask. This lands in `error`, never in "you are up to
+        # date": a check that was never made must not read as a check that
+        # passed. manifest_url() has already recorded the reason.
+        out = Update(error="no manifest url - " + (_PROBLEMS[-1] if _PROBLEMS
+                            else "sources.json could not be read"))
+        with _LOCK:
+            _RESULT = out
+            _RESULT_AT = time.time()
+        return out
     try:
         out = parse_manifest(_get(src, timeout, MAX_MANIFEST_BYTES), source=src)
     except UpdateError as e:
@@ -562,21 +649,31 @@ def stage(zip_path: Path, into: Path | None = None,
 #   2. move the staged build out to <name>.new-<version>, beside the install
 #   3. COPY across everything the old folder holds that the new build does not
 #      ship: data, assets, .overlay.json, sources.json and anything else the
-#      user put there. Copy, not move, so the old install stays whole
+#      user put there. Copy, not move, so the old install stays whole - and
+#      EVERY copy's exit code is checked, because a copy that half-worked and
+#      was not noticed is how an updater eats somebody's collected games
 #   4. rename the install to <name>.old-<version>
 #   5. rename the new one into its place
 #   6. start the app's own launcher, by name, out of the new install
 #
 # CRASH MID-SWAP, since that is the question that matters:
-#   before 4  nothing has been touched; the old install runs as it always did
+#   before 4  nothing has been touched; the old install runs as it always did.
+#             A failed copy in step 3 lands here on purpose: the helper logs
+#             which entry failed, deletes the half-filled .new- folder and
+#             stops, so what the user has is the install they already had
 #   4 -> 5    the only real window, one rename wide. Both folders exist and are
 #             complete, named .old-<version> and .new-<version>, and the user's
 #             files are in both because step 3 copied them. RECOVER.txt is
 #             written beside them BEFORE step 4 and deleted after step 5, so if
 #             it is still there it says which folder to rename back
-#   after 5   the new install is live; the old one stays on disk until the new
-#             build's next start deletes it (cleanup below), so there is always
-#             one good copy to go back to
+#   after 5   the new install is live and the old one is still on disk. It does
+#             NOT survive long: step 6 starts the new build immediately, and
+#             that start runs cleanup() below - about two seconds later, not
+#             "some future session", which is what this comment used to claim.
+#             So the backup is only worth having if something checks it before
+#             deleting it, and cleanup() does: it removes .old- only once every
+#             file in it is present in the new install, and otherwise keeps the
+#             folder and says which files are missing
 #   step 5 failing is handled rather than crashed on: the helper renames
 #   .old-<version> straight back and leaves the install exactly as it was
 
@@ -646,16 +743,48 @@ rem the card art, the saved window positions, sources.json, and whatever else
 rem they put beside the exe. COPIED, so an abort after this still leaves the
 rem old install complete. The cache is skipped on purpose: it is rebuilt from
 rem the card database on demand and there is no point copying it twice.
+rem
+rem EVERY COPY IS CHECKED, and this is the step that eats people's data when it
+rem is not. robocopy's exit code is a bitmask, and the documented meanings are
+rem 1 files copied, 2 extra, 4 mismatched, 8 some files could not be copied
+rem (retry limit exceeded), 16 fatal - so 0-7 is success and 8 or more is a
+rem failure. `if errorlevel 8` is exactly "8 or more". Measured here rather
+rem than taken on trust: with one file in the source held open by another
+rem process (an antivirus scanning what was just written, a text editor with
+rem games.jsonl open), robocopy /R:1 /W:1 returns 9 - copied something, failed
+rem something - and the file is simply absent from the destination. Unchecked,
+rem the swap then went ahead and the ONLY remaining copy of it was the
+rem .old- folder, which the build started at step 6 deleted seconds later.
+rem A failure here aborts before anything is renamed, so the install the user
+rem already has is untouched and still runs.
+rem Each name that IS copied is written to a list inside the new build, and
+rem cleanup() checks exactly that list rather than the whole folder. It has to
+rem be a list, not "compare everything": the entries the new build SHIPS are
+rem deliberately not copied, so a release that drops a file from _internal
+rem would otherwise look identical to a copy that failed, and the app would
+rem keep a 45 MB backup and warn about it on every start, forever.
+set "COPYFAIL="
+set "COPIED=%NEW%\.update-copied"
 for /f "delims=" %%I in ('dir /b /a "%APP%" 2^>nul') do (
     if /i not "%%~nxI"==".cache" (
         if not exist "%NEW%\%%~nxI" (
             if exist "%APP%\%%~nxI\" (
                 %SystemRoot%\System32\robocopy.exe "%APP%\%%~nxI" "%NEW%\%%~nxI" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NP >nul
+                if errorlevel 8 (set "COPYFAIL=%%~nxI") else (>>"%COPIED%" echo %%~nxI)
             ) else (
                 copy /y "%APP%\%%~nxI" "%NEW%\" >nul
+                if errorlevel 1 (set "COPYFAIL=%%~nxI") else (>>"%COPIED%" echo %%~nxI)
             )
         )
     )
+)
+if defined COPYFAIL (
+    call :log "could not copy %COPYFAIL% into the new build, nothing was changed"
+    rem The half-filled new build is not a backup of anything and must not be
+    rem left looking like one. The verified zip is still in .cache\update, so
+    rem retrying costs no download.
+    if exist "%NEW%" rmdir /s /q "%NEW%"
+    exit /b 1
 )
 
 rem 4 and 5. The swap. Two renames, and the note that explains them if the
@@ -811,6 +940,70 @@ def install(update: Update | None = None, progress=None, zip_path: Path | None =
     return p.pid
 
 
+#: Written by the helper into the new build: one top-level name per line, for
+#: every entry step 3 copied across. Deleted once the backup it justifies is
+#: gone.
+COPIED_LIST = ".update-copied"
+
+
+def copied_entries(new: Path) -> list[str] | None:
+    """The top-level names the helper copied into `new`, or None if it never
+    said. None is not "nothing" and the caller must not treat it as such."""
+    p = new / COPIED_LIST
+    try:
+        names = [ln.strip() for ln in p.read_text(encoding="utf-8",
+                                                  errors="replace").splitlines()]
+    except OSError:
+        return None
+    return [n for n in names if n and n != ".cache"]
+
+
+def missing_from(old: Path, new: Path, limit: int = 8) -> list[str]:
+    """Files the update was supposed to carry across and did not, by relative
+    path. Empty means the new install holds everything the old one did.
+
+    This is the question the helper's step 3 answers with a copy and this
+    answers with a look, and both are needed: robocopy can report a failure the
+    helper acts on, and it can also be killed, run out of disk, or lose a
+    machine mid-copy, in which case nobody reported anything.
+
+    WHAT IS COMPARED, because comparing everything would be wrong. The helper
+    copies only the top-level entries the new build does NOT ship - the user's
+    data, art, settings - and it writes their names into COPIED_LIST. Those are
+    the trees checked. The shipped ones are deliberately excluded: a release
+    that drops a file from _internal is a normal release, and counting it here
+    would keep a 45 MB backup alive and warn about it on every start forever.
+    `.cache` is skipped for the same reason the helper skips it - it is rebuilt
+    from the card database on demand.
+
+    With no list (an update FROM a build older than this mechanism, or a helper
+    that died before writing one) every entry is compared instead. That is the
+    cautious direction on purpose: it can keep a backup that did not need
+    keeping, which costs disk and a line of text, where the other mistake costs
+    somebody every game they have ever collected.
+    """
+    only = copied_entries(new)
+    roots = ([old / n for n in only] if only is not None
+             else [p for p in old.iterdir() if p.name != ".cache"])
+    out = []
+    for root in roots:
+        if not root.exists():
+            out.append(root.name)
+            if len(out) >= limit:
+                break
+            continue
+        files = [root] if root.is_file() else root.rglob("*")
+        for f in files:
+            if not f.is_file():
+                continue
+            rel = f.relative_to(old)
+            if not (new / rel).exists():
+                out.append(str(rel))
+                if len(out) >= limit:
+                    return out
+    return out
+
+
 def cleanup(app: Path | None = None) -> list[str]:
     """Delete what a finished update left behind. Runs on the next start.
 
@@ -818,6 +1011,19 @@ def cleanup(app: Path | None = None) -> list[str]:
     .new- suffix the helper writes, and only when they really are a build (they
     hold the exe). Deleting 45 MB out of somebody's Downloads folder on a name
     match alone is not something to be relaxed about.
+
+    AND THE .old- FOLDER IS CHECKED FIRST, which is the whole reason it exists.
+    "The old install stays until the next start" sounds like a grace period and
+    is not one: the helper's last act is to START the new build, so this runs
+    seconds after the swap. If the copy in step 3 did not finish, the user's
+    collected games, window positions and sources.json exist ONLY in that
+    folder, and deleting it on sight destroys the last copy. So a .old- folder
+    is removed only once every file in it is present in the new install; when
+    something is missing the folder is kept, named, and reported on the
+    problems line, and the app carries on running.
+
+    A .new- folder is a different thing and is always removed: it is a half
+    installed build that never went live, and it is a backup of nothing.
     """
     app = app or app_dir()
     removed = []
@@ -827,6 +1033,18 @@ def cleanup(app: Path | None = None) -> list[str]:
             continue
         if not (p / "bgtracker.exe").is_file():
             continue
+        if suffix.startswith(".old-"):
+            gone = missing_from(p, app)
+            if gone:
+                _problem(f"the update did not copy everything across, so the "
+                         f"previous install is being kept at {p.name}. Missing "
+                         f"from this one: {', '.join(gone[:4])}"
+                         + (" and more" if len(gone) > 4 else "")
+                         + ". Copy them back by hand, then delete that folder.")
+                continue
+            # Nothing left to check against, so the helper's note goes with the
+            # folder it was about rather than sitting in the install forever.
+            (app / COPIED_LIST).unlink(missing_ok=True)
         shutil.rmtree(p, ignore_errors=True)
         if not p.exists():
             removed.append(p.name)
@@ -875,20 +1093,59 @@ def _selftest() -> int:                                  # noqa: C901 - it is a 
         got = []
         for payload in ("false", "[]", "null", '"off"', "{not json"):
             (sdir / MANIFEST_NAME).write_text(payload, encoding="utf-8")
+            _PROBLEMS.clear()
             try:
-                got.append((payload, checks_enabled(), skipped_version()))
+                got.append((payload, checks_enabled(), skipped_version(),
+                            len(problems())))
             except Exception as e:
-                got.append((payload, f"RAISED {type(e).__name__}: {e}", None))
-        say("hand-edited update.json cannot crash the start",
-            all(g[1] is True and g[2] is None for g in got), str(got))
+                got.append((payload, f"RAISED {type(e).__name__}: {e}", None, 0))
+        # OFF, not on. A file we cannot read is not permission to make the
+        # network request the file may exist to forbid, and it is not permission
+        # to re-offer a version the user skipped either - both of which the old
+        # "return {} and carry on with the defaults" quietly did.
+        say("an unreadable update.json turns the check off and says so",
+            all(g[1] is False and g[2] is None and g[3] == 1 for g in got), str(got))
         (sdir / MANIFEST_NAME).write_text("[]", encoding="utf-8")
-        set_checks_enabled(False)
+        _PROBLEMS.clear()
+        set_checks_enabled(True)
         saved = json.loads((sdir / MANIFEST_NAME).read_text(encoding="utf-8"))
         say("saving over a broken settings file recovers it",
-            checks_enabled() is False and isinstance(saved, dict), str(saved))
+            checks_enabled() is True and isinstance(saved, dict), str(saved))
+        _PROBLEMS.clear()
     finally:
         globals()["settings_path"] = real_settings_path
         shutil.rmtree(sdir, ignore_errors=True)
+
+    # --- a broken sources.json must not quietly ask a different server ------
+    # sources.json is where a private build points the update check. Falling
+    # back to the default on a missing comma means that build asks the PUBLIC
+    # box instead - a different server, chosen silently. It refuses instead.
+    srcdir = Path(tempfile.mkdtemp(prefix="bgtracker-selftest-sources-"))
+    real_app_dir = globals()["app_dir"]
+    try:
+        globals()["app_dir"] = lambda: srcdir
+        _PROBLEMS.clear()
+        (srcdir / "sources.json").write_text('{"updates": "https://mine.invalid/u.json"',
+                                             encoding="utf-8")   # missing brace
+        u = check()
+        say("a broken sources.json refuses rather than falling back to the "
+            "public manifest",
+            manifest_url() is None and not u.available and u.error
+            and "sources.json" in u.error and len(problems()) == 1,
+            f"{u.error} | problems={problems()}")
+        _PROBLEMS.clear()
+        (srcdir / "sources.json").write_text('{"heroes": "x"}', encoding="utf-8")
+        say("a sources.json with no updates key still uses the default",
+            manifest_url() == DEFAULT_MANIFEST_URL and not problems(),
+            str(manifest_url()))
+        (srcdir / "sources.json").unlink()
+        say("no sources.json at all uses the default, silently",
+            manifest_url() == DEFAULT_MANIFEST_URL and not problems(),
+            str(manifest_url()))
+    finally:
+        globals()["app_dir"] = real_app_dir
+        _PROBLEMS.clear()
+        shutil.rmtree(srcdir, ignore_errors=True)
 
     payload = b"x" * 5000
     good_sha = hashlib.sha256(payload).hexdigest()
@@ -1091,9 +1348,124 @@ def _selftest() -> int:                                  # noqa: C901 - it is a 
                and (appdir / "data" / "games.jsonl").read_text(encoding="utf-8") == "the user's games"
                and (old / "bgtracker.exe").read_text(encoding="utf-8") == "old build"
                and (old / "data" / "games.jsonl").is_file()
-               and not (accroot / "bgtracker-RECOVER.txt").exists())
+               and not (accroot / "bgtracker-RECOVER.txt").exists()
+               # The note cleanup() checks against, written by the helper. The
+               # whole "keep the backup until the files are proved across"
+               # rule rests on this file existing and naming what was copied.
+               and copied_entries(appdir) == ["data"]
+               and not missing_from(old, appdir))
     say("swap succeeds on an accented install path", swapped,
         f"rc={r.returncode} log={(tmp / 'helper' / 'update.log').read_text(encoding='utf-8', errors='replace').strip() if (tmp / 'helper' / 'update.log').exists() else 'missing'}")
+
+    # --- the swap when a COPY FAILS -----------------------------------------
+    # Step 3 is the one place an update can destroy data that exists nowhere
+    # else. A file held open with no sharing is exactly what an antivirus
+    # scanning a just-written folder, or an editor with games.jsonl open, does
+    # to it; robocopy then answers 9 (1 copied | 8 could not be copied) and
+    # leaves the file out. Unchecked, the swap went ahead and the last copy of
+    # it was the .old- folder the new build deleted seconds later.
+    def _lock(path: Path):
+        """Open a file the way another process holding it does: no sharing."""
+        import ctypes
+        from ctypes import wintypes
+        fn = ctypes.windll.kernel32.CreateFileW
+        fn.restype = wintypes.HANDLE
+        fn.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.HANDLE)
+        return fn(str(path), 0x80000000, 0, None, 3, 0x80, None)
+
+    failroot = tmp / "copyfail"
+    appdir2 = failroot / "bgtracker"
+    (appdir2 / "data").mkdir(parents=True)
+    (appdir2 / "bgtracker.exe").write_text("old build", encoding="utf-8")
+    games = appdir2 / "data" / "games.jsonl"
+    games.write_text("the user's games", encoding="utf-8")
+    (appdir2 / "sources.json").write_text('{"heroes": "mine"}', encoding="utf-8")
+    stagedir2 = failroot / "staged-build"
+    stagedir2.mkdir()
+    (stagedir2 / "bgtracker.exe").write_text("new build 9.9.9", encoding="utf-8")
+    helper2, values2 = _write_helper(appdir2, stagedir2, "bgtracker.exe",
+                                     dead.pid, "9.9.9", helper_dir=tmp / "helper2")
+    handle = _lock(games)
+    try:
+        r2 = subprocess.run(["cmd", "/c", str(helper2)], cwd=str(helper2.parent),
+                            env={**os.environ, **values2}, capture_output=True,
+                            text=True, timeout=120)
+    finally:
+        import ctypes as _c
+        _c.windll.kernel32.CloseHandle(handle)
+    log2 = ((tmp / "helper2" / "update.log").read_text(encoding="utf-8",
+                                                       errors="replace").strip()
+            if (tmp / "helper2" / "update.log").exists() else "missing")
+    intact = (r2.returncode != 0
+              and (appdir2 / "bgtracker.exe").read_text(encoding="utf-8") == "old build"
+              and games.read_text(encoding="utf-8") == "the user's games"
+              and (appdir2 / "sources.json").is_file()
+              and not (failroot / "bgtracker.old-9.9.9").exists()
+              and not (failroot / "bgtracker.new-9.9.9").exists()
+              and not (failroot / "bgtracker-RECOVER.txt").exists())
+    say("a failed copy aborts the swap and leaves the old install runnable",
+        intact, f"rc={r2.returncode} log={log2}")
+
+    # --- cleanup will not delete the last copy of somebody's files ----------
+    # The helper's last act is to START the new build, so cleanup runs about two
+    # seconds after the swap - not "some future session". If step 3 did not
+    # finish, deleting .old- on sight destroys the only remaining copy.
+    croot = tmp / "cleanupcheck"
+    live = croot / "bgtracker"
+    kept = croot / "bgtracker.old-9.9.9"
+    stale = croot / "bgtracker.new-9.9.9"
+    for d in (live, kept, stale):
+        (d / "data").mkdir(parents=True)
+        (d / "bgtracker.exe").write_text("build", encoding="utf-8")
+    (kept / "data" / "games.jsonl").write_text("the only copy", encoding="utf-8")
+    # The helper's own note: it copied data, and nothing else was its to carry.
+    (live / COPIED_LIST).write_text("data\n", encoding="utf-8")
+    # A file the release DROPPED from the shipped part of the build. It is in
+    # the old install and not in the new one, and it must not be mistaken for
+    # a failed copy - that mistake would keep a 45 MB backup alive and warn
+    # about it on every start for good.
+    (kept / "_internal").mkdir()
+    (kept / "_internal" / "dropped-dependency.pyd").write_text("x", encoding="utf-8")
+    (live / "_internal").mkdir()
+    real_work_dir = globals()["work_dir"]
+    try:
+        globals()["work_dir"] = lambda: croot / ".cache" / "update"
+        _PROBLEMS.clear()
+        gone = cleanup(live)
+        say("cleanup keeps a backup whose files are missing from the install",
+            kept.is_dir() and (kept / "data" / "games.jsonl").is_file()
+            and kept.name not in gone and stale.name in gone
+            and len(problems()) == 1,
+            f"removed={gone} problems={problems()}")
+        # Put the file where the swap should have put it: now the backup is
+        # genuinely redundant and goes - and the shipped file the release
+        # dropped must not hold it back.
+        shutil.copy2(kept / "data" / "games.jsonl", live / "data" / "games.jsonl")
+        _PROBLEMS.clear()
+        gone = cleanup(live)
+        say("a release that drops a shipped file does not look like a failed "
+            "copy, and the backup goes",
+            kept.name in gone and not kept.exists() and not problems()
+            and not (live / COPIED_LIST).exists(),
+            f"removed={gone} problems={problems()}")
+
+        # Same again with NO note - an update from a build older than this
+        # mechanism. Everything is compared, so it errs toward keeping.
+        kept2 = croot / "bgtracker.old-9.9.8"
+        (kept2 / "data").mkdir(parents=True)
+        (kept2 / "bgtracker.exe").write_text("build", encoding="utf-8")
+        (kept2 / "data" / "only-copy.jsonl").write_text("games", encoding="utf-8")
+        _PROBLEMS.clear()
+        gone = cleanup(live)
+        say("with no note from the helper, a backup holding a file the install "
+            "lacks is still kept",
+            kept2.is_dir() and kept2.name not in gone and len(problems()) == 1,
+            f"removed={gone} problems={problems()}")
+    finally:
+        globals()["work_dir"] = real_work_dir
+        _PROBLEMS.clear()
 
     # --- install refuses to touch a source checkout -------------------------
     try:

@@ -57,8 +57,8 @@ import bgtracker as bg
 import collect
 
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_HUGE, F_NAME, F_SUB,
-                   F_TITLE, GOOD, LINE, PANEL, SOFT, TEXT, TRIBE_COLOR,
-                   TRIBE_TAG, BaseWindow, rrect)
+                   F_TITLE, GOOD, LINE, OFF_TRIBE, ON_CHIP, PANEL, SHADE, SOFT,
+                   TEXT, TRIBE_COLOR, TRIBE_TAG, BaseWindow, rrect)
 
 # A sitting idle this long is over: the next launch starts a new session
 # instead of resuming a stale one from yesterday.
@@ -596,7 +596,7 @@ class SessionWindow(BaseWindow):
             rrect(c, 14, y + 2, 36, y + 18, 5, fill=place_color(place),
                   outline="")
             c.create_text(25, y + 10, text=str(place) if place else "?",
-                          fill="#101116", font=F_CHIP)
+                          fill=ON_CHIP, font=F_CHIP)
             x = 44
             icon = self.app.art.icon(g.get("hero"), 16)
             if icon is not None:
@@ -632,9 +632,9 @@ class SessionWindow(BaseWindow):
         for t in bg.TRIBES:
             on = t in self.tribes
             rrect(c, x, y, x + 27, y + 15, 7,
-                  fill=TRIBE_COLOR[t] if on else PANEL,
+                  fill=TRIBE_COLOR[t] if on else SHADE,
                   outline="" if on else LINE)
             c.create_text(x + 13.5, y + 8, text=TRIBE_TAG[t], font=F_CHIP,
-                          fill="#101116" if on else "#4a4f59")
+                          fill=ON_CHIP if on else OFF_TRIBE)
             x += 29.5
         return y + 15 + 8

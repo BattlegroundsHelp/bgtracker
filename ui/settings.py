@@ -66,9 +66,10 @@ import update
 from paths import app_dir
 
 from . import WINDOWS
-from .base import (ACCENT, AMBER, BAD, DIM, GOOD, LINE, PANEL, PANEL_HI, SOFT,
-                   TEXT, auto_scale, badge_scale, get_badge_scale, get_scale,
-                   hs_rect, set_badge_scale, set_scale)
+from .base import (ACCENT, AMBER, BAD, DIM, GOOD, LINE, ON_CHIP, PANEL,
+                   PANEL_HI, SOFT, TEXT, auto_scale, badge_scale,
+                   get_badge_scale, get_scale, hs_rect, set_badge_scale,
+                   set_scale)
 
 # The panel is drawn at these point sizes at scale 1.0 and multiplied by the UI
 # scale like everything else - it is the window where somebody on a 4K screen
@@ -76,7 +77,7 @@ from .base import (ACCENT, AMBER, BAD, DIM, GOOD, LINE, PANEL, PANEL_HI, SOFT,
 BASE_W, BASE_H = 560, 700
 F_HEAD, F_LABEL, F_SUB, F_TINY = 11, 10, 9, 8
 
-INPUT_BG = "#0e1014"
+INPUT_BG = "#100c07"      # a field is a recess in the panel, same warmth
 
 
 def _first_sentence(text, cap=112):
@@ -215,7 +216,7 @@ class SettingsPanel(tk.Toplevel):
 
     def _button(self, parent, text, command, side="left"):
         b = tk.Button(parent, text=text, command=command, bg=PANEL_HI, fg=TEXT,
-                      activebackground=ACCENT, activeforeground="#101116",
+                      activebackground=ACCENT, activeforeground=ON_CHIP,
                       relief="flat", bd=0, padx=10, pady=3, font=self.f_sub,
                       cursor="hand2")
         b.pack(side=side, padx=(0, 6))
@@ -237,7 +238,7 @@ class SettingsPanel(tk.Toplevel):
                     bd=0, highlightthickness=0, font=self.f_sub, width=11,
                     anchor="w")
         m["menu"].configure(bg=PANEL_HI, fg=TEXT, activebackground=ACCENT,
-                            activeforeground="#101116", bd=0, font=self.f_sub)
+                            activeforeground=ON_CHIP, bd=0, font=self.f_sub)
         m.pack(side="left", padx=(0, 8))
         return m
 
@@ -397,7 +398,9 @@ class SettingsPanel(tk.Toplevel):
                   "game id, the date, the hero you played, your placement, "
                   "whether it was Duos, the lobby tribes, the heroes you were "
                   "offered, the trinkets you were offered, the trinkets you "
-                  "picked, the first 8 characters of this machine's random "
+                  "picked, the hero powers you were offered, the hero powers "
+                  "you picked, the board you finished on, "
+                  "the first 8 characters of this machine's random "
                   "client id (sent as is, so the feed can group games from "
                   "one install without knowing whose it is), and the "
                   "bgtracker version that mined it. No name, no battletag, no "
@@ -863,7 +866,13 @@ class SettingsPanel(tk.Toplevel):
         self.notes_btn.configure(state="normal" if avail and (u.notes or u.url)
                                  else "disabled")
         self.install_btn.configure(state="normal" if avail else "disabled")
-        self.upd_src.configure(text=f"manifest: {update.manifest_url()}")
+        # None means sources.json exists and could not be read, so there is no
+        # configured manifest to name - the reason is on the problems line
+        # above. Printing "None" there would read like an address.
+        src = update.manifest_url()
+        self.upd_src.configure(
+            text=f"manifest: {src}" if src
+            else "manifest: none - sources.json could not be read")
 
     # -- footer ------------------------------------------------------------
 
@@ -889,8 +898,12 @@ class SettingsPanel(tk.Toplevel):
     def refresh(self):
         """Re-read everything this panel only reports on. Cheap, no network."""
         try:
-            self.problem_lbl.configure(
-                text="\n".join(self.s.problems) if self.s.problems else "")
+            # update.py owns two hand-editable files of its own (data/update.json
+            # and the `updates` key in sources.json) and reports what it could
+            # not read in the same shape, so both lists print on the one line a
+            # person already looks at when something is behaving oddly.
+            probs = list(self.s.problems) + update.problems()
+            self.problem_lbl.configure(text="\n".join(probs) if probs else "")
             self._refresh_display()
             self._refresh_data()
             self._refresh_updates()

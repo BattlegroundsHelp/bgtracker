@@ -62,6 +62,15 @@
         "You choose which of the two you want at the start of the game"
       ]
     },
+    "BG22_HERO_001": {
+      "name": "Bru'kan",
+      "when": "You want to pick your start of combat effect each fight",
+      "bullets": [
+        "0 gold, and you can call a different Element before the next fight",
+        "Fire doubles left-most Attack, Water shields and taunts right-most",
+        "Earth gives 4 minions a 1/1 Deathrattle, Lightning pings 5 enemies"
+      ]
+    },
     "BG32_HERO_002": {
       "name": "Buttons",
       "when": "You can hold gold on turn 8 for a trinket you choose",
@@ -282,6 +291,15 @@
         "Best on a turn you were going to spend anyway"
       ]
     },
+    "BG20_HERO_283": {
+      "name": "Galewing",
+      "when": "You want a small free bonus every turn or two",
+      "bullets": [
+        "0 gold: pick a flightpath and it pays out in 1, 2 or 3 turns",
+        "The three are a 1-Cost Tavern spell, 2 gold, or a Tier discover",
+        "Nothing lands on the turn you choose, so it is always one behind"
+      ]
+    },
     "BGDUO_HERO_223": {
       "name": "Gall",
       "when": "Duos, and you can make three Golden minions",
@@ -445,6 +463,17 @@
         "Betting on the obvious blowout is the safe line"
       ]
     },
+    "TB_BaconShop_HERO_37": {
+      "name": "Lord Jaraxxus",
+      "when": "Your board can grind out 150 damage before the game is decided",
+      "bullets": [
+        "The counter is damage your own minions deal, so a wide board is faster",
+        "The portal then hands you 2 random Demons at the start of every turn"
+      ],
+      "tribes": [
+        "DEMON"
+      ]
+    },
     "BGDUO_HERO_104": {
       "name": "Madam Goya",
       "when": "Duos, and your teammate can use what you are holding",
@@ -512,6 +541,14 @@
         "You trade the Triple Reward discover for Tavern Coins"
       ]
     },
+    "BG34_HERO_004": {
+      "name": "Morchie",
+      "when": "You want the Minor Timewarp early, on turn 5",
+      "bullets": [
+        "The tavern's own Timewarps are turns 6 and 9, so this is one early",
+        "0 gold and nothing to press; you spend Chronum when you get there"
+      ]
+    },
     "TB_BaconShop_HERO_70": {
       "name": "Mr. Bigglesworth",
       "when": "You survive into the back half of the lobby",
@@ -526,6 +563,14 @@
       "bullets": [
         "Free to use, so a wrong guess costs nothing but the turn",
         "The answer is a minion your NEXT opponent had last combat"
+      ]
+    },
+    "BG34_HERO_000": {
+      "name": "Murozond, Unbounded",
+      "when": "You want the Major Timewarp early, on turn 8",
+      "bullets": [
+        "The tavern's own Timewarps are turns 6 and 9, so this is one early",
+        "0 gold and nothing to press; you spend Chronum when you get there"
       ]
     },
     "BG20_HERO_301": {
@@ -622,12 +667,31 @@
         "It doubles HEALTH, not attack - this is a defensive power"
       ]
     },
+    "BG22_HERO_007": {
+      "name": "Queen Azshara",
+      "when": "Naga are in and you can reach 30 total Attack",
+      "bullets": [
+        "Nothing at all happens until your warband totals 30 Attack",
+        "After that the power is 1 gold to Discover a Naga"
+      ],
+      "tribes": [
+        "NAGA"
+      ]
+    },
     "TB_BaconShop_HERO_14": {
       "name": "Queen Wagtoggle",
       "when": "Your board covers several different minion types",
       "bullets": [
         "One minion of EACH type gets +1/+1, so variety pays",
         "The buff grows for every 10 gold you spend"
+      ]
+    },
+    "TB_BaconShop_HERO_11": {
+      "name": "Ragnaros the Firelord",
+      "when": "You buy a card most turns and want a big late payoff",
+      "bullets": [
+        "12 buys is the whole cost, and refreshes do not count",
+        "Sulfuras then gives your left and right-most minions +8/+8 each turn end"
       ]
     },
     "TB_BaconShop_HERO_75": {
@@ -700,6 +764,14 @@
       "bullets": [
         "You pick the power before turn 1",
         "Whatever you take is your plan - read the lobby first"
+      ]
+    },
+    "BG24_HERO_100": {
+      "name": "Sire Denathrius",
+      "when": "You will trade early tempo for one big lasting effect",
+      "bullets": [
+        "You choose one of two Quests before you have seen a single shop",
+        "The Quest is a task; finishing it is what hands you the reward"
       ]
     },
     "TB_BaconShop_HERO_68": {
@@ -809,6 +881,14 @@
         "Reborn only lasts until next turn - tempo, not a build"
       ]
     },
+    "BGDUO_HERO_100": {
+      "name": "The Nameless One",
+      "when": "Duos, and your teammate picked a power worth having twice",
+      "bullets": [
+        "You get no power of your own, only a copy of theirs",
+        "Agree with your teammate before they lock their hero in"
+      ]
+    },
     "TB_BaconShop_HERO_12": {
       "name": "The Rat King",
       "when": "The type on offer matches what you are building",
@@ -823,6 +903,14 @@
       "bullets": [
         "You choose the Tier 7 card at the start, then have to earn it",
         "60 gold spent is deep into the mid game"
+      ]
+    },
+    "TB_BaconShop_HERO_94": {
+      "name": "Tickatus",
+      "when": "You want free value on a timer with nothing to spend",
+      "bullets": [
+        "0 gold: a Darkmoon Prize discover arrives every 4 turns",
+        "Prizes come in tiers, so the later ones are the strong ones"
       ]
     },
     "BG34_HERO_001": {
