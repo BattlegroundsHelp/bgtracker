@@ -2,15 +2,26 @@
 
 ## Unreleased
 
+### Changed
+
+- **The look copies the shipped trackers now, because that was the brief.**
+  Minion rows are the game's own deck-list tiles - the same 256x59 art
+  slices HSReplay and Firestone draw, full-bleed under the row with a dark
+  gradient carrying the name (the tiles were already on disk from
+  fetch-art). Panels and headers are flat: one dark face, one hairline, no
+  rims, no bevels - measured off how Firestone and HSReplay actually
+  present (flat translucent rows, zero radius, zero borders). The one
+  accent left is the thin gold outline on the row being pointed at.
+
 ### Added
 
-- **A painted skin: wood, brass, parchment.** Every panel, header, row plate
-  and card frame is now drawn from generated tavern art (`data/skin/`)
-  instead of flat vector fills, and the exe wears a tavern-shield icon. The
-  four drawing helpers stay the seam: a build without the skin folder or
-  without Pillow paints the exact vector chrome it painted before, so nothing
-  new can fail closed. All labels, numbers and data colours are untouched -
-  paint changed, meaning did not.
+- **A generated tavern skin, opt-in.** Wood, brass and parchment art
+  (`data/skin/`) for every panel, header and plate, behind a settings-panel
+  switch ("Tavern skin") - off by default, applied live, and the exe wears
+  the tavern-shield icon either way. A build without the skin folder or
+  without Pillow paints the flat chrome; nothing fails closed. All labels,
+  numbers and data colours are untouched in both looks - paint changes,
+  meaning does not.
 
 ### Fixed
 

@@ -47,7 +47,7 @@ from collections import OrderedDict
 from paths import APP_DIR, BUNDLE_DIR
 
 try:
-    from PIL import Image, ImageDraw, ImageEnhance, ImageTk
+    from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageTk
     _PIL = True
 except Exception:
     _PIL = False
@@ -60,16 +60,40 @@ _DIRS = [APP_DIR / "data" / "skin", BUNDLE_DIR / "data" / "skin"]
 # every helper falls back to vectors; the others degrade one shape at a time.
 _REQUIRED = ("panel_wood.png", "frame_gold.png")
 
-_active = None          # tri-state: unknown / on / off, decided once
+_active = None          # tri-state: unknown / on / off, decided once (files)
+_enabled = None         # the SETTING: None = not read yet, else the choice
 _dir = None
 _src = {}               # name -> RGBA source, loaded once, never mutated
 _cache = OrderedDict()  # (interp, kind, *params) -> PhotoImage, LRU
 _MAX = 96
 
 
+def set_enabled(on):
+    """The settings panel's switch, applied live. The caller repaints."""
+    global _enabled
+    _enabled = bool(on)
+
+
 def active() -> bool:
-    """One directory check, remembered. Import-time safe (no Tk needed)."""
-    global _active, _dir
+    """Is the tavern skin ON - the setting says yes AND the files exist.
+
+    OFF is the default: the shipped trackers this tool sits beside present
+    flat - measured 2026-08-14 off Firestone (flat white-at-8% rows, zero
+    radius, zero borders, Open Sans 400 on #190505) and HSReplay (the same
+    doctrine on #1a0e1f) - and the default look follows them. The generated
+    tavern art is the opt-in, not the baseline.
+    """
+    global _active, _dir, _enabled
+    if _enabled is None:
+        # Not wired by the host (a bare test, a script): the settings file
+        # decides, so `python overlay.py` and a standalone demo agree.
+        try:
+            import settings
+            _enabled = bool(settings.Settings.load().get("tavern_skin"))
+        except Exception:
+            _enabled = False
+    if not _enabled:
+        return False
     if _active is None:
         _active = False
         if _PIL:
@@ -324,15 +348,95 @@ def art_frame(c, w, h, best):
     return _photo(key, im, c)
 
 
+# ------------------------------------------------------------- deck tiles
+#
+# NOT gated by active(): this is not the tavern skin, it is how every
+# Hearthstone tracker draws a minion row - HSReplay and Firestone paint the
+# game's own deck-list tile (a wide slice of the card art) as the row itself,
+# right-aligned, melting into the dark bar that carries the name. The tiles
+# are already on disk: fetch-art fills assets/tiles/ with the 256x59 slices
+# HearthstoneJSON publishes, the same images those trackers use. Copied, not
+# invented - the founder's standing direction for this HUD.
+
+_TILE_DIR = APP_DIR / "assets" / "tiles"
+_BAR = (30, 24, 17, 255)        # ui.base ROW,      as pixels
+_BAR_BEST = (36, 29, 21, 255)   # ui.base PANEL_HI, as pixels
+_GOLD = (168, 133, 74, 255)     # ui.base GOLD - the one accent
+
+
+def _tile_src(card):
+    """The art slice for a cardId, golden ids folded onto their base."""
+    key = "tile:" + card
+    if key not in _src:
+        im = None
+        for cid in (card, card[:-2] if card.endswith("_G") else card):
+            p = _TILE_DIR / f"{cid}.png"
+            if p.is_file():
+                try:
+                    im = Image.open(p).convert("RGBA")
+                except Exception:
+                    im = None
+                break
+        _src[key] = im
+    return _src[key]
+
+
+def tile(c, card, w, h, best=False):
+    """One deck-list row: the bar, the art fading in from the right.
+
+    None when the tile is not on disk (art not fetched, a brand-new card) -
+    the caller draws its old icon-and-text row, nothing is missing but art.
+    """
+    if not _PIL or not card or w < 20 or h < 8:
+        return None
+    key = _key(c, "tile", card, w, h, best)
+    got = _get(key)
+    if got is not None:
+        return got
+    src = _tile_src(card)
+    if src is None:
+        return None
+    # The art runs under the WHOLE row - that is the actual deck-list recipe
+    # (a right-aligned slice was tried first and showed the art's own bright
+    # left flank mid-row): cover-scale, crop the vertical middle, then lay a
+    # dark gradient over it - near-solid where the name sits, thinning to
+    # the right where the art is the point.
+    scale = max(w / src.width, h / src.height)
+    art = src.resize((max(w, round(src.width * scale)),
+                      max(h, round(src.height * scale))), Image.LANCZOS)
+    top = (art.height - h) // 2
+    im = art.crop((0, top, w, top + h)).convert("RGBA")
+    bar = _BAR_BEST if best else _BAR
+    hold = round(w * 0.38)          # solid under the name...
+    ramp = bytes(min(255, max(0, int(
+        246 if x < hold else 246 - (246 - 60) * (x - hold) / max(1, w - hold))))
+        for x in range(w))
+    overlay = Image.new("RGBA", (w, h), bar)
+    overlay.putalpha(Image.frombytes("L", (w, 1), ramp).resize((w, h)))
+    im.alpha_composite(overlay)
+    if best:
+        ImageDraw.Draw(im).rectangle((0, 0, w - 1, h - 1), outline=_GOLD)
+    return _photo(key, im, c)
+
+
 def icon(root):
-    """The window/taskbar face, once - None on a build without the skin."""
-    if not active():
+    """The window/taskbar face - app identity, NOT tavern chrome, so it is
+    not behind the skin switch. None only when the file is missing."""
+    if not _PIL:
         return None
     key = _key(root, "icon")
     got = _get(key)
     if got is not None:
         return got
-    src = _load("app_icon.png")
+    src = None
+    for d in _DIRS:
+        p = d / "app_icon.png"
+        if p.is_file():
+            try:
+                src = Image.open(p).convert("RGBA")
+            except Exception:
+                src = None
+            break
     if src is None:
         return None
     return _photo(key, src.resize((64, 64), Image.LANCZOS), root)

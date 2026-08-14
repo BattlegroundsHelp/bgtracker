@@ -36,7 +36,8 @@ from __future__ import annotations
 import bgtracker as bg
 
 from .base import (ACCENT, AMBER, DIM, F_STARS, F_SUB, F_TITLE, GOOD, SOFT,
-                   STAR_COLOR, TEXT, BaseWindow, art_frame, plate)
+                   STAR_COLOR, TEXT, BaseWindow, art_frame, plate,
+                   shadow_text, tile_row)
 
 
 class TavernWindow(BaseWindow):
@@ -94,41 +95,54 @@ class TavernWindow(BaseWindow):
         for r in self.rows:
             s = r.get("stars", 0)
             mine = bool(r.get("mine"))
-            # A shop row is 22px and there are up to seven of them, so this is
-            # the one window where a plate per row would be a wall of edges.
-            # Only the minion that is already in the build you are on gets
-            # one - it is the row the eye is looking for.
-            if mine:
-                plate(c, 8, y - 1, self.WIDTH - 8, y + 20, 7, best=True)
-            ic = self.app.art.icon(r.get("card"), 18)
-            if ic is not None:
-                c.create_image(22, y + 10, image=ic, anchor="w")
-                art_frame(c, 21, y + 1, 41, y + 20, mine)
+            # The row is the game's own deck-list tile, the way HSReplay and
+            # Firestone draw a minion in the match (founder's direction,
+            # 2026-08-14). No tile on disk - art not fetched, a brand-new
+            # card - and the old icon-and-text row draws instead.
+            tiled = tile_row(c, 8, y - 1, self.WIDTH - 8, y + 20,
+                             r.get("card"), best=mine)
+            if not tiled:
+                # A shop row is 22px and there are up to seven of them, so
+                # this is the one window where a plate per row would be a
+                # wall of edges. Only the minion already in the build you are
+                # on gets one - it is the row the eye is looking for.
+                if mine:
+                    plate(c, 8, y - 1, self.WIDTH - 8, y + 20, 7, best=True)
+                ic = self.app.art.icon(r.get("card"), 18)
+                if ic is not None:
+                    c.create_image(22, y + 10, image=ic, anchor="w")
+                    art_frame(c, 21, y + 1, 41, y + 20, mine)
             # A star is a MEASUREMENT here or it is nothing. A row that
             # arrives flagged graded carries a number read off the card, and
             # that number ranks bodies rather than cards (see the note up top),
             # so it is not drawn at all rather than drawn in another colour.
+            star_x, name_x = (14, 60) if tiled else (44, 90)
             if s and not r.get("graded"):
-                c.create_text(44, y + 10, text="★" * s, anchor="w",
+                c.create_text(star_x, y + 10, text="★" * s, anchor="w",
                               font=F_STARS, fill=STAR_COLOR.get(s, DIM))
-            c.create_text(90, y + 10, text=r["name"][:16], anchor="w",
+            c.create_text(name_x, y + 10, text=r["name"][:16], anchor="w",
                           fill=TEXT if r.get("mine") else SOFT, font=F_SUB)
+            # The right-hand label sits over the art half of the tile, so it
+            # wears the same dark halo the badges use over card art.
+            def right(text, fill):
+                if tiled:
+                    shadow_text(c, self.WIDTH - 14, y + 10, text, fill,
+                                F_SUB, anchor="e")
+                else:
+                    c.create_text(self.WIDTH - 14, y + 10, text=text,
+                                  anchor="e", fill=fill, font=F_SUB)
             if r.get("mine"):
-                c.create_text(self.WIDTH - 14, y + 10, text="▶ yours", anchor="e",
-                              fill=ACCENT, font=F_SUB)
+                right("▶ yours", ACCENT)
             elif r.get("syn"):
                 # The mechanical read, and it outranks the comp tag whenever it
                 # is here at all: overlay.py only fills it when there is a real
                 # count behind it ("Beasts 4"), which is a fact about THIS
                 # board, where the comp tag is a fact about the archetype.
-                c.create_text(self.WIDTH - 14, y + 10, text=r["syn"][:16],
-                              anchor="e", fill=GOOD, font=F_SUB)
+                right(r["syn"][:16], GOOD)
             elif r.get("comp"):
-                c.create_text(self.WIDTH - 14, y + 10, text=r["comp"][:14],
-                              anchor="e", fill=DIM, font=F_SUB)
+                right(r["comp"][:14], DIM)
             elif r.get("tier"):
-                c.create_text(self.WIDTH - 14, y + 10, text=f"T{r['tier']}",
-                              anchor="e", fill=DIM, font=F_SUB)
+                right(f"T{r['tier']}", DIM)
             y += 22
         c.create_text(14, y + 8, text=f"roll {self.roll}", anchor="w",
                       fill=DIM, font=F_TITLE)

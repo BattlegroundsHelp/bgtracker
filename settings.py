@@ -95,6 +95,12 @@ DEFAULTS = {
     "upload_url": COMMUNITY_UPLOAD,
     "last_upload": None,          # epoch seconds of the last successful share
     "open_on_start": True,
+    # OFF by default (founder's call, 2026-08-14): the default look copies
+    # how the shipped trackers actually present - flat dark panels, plain
+    # text, no ornament (measured off Firestone: rows are flat white-at-8%
+    # overlays, zero radius, zero borders; HSReplay: the same doctrine on
+    # #1a0e1f). The generated tavern-art skin stays one switch away.
+    "tavern_skin": False,
     # key -> bool, from ui.WINDOWS. A key that is absent is ON: a window added
     # in a later version must appear for people who already have a settings
     # file, or new work would ship invisible to exactly the users who have been

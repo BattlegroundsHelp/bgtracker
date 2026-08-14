@@ -392,6 +392,19 @@ def set_scale(s):
     return _scale
 
 
+def repaint_all():
+    """Repaint every live window from its current state.
+
+    What the skin toggle needs: exactly what a scale change does, minus the
+    scale - the next draw asks the skin again and gets the other answer.
+    """
+    for w in list(_LIVE):
+        try:
+            w._rescaled()
+        except Exception:
+            traceback.print_exc()
+
+
 def badge_scale(game_h):
     """How big a badge should be over a game window ``game_h`` pixels tall.
 
@@ -575,15 +588,13 @@ def panel_frame(c, w, h, r=RADIUS):
     if img is not None:
         c.create_image(0, 0, image=img, anchor="nw", tags=t)
         return
-    rrect(c, 0, 0, w, h, r, fill=EDGE, outline="", tags=t)
-    rrect(c, 1, 1, w - 1, h - 1, r - 1, fill=GOLD_LO, outline="", tags=t)
-    rrect(c, 1.6, 1.6, w - 1.6, h - 1.6, r - 2, fill=GOLD, outline="", tags=t)
-    # The lit top and the shaded bottom of the rim: short of the corners at
-    # both ends, so the highlight dies out where the curve turns away from the
-    # light instead of ringing the whole panel.
-    c.create_line(r, 2, w - r, 2, fill=GOLD_HI, tags=t)
-    c.create_line(r, h - 2, w - r, h - 2, fill=EDGE, tags=t)
-    rrect(c, 3, 3, w - 3, h - 3, r - 3, fill=PANEL, outline="", tags=t)
+    # The flat default, copied from how the shipped trackers present
+    # (measured 2026-08-14: Firestone draws flat panels with no border and
+    # no ornament on #190505; HSReplay the same on #1a0e1f). One face, one
+    # hairline of the darkest tone so the panel still ends somewhere against
+    # the game - the three-tone gold rim this replaced was invented here,
+    # not copied from anything, and the founder called it.
+    rrect(c, 0, 0, w, h, r, fill=PANEL, outline=EDGE, tags=t)
 
 
 def header_slab(c, w, h=HEADER_H):
@@ -606,12 +617,13 @@ def header_slab(c, w, h=HEADER_H):
     if img is not None:
         c.create_image(3, 3, image=img, anchor="nw", tags=t)
         return
+    # Flat: the slab and one rule under it. The second (bevel) line was
+    # ornament; the trackers separate a header from a body with one line.
     rrect(c, 3, 3, w - 3, h + 3, RADIUS - 3, fill=HEADER_BG, outline="",
           tags=t)
     c.create_rectangle(3, h - 6, w - 3, h + 3, fill=HEADER_BG, outline="",
                        tags=t)
     c.create_line(4, h + 3, w - 4, h + 3, fill=SHADE, tags=t)
-    c.create_line(4, h + 4, w - 4, h + 4, fill=BEVEL, tags=t)
 
 
 def plate(c, x1, y1, x2, y2, r=9, best=False, tags=()):
@@ -632,10 +644,25 @@ def plate(c, x1, y1, x2, y2, r=9, best=False, tags=()):
     if img is not None:
         c.create_image(x1, y1, image=img, anchor="nw", tags=tags)
         return
+    # Flat: a lighter fill IS the row, the way the trackers do it (Firestone
+    # rows are a translucent lightening of the backdrop and nothing else).
+    # The lip hairline was ornament and is gone. ``best`` keeps its one thin
+    # gold outline - the single accent this chrome spends anywhere.
     rrect(c, x1, y1, x2, y2, r, fill=PANEL_HI if best else ROW,
           outline=GOLD if best else "", tags=tags)
-    c.create_line(x1 + r, y1 + 0.5, x2 - r, y1 + 0.5,
-                  fill=BEVEL if best else LINE, tags=tags)
+
+
+def tile_row(c, x1, y1, x2, y2, card, best=False, tags=()):
+    """A minion row drawn the way every Hearthstone tracker draws one: the
+    game's own deck-list art slice IS the row, right-aligned, fading into
+    the dark bar the name sits on (skin.tile). True when it painted; False
+    means no tile on disk and the caller draws its icon-and-text row."""
+    img = skin.tile(c, card, round((x2 - x1) * _scale),
+                    round((y2 - y1) * _scale), bool(best))
+    if img is None:
+        return False
+    c.create_image(x1, y1, image=img, anchor="nw", tags=tags)
+    return True
 
 
 def art_frame(c, x1, y1, x2, y2, best=False):

@@ -68,8 +68,8 @@ from paths import app_dir
 from . import WINDOWS
 from .base import (ACCENT, AMBER, BAD, DIM, GOOD, LINE, ON_CHIP, PANEL,
                    PANEL_HI, SOFT, TEXT, auto_scale, badge_scale,
-                   get_badge_scale, get_scale, hs_rect, set_badge_scale,
-                   set_scale)
+                   get_badge_scale, get_scale, hs_rect, repaint_all,
+                   set_badge_scale, set_scale)
 
 # The panel is drawn at these point sizes at scale 1.0 and multiplied by the UI
 # scale like everything else - it is the window where somebody on a 4K screen
@@ -313,6 +313,12 @@ class SettingsPanel(tk.Toplevel):
         self.badge_lbl.pack(side="left", padx=(8, 0))
         self.badge_note = self._sub(sec, "")
 
+        # The look. Flat is the default and copies how the established
+        # trackers present; the tavern skin is the generated art, opt-in.
+        self.skin_var = tk.BooleanVar(value=bool(self.s.get("tavern_skin")))
+        self._check(sec, "Tavern skin (generated art instead of flat panels)",
+                    self.skin_var, self._on_skin)
+
     def _on_auto(self):
         if self.auto_var.get():
             self.s.set("ui_scale", None)
@@ -347,6 +353,14 @@ class SettingsPanel(tk.Toplevel):
     def _after_scale(self):
         self._apply_own_scale()
         self._refresh_display()
+
+    def _on_skin(self):
+        """Applied live: the next redraw asks the skin and gets the answer."""
+        on = bool(self.skin_var.get())
+        self.s.set("tavern_skin", on)
+        from . import skin
+        skin.set_enabled(on)
+        repaint_all()
 
     def _on_badge(self, _value=None):
         set_badge_scale(self.badge_var.get())

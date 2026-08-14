@@ -58,7 +58,7 @@ import grades
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_STARS, F_SUB, F_TITLE,
                    GOOD, LINE, OFF_CHIP, ON_CHIP, PANEL, SHADE, SOFT,
                    STAR_COLOR, TEXT, TRIBE_COLOR, TRIBE_TAG, BaseWindow,
-                   art_frame, plate, rrect)
+                   art_frame, plate, rrect, shadow_text, tile_row)
 
 # A minion with no tribe at all is in EVERY lobby, so it is a filter of its
 # own rather than something the tribe chips can express.
@@ -639,19 +639,32 @@ class BrowserWindow(BaseWindow):
         return self._footer(c, y, len(rows), drawn)
 
     def _row(self, c, y, m, opened):
-        # The pool's own cardId is the art id; the name lookup is the same
-        # fallback the offer rows use, for a card whose art landed elsewhere.
-        ic = self.app.art.icon(m["id"], 22) or self.app.art.icon_for_name(m["name"], 22)
-        if ic is not None:
-            c.create_image(14, y + 14, image=ic, anchor="w")
-            art_frame(c, 13, y + 3, 37, y + 25, opened)
-        else:                              # no art on disk: keep the column
-            col = TRIBE_COLOR.get(m["races"][0] if m["races"] else "", LINE)
-            rrect(c, 14, y + 3, 36, y + 25, 5, fill=PANEL, outline=col)
-        c.create_text(44, y + 14, anchor="w", font=F_SUB,
+        # The row is the game's own deck-list tile - how HSReplay and
+        # Firestone draw a minion in the match (founder's direction,
+        # 2026-08-14). No tile on disk and the icon-and-text row returns.
+        tiled = tile_row(c, 8, y + 1, self.WIDTH - 8, y + 27, m["id"],
+                         best=opened)
+        name_x = 14 if tiled else 44
+        if not tiled:
+            # The pool's own cardId is the art id; the name lookup is the same
+            # fallback the offer rows use, for a card whose art landed
+            # elsewhere.
+            ic = (self.app.art.icon(m["id"], 22)
+                  or self.app.art.icon_for_name(m["name"], 22))
+            if ic is not None:
+                c.create_image(14, y + 14, image=ic, anchor="w")
+                art_frame(c, 13, y + 3, 37, y + 25, opened)
+            else:                          # no art on disk: keep the column
+                col = TRIBE_COLOR.get(m["races"][0] if m["races"] else "", LINE)
+                rrect(c, 14, y + 3, 36, y + 25, 5, fill=PANEL, outline=col)
+        c.create_text(name_x, y + 14, anchor="w", font=F_SUB,
                       fill=TEXT if opened else SOFT, text=m["name"][:30])
-        c.create_text(self.WIDTH - 14, y + 14, anchor="e", fill=DIM, font=F_SUB,
-                      text=f"T{m['techLevel']}")
+        if tiled:
+            shadow_text(c, self.WIDTH - 14, y + 14, f"T{m['techLevel']}",
+                        DIM, F_SUB, anchor="e")
+        else:
+            c.create_text(self.WIDTH - 14, y + 14, anchor="e", fill=DIM,
+                          font=F_SUB, text=f"T{m['techLevel']}")
         races = [r for r in m["races"] if r in TRIBE_TAG]
         if races:
             col = TRIBE_COLOR[races[0]]

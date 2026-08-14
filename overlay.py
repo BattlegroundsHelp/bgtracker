@@ -924,6 +924,10 @@ class App:
         # no-op when the saved value is already in force.
         ui.base.set_scale(settings.get("ui_scale") or ui.base.auto_scale())
         ui.base.set_badge_scale(settings.get("badge_scale"))
+        # The look, same rule: decided before a single window paints. Flat is
+        # the default (how the shipped trackers present); the generated
+        # tavern skin is the panel's opt-in.
+        ui.skin.set_enabled(settings.get("tavern_skin"))
         # A window switched off is NOT built. Hiding it would leave it eating
         # its events and holding a badge strip in the priority list that can
         # hide somebody else's badges - "off" has to mean absent.
