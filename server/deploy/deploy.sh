@@ -50,6 +50,19 @@ $SSH 'cd /opt/bgtracker && \
       if [ -d server/out ]; then rm -rf server.new/out && mv server/out server.new/out; fi && \
       if [ -f server/.env ]; then mv server/.env server.new/.env; fi && \
       rm -rf server && mv server.new server && rm -rf server/__pycache__'
+# The shipped text files ride in the REPO's data/, and the compose build
+# context is the PARENT of server/ (context: .., mirroring the repo layout) -
+# so they must sit at /opt/bgtracker/data/ or the image build dies on
+# "data/hero_tips.json: not found" (it did, 2026-08-14, and revealed the tips
+# service had silently never deployed at all).
+$SSH 'mkdir -p /opt/bgtracker/data'
+scp $KEYOPT -o StrictHostKeyChecking=accept-new -q \
+    "$HERE/../data/hero_tips.json" "$HERE/../data/hero_tips.schema.json" \
+    "$HERE/../data/comp_roles.json" "$TARGET:/opt/bgtracker/data/"
+# ...and the two repo-root modules the Dockerfile copies (aggregate.py
+# imports the card tables through bgtracker.py).
+scp $KEYOPT -o StrictHostKeyChecking=accept-new -q \
+    "$HERE/../bgtracker.py" "$HERE/../paths.py" "$TARGET:/opt/bgtracker/"
 
 echo "==> 4/6 starting ingest + aggregate"
 # The image runs as uid 10001 (see Dockerfile: USER app), but a bind mount that
@@ -71,6 +84,9 @@ $SITE {
     }
     handle /health* {
         reverse_proxy 127.0.0.1:8787
+    }
+    handle /tips* {
+        reverse_proxy 127.0.0.1:8788
     }
     handle {
         root * /opt/bgtracker/server/out
