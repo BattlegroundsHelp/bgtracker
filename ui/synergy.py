@@ -129,7 +129,16 @@ def synergy(entry, held=None, wild=0, board_known=False):
 
     Returns {"tribe", "word", "held", "wild", "payoff"}, where ``held`` is None
     when the board is unknown.
+
+    ``entry`` may be None: the shop names cards by id against a pool cache
+    that refreshes daily, so on a patch day a brand-new minion is simply not
+    in it yet. An unknown card has no synergy to state - it must never have
+    a crash to state instead (lived 2026-08-14: one such minion, with the
+    board readable, killed the reader thread one minute into the session and
+    every window sat frozen on "waiting for a game" for the whole evening).
     """
+    if not entry:
+        return None
     held = held or {}
     pays = payoff_tribes(entry)
     if pays:

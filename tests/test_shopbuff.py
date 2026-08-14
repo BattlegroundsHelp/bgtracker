@@ -109,6 +109,17 @@ def main() -> int:
     s.new_game()
     check(not s.shop_buffs, "new game clears the accumulators")
 
+    # 8. Same evening, same class of bug, different module: a patch-day
+    #    minion the daily pool cache does not know yet reaches synergy() as
+    #    None - WITH the board readable. That exact call killed the reader
+    #    thread live; it must answer "nothing to say", never raise.
+    from ui.synergy import synergy
+    try:
+        got = synergy(None, {"BEAST": 2}, 0, board_known=True)
+        check(got is None, "an unknown card has no synergy, not a crash")
+    except Exception as e:
+        check(False, f"synergy(None) raised {type(e).__name__}")
+
     print("\nPASS" if ok else "\nFAIL")
     return 0 if ok else 1
 

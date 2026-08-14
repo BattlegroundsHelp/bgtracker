@@ -865,13 +865,29 @@ class Reader(threading.Thread):
                         f"no Power.log in {bg.HS_LOGS} - moved install? "
                         f'set "hs_logs" in settings.json'))
             return
+        errs = 0
         for line in bg.follow(path):
-            if line is None:
-                emit_hero(det.flush())
-                flush_board()      # catch msync updates between log bursts
-                flush_players()
-            else:
-                consume(line)
+            try:
+                if line is None:
+                    emit_hero(det.flush())
+                    flush_board()  # catch msync updates between log bursts
+                    flush_players()
+                else:
+                    consume(line)
+            except Exception:
+                # One poisoned line must not end the session's tracking. This
+                # thread dying leaves every window frozen on its last state
+                # with nothing on screen saying why - lived 2026-08-14, when
+                # a patch-day minion missing from the pool cache killed the
+                # reader a minute in and the whole evening ran on a tracker
+                # that still LOOKED alive. Loud in the console, counted in
+                # the status line, and the reading continues. The demo/replay
+                # path above stays unguarded on purpose: a crash during a
+                # test replay should fail the test, not be survived.
+                errs += 1
+                traceback.print_exc()
+                self.q.put(("status",
+                            f"reader error #{errs} survived - see console"))
 
 
 class Router:
