@@ -145,6 +145,7 @@ from .browser import BrowserWindow
 from .combat import CombatWindow
 from .comps import CompsWindow
 from .counters import CountersWindow
+from .effects import EffectsWindow
 from .discover import DiscoverWindow
 from .heropick import HeroPickWindow
 from .heropower import HeroPowerWindow
@@ -156,6 +157,7 @@ from .trinkets import TrinketWindow
 # The registry. Order is construction order only - windows are independent.
 WINDOWS = (
     CountersWindow,
+    EffectsWindow,
     CombatWindow,
     TavernWindow,
     CompsWindow,

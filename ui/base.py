@@ -1611,12 +1611,25 @@ class BadgeStrip(tk.Toplevel):
             elif shown is None:
                 shadow_text(c, cx, b(14), "—", DIM, F_BADGE_NAME)
             else:
-                shadow_text(c, cx, b(13), f"{shown:.2f}", col,
-                            F_BADGE_BIG if r is best else F_BADGE_NAME)
-                if r is best:
-                    shadow_text(c, cx, b(30), "best", col, F_BADGE_CHIP)
-                elif r.get("pick") is not None:
-                    shadow_text(c, cx, b(29), f"{r['pick']:.0f}%", DIM, F_BADGE_CHIP)
+                # HSReplay's hero-pick cells, looked up and copied (their
+                # overlay page, 2026-08-14): one labelled cell per stat above
+                # the card - the label tiny and muted, the value under it -
+                # in flat dark boxes. The best offer wears the one gold
+                # accent as its cells' outline; nothing says "best" in words.
+                cw, ch = b(58), b(33)
+                cells = [("AVG", f"{shown:.2f}", col)]
+                if r.get("pick") is not None:
+                    cells.append(("PICK", f"{r['pick']:.0f}%", TEXT))
+                total = len(cells) * cw + (len(cells) - 1) * b(4)
+                x = cx - total // 2
+                for label, value, vcol in cells:
+                    c.create_rectangle(x, b(3), x + cw, b(3) + ch, fill=HALO,
+                                       outline=GOLD if r is best else LINE)
+                    c.create_text(x + cw // 2, b(10), text=label, fill=DIM,
+                                  font=F_BADGE_CHIP)
+                    c.create_text(x + cw // 2, b(24), text=value, fill=vcol,
+                                  font=F_BADGE_NAME)
+                    x += cw + b(4)
         self.visible = True
         self.deiconify()
         self.lift()

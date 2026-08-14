@@ -81,7 +81,10 @@ TRAIT_LABELS = {
     "BACON_RALLY": "Rally", "CHOOSE_ONE": "Choose One",
 }
 
-SORTS = ("tier", "name", "rating")
+# "type" first and default: the reference browser (HSReplay's, measured off
+# their overlay page 2026-08-14) groups the list under tribe section headers,
+# tiers within each - that IS its resting view, not an option it hides.
+SORTS = ("type", "tier", "name", "rating")
 
 # TURN-BY-TURN
 # ------------
@@ -154,7 +157,7 @@ class BrowserWindow(BaseWindow):
         self.sel_tribes = set()
         self.tribe_touched = False   # once true, the lobby stops overriding
         self.lobby, self.exact = set(), False
-        self.sort = "tier"
+        self.sort = "type"
         self.top = 0                 # index of the first visible row
         self.open_id = None          # the minion expanded inline
         self.expanded = False
@@ -427,9 +430,26 @@ class BrowserWindow(BaseWindow):
             return bool(self.sel_tribes - {NEUTRAL})
         return any(r in self.sel_tribes for r in races)
 
+    def _group(self, m):
+        """The section a card files under when the list is grouped by type:
+        its tribe (a two-tribe card goes under the alphabetically first, the
+        same rule _pick_tribe uses for naming), Amalgams under their own
+        heading, the tribeless last."""
+        races = [r for r in m["races"] if r in TRIBE_TAG]
+        if races:
+            return min(races).title()
+        if "ALL" in m["races"]:
+            return "All tribes"
+        return "No tribe"
+
     def _rows(self):
         rows = [m for m in self.pool if self._match(m)]
-        if self.sort == "name":
+        if self.sort == "type":
+            order = {"All tribes": "zz", "No tribe": "zzz"}
+            rows.sort(key=lambda m: (order.get(self._group(m),
+                                               self._group(m)),
+                                     m["techLevel"], m["name"].lower()))
+        elif self.sort == "name":
             rows.sort(key=lambda m: m["name"].lower())
         elif self.sort == "rating" and (self.rated or self.graded):
             # Equal stars: measured before graded. One is what happened in real
@@ -608,10 +628,24 @@ class BrowserWindow(BaseWindow):
             self.top = 0
         limit = self.MAX_H - 32           # leave the footer its band
         drawn = 0
+        last_group = None
         for m in rows[self.top:]:
             opened = self.open_id == m["id"]
             detail = self._detail(m) if opened else []
             need = self.ROW_H + (self._detail_h(detail) + 6 if opened else 0)
+            # Grouped by type: a slim section header the way the reference
+            # draws its Demon / Dragon / ... bars, once per tribe change.
+            if self.sort == "type":
+                g = self._group(m)
+                if g != last_group:
+                    if y + 16 + need > limit:
+                        break
+                    c.create_rectangle(8, y + 1, self.WIDTH - 8, y + 15,
+                                       fill=SHADE, outline="")
+                    c.create_text(14, y + 8, text=g, anchor="w",
+                                  fill=SOFT, font=F_TITLE)
+                    y += 17
+                    last_group = g
             if y + need > limit:
                 break
             if opened:

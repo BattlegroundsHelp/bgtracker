@@ -4,6 +4,21 @@
 
 ### Changed
 
+- **The counters are separate pills you can move on their own.** Copied off
+  the reference overlay's pictures: each standing tavern effect (a Waveling
+  stamp under the name the game shows, a tribe-wide shop buff, Blood Gems)
+  is a pill - the source's round card art beside "+X / +Y" - clustered in
+  their own little BUFFS window that drags anywhere and remembers its spot,
+  independent of the counters strip. The strip keeps the resources: gold,
+  tier, upgrade, triples, rolls, trinket, as labelled columns.
+- **The hero pick reads like the reference's.** Each offered hero wears
+  labelled stat cells directly above its card - AVG over the placement,
+  PICK over the pick rate - in flat dark boxes; the best offer's cells are
+  outlined in the one gold accent instead of a word saying "best". Trinket
+  offers get the same cells.
+- **The minion browser groups by type.** Tribe section headers with the
+  tiers ordered inside each - the reference's resting view - as the default
+  sort, with tier, name and rating still one tap away.
 - **The look copies the shipped trackers now, because that was the brief.**
   Minion rows are the game's own deck-list tiles - the same 256x59 art
   slices HSReplay and Firestone draw, full-bleed under the row with a dark

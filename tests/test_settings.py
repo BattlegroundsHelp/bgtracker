@@ -603,10 +603,15 @@ def test_geometry():
             {"pos": 2, "name": "B", "avg": 3.00, "n": 100}]
 
     def best_xs():
-        return sorted({round(strip.canvas.coords(i)[0])
-                       for i in strip.canvas.find_all()
-                       if strip.canvas.type(i) == "text"
-                       and strip.canvas.itemcget(i, "text") == "best"})
+        # The best offer is marked by the GOLD outline on its stat cells
+        # (the HSReplay-cell restyle, 2026-08-14 - there is no "best" text
+        # any more). The cells straddle the slot, so the marker position is
+        # the MEAN of their centres.
+        xs = [(strip.canvas.coords(i)[0] + strip.canvas.coords(i)[2]) / 2
+              for i in strip.canvas.find_all()
+              if strip.canvas.type(i) == "rectangle"
+              and strip.canvas.itemcget(i, "outline") == ui.base.GOLD]
+        return [round(sum(xs) / len(xs))] if xs else []
 
     # set_badge_scale re-shows every visible strip from the LIVE game window
     # (hs_rect) - correct in production, but this test measures chip x against

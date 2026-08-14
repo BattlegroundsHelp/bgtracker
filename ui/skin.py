@@ -419,6 +419,42 @@ def tile(c, card, w, h, best=False):
     return _photo(key, im, c)
 
 
+_CROP_DIR = APP_DIR / "assets" / "crops"
+
+
+def round_icon(c, card, px, ring=None):
+    """A circular card-art icon, the way the reference draws a counter's
+    source in its pill. ``card`` may be an enchantment id - the trailing
+    'pe'/'e' is folded onto the base card whose crop fetch-art saved. None
+    when there is no art: the caller draws its plain-circle fallback.
+    """
+    if not _PIL or not card or px < 6:
+        return None
+    key = _key(c, "ricon", card, px, ring)
+    got = _get(key)
+    if got is not None:
+        return got
+    src = None
+    stem = card[:-2] if card.endswith("pe") else card
+    for cid in {card, stem, stem[:-1] if stem.endswith("e") else stem}:
+        p = _CROP_DIR / f"{cid}.jpg"
+        if p.is_file():
+            try:
+                src = Image.open(p).convert("RGBA")
+            except Exception:
+                src = None
+            break
+    if src is None:
+        return None
+    im = src.resize((px, px), Image.LANCZOS)
+    mask = Image.new("L", (px, px), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, px - 1, px - 1), fill=255)
+    im.putalpha(mask.point(lambda v: 255 if v >= 128 else 0))
+    if ring:
+        ImageDraw.Draw(im).ellipse((0, 0, px - 1, px - 1), outline=ring)
+    return _photo(key, im, c)
+
+
 def icon(root):
     """The window/taskbar face - app identity, NOT tavern chrome, so it is
     not behind the skin switch. None only when the file is missing."""

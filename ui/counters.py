@@ -328,6 +328,40 @@ class CounterState:
         return bool(self.bg_turn or self.gold_base is not None or self.tier
                     or self.board or self.extra_next)
 
+    def effects(self):
+        """The standing tavern effects, as data: {card, label, atk, hp, kind}.
+
+        ``card`` is the accumulator's cardId (or None for the legacy player
+        tags), ``kind`` one of shopbuff/stamper/legacy/gem. The pills window
+        and the strip both read this one list, so they can never disagree.
+        """
+        out = []
+        elem_accum = False
+        for eid in sorted(self.shop_buffs):
+            rec = self.shop_buffs[eid]
+            if not (rec["atk"] or rec["hp"]):
+                continue
+            if rec["card"].startswith(SHOPBUFF_PREFIX):
+                if rec["label"] == "ELEMENTAL":
+                    elem_accum = True
+                out.append({"card": rec["card"], "label": rec["label"],
+                            "atk": rec["atk"], "hp": rec["hp"],
+                            "kind": "shopbuff"})
+            else:
+                out.append({"card": rec["card"],
+                            "label": rec["label"] or "Tavern buff",
+                            "atk": rec["atk"], "hp": rec["hp"],
+                            "kind": "stamper"})
+        if (self.elem_atk or self.elem_hp) and not elem_accum:
+            out.append({"card": None, "label": "ELEMENTAL",
+                        "atk": self.elem_atk, "hp": self.elem_hp,
+                        "kind": "legacy"})
+        if self.gem_atk or self.gem_hp:
+            out.append({"card": None, "label": "Blood Gems",
+                        "atk": self.gem_atk, "hp": self.gem_hp,
+                        "kind": "gem"})
+        return out
+
     # ------------------------------------------------------------------ input
 
     def set_board(self, names):
@@ -783,36 +817,6 @@ class CountersWindow(BaseWindow):
             cols.append(("TRINKET", f"in {nxt}", SOFT))
         return cols
 
-    def _effects(self):
-        """(name, value, colour) rows for the standing tavern effects."""
-        s = self.state
-        out = []
-        elem_accum = False
-        for eid in sorted(s.shop_buffs):
-            rec = s.shop_buffs[eid]
-            if not (rec["atk"] or rec["hp"]):
-                continue
-            stat = f"+{rec['atk']}/+{rec['hp']}"
-            if rec["card"].startswith(SHOPBUFF_PREFIX):
-                tribe = rec["label"]
-                if tribe == "ELEMENTAL":
-                    elem_accum = True
-                    out.append(("Elementals", stat, TRIBE_COLOR["ELEMENTAL"]))
-                else:
-                    nm = (tribe or "buff").capitalize() + "s"
-                    out.append((nm, stat, TRIBE_COLOR.get(tribe, SOFT)))
-            else:
-                out.append((rec["label"] or "Tavern buff", stat, AMBER))
-        # The legacy pair only when no accumulator claims the meaning - in
-        # current games it tracks a per-application size, not the total.
-        if (s.elem_atk or s.elem_hp) and not elem_accum:
-            out.append(("Elementals", f"+{s.elem_atk}/+{s.elem_hp}",
-                        TRIBE_COLOR["ELEMENTAL"]))
-        if s.gem_atk or s.gem_hp:
-            out.append(("Blood Gems", f"+{s.gem_atk}/+{s.gem_hp}",
-                        TRIBE_COLOR["QUILBOAR"]))
-        return out
-
     def draw(self, c):
         s = self.state
         turn = s.bg_turn
@@ -827,10 +831,11 @@ class CountersWindow(BaseWindow):
         # The labelled columns: label at the top in the muted small type,
         # value under it in the plain bright one. Columns that stop fitting
         # drop from the right - the first three always fit.
-        # The band is 34px of body under the header; that is exactly one
-        # label line (F_CHIP), one value line (F_SUB) and one effects line
-        # (F_SUB) at Tk's real line boxes - measured, not hoped, after two
-        # rounds of the window test catching painted ink below the panel.
+        # One label line (F_CHIP) over one value line (F_SUB), at Tk's real
+        # line boxes - measured, not hoped, after two rounds of the window
+        # test catching painted ink below the panel. The standing effects
+        # are not here any more: they are the BUFFS window's pills, movable
+        # on their own, the way the reference draws each counter separately.
         x, limit = 14, self.WIDTH - 8
         for label, value, fill in self._stats():
             w = max(F_CHIP.measure(label), F_SUB.measure(value)) + 14
@@ -841,22 +846,4 @@ class CountersWindow(BaseWindow):
             c.create_text(x, y + 8, text=value, anchor="nw", fill=fill,
                           font=F_SUB)
             x = x + w
-        y += 21
-
-        # The standing effects on one line, name plain and value coloured,
-        # dropped from the end when the line is out of room.
-        effects = self._effects()
-        if effects:
-            x = 14
-            for name, value, fill in effects:
-                seg_w = F_SUB.measure(f"{name} {value}") + 14
-                if x + seg_w > limit and x > 14:
-                    break
-                t = c.create_text(x, y, text=name, anchor="nw",
-                                  fill=SOFT, font=F_SUB)
-                vx = advance(c, t) + 4
-                c.create_text(vx, y, text=value, anchor="nw", fill=fill,
-                              font=F_SUB)
-                x = vx + F_SUB.measure(value) + 12
-            y += 14
-        return y
+        return y + 23
