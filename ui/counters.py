@@ -22,9 +22,20 @@ Written against the local player's PLAYER entity (``Entity=<battletag>``):
   RESOURCES                          the gold this turn gives you
   RESOURCES_USED                     how much of it you have spent
   TEMP_RESOURCES                     one-off gold on top (a coin, a trinket)
-  BACON_PLAYER_EXTRA_GOLD_NEXT_TURN  gold already banked for NEXT turn
-  BACON_ELEMENTAL_BUFFATKVALUE       the tavern's elemental buff, attack half
-  BACON_ELEMENTAL_BUFFHEALTHVALUE    ... and its health half
+  BACON_PLAYER_EXTRA_GOLD_NEXT_TURN  gold already banked for NEXT turn.
+                                     Measured 2026-08-13: ZERO occurrences in
+                                     a full live session (3 games) - the
+                                     current patch does not write it. Kept for
+                                     old logs; a live source for "next turn's
+                                     gold" is still wanted and needs a game
+                                     that actually banks some to mine it from.
+  BACON_ELEMENTAL_BUFFATKVALUE       the elemental buff, attack half. In
+  BACON_ELEMENTAL_BUFFHEALTHVALUE    current games this pair tracks a small
+                                     per-application size, NOT the total the
+                                     game's tooltip shows - the totals moved
+                                     to accumulator enchantments (see
+                                     SHOPBUFF_PREFIX below), and these two are
+                                     drawn only when no accumulator exists.
   BACON_BLOODGEMBUFFATKVALUE         your Blood Gem size, attack half
   BACON_BLOODGEMBUFFHEALTHVALUE      ... and its health half
   PLAYER_TECH_LEVEL                  your tavern tier (also written on the hero)
@@ -102,8 +113,12 @@ PTL = "PowerTaskList"
 # TAG_CHANGE Entity=<battletag|GameEntity|[bracket]> tag=X value=N
 # The bracket alternative is matched up to its own "player=N]" because entity
 # names legitimately contain brackets ("Bacon_Free_Refresh_Player_Ench [DNT]").
+# The plain alternative is lazy-up-to-" tag=" rather than \S+, because entity
+# names carry spaces: the live log writes "TAG_CHANGE Entity=Bartender Bob
+# tag=..." - and a BATTLETAG with a space would have made every player tag
+# unreadable for that user under the old \S+.
 TAGCHANGE_RE = re.compile(
-    r"TAG_CHANGE Entity=(?P<ent>\[.*?player=\d+\]|\S+) "
+    r"TAG_CHANGE Entity=(?P<ent>\[.*?player=\d+\]|.+?) "
     r"tag=(?P<tag>[A-Z0-9_]+) value=(?P<val>-?\d+)")
 BRACKET_RE = re.compile(
     r"^\[entityName=(?P<name>.*) id=(?P<id>\d+) zone=(?P<zone>\w+) "
@@ -117,9 +132,12 @@ BARE_TAG_RE = re.compile(r"^D [\d:.]+ \w+\.DebugPrintPower\(\) - +"
                          r"tag=(?P<tag>[A-Z0-9_]+) value=(?P<val>-?\d+)\s*$")
 # The log states the player-id -> battletag mapping outright. Same shape the
 # reader uses for the extra-gold tag; the battletag is only ever held in memory
-# to match lines, and is never drawn or written anywhere.
-PLAYERNAME_RE = re.compile(r"PlayerID=(\d+), PlayerName=(\S+)")
-PLAYERNAME_BYTES = re.compile(rb"PlayerID=(\d+), PlayerName=(\S+)")
+# to match lines, and is never drawn or written anywhere. Name to end of line,
+# not \S+: a battletag with a space would otherwise be stored truncated and
+# could then never equal the entity spelling on any tag line.
+PLAYERNAME_RE = re.compile(r"PlayerID=(\d+), PlayerName=(.+?)\s*$")
+PLAYERNAME_BYTES = re.compile(rb"PlayerID=(\d+), PlayerName=(.+?)\s*$",
+                              re.MULTILINE)
 DRAGBUY = "TB_BaconShop_DragBuy"
 TECHUP_RE = re.compile(r"^TB_BaconShopTechUp0*(\d+)_Button$")
 TRINKET_SLOT = {"BG30_Trinket_1st": "lesser", "BG30_Trinket_2nd": "greater"}
@@ -145,6 +163,35 @@ OWNED_TAGS = {
     "PLAYER_TRIPLES": ("triples", "PLAY"),
     "BACON_FREE_REFRESH_COUNT": ("free_rolls", "PLAY"),
 }
+
+# The standing tavern buffs of the CURRENT game patch live on hidden
+# player-attached accumulator enchantments, not on the player tags above.
+# Measured live 2026-08-13 (elemental game): the game's own tooltip
+# said +59/+54 while BACON_ELEMENTAL_BUFF* on the player entity read 3/4 - the
+# legacy pair no longer carries the total. The totals were on two enchantments
+# owned by player=2, in TAG_SCRIPT_DATA_NUM_1 (attack) and _NUM_2 (health):
+#
+#   cardId BG_ShopBuff_Elemental        "your Elementals in the Tavern have
+#                                        +X/+Y" (Dancing Barnstormer's line;
+#                                        the suffix names the tribe)
+#   cardId BG34_854pe, entityName        a per-refresh accumulator (Waveling)
+#     "Random minion Tavern Minion       that stamps its running total onto
+#      Buff Player Ench [DNT]"           one tavern minion as a visible
+#                                        enchantment (BG34_854e, "Eastern
+#                                        Winds") - the stamped copy's NAME is
+#                                        what the player sees, so it is what
+#                                        the chip is labelled with.
+#
+# The BG_ShopBuff_ prefix is the general family; the "...pe" + "Tavern Minion
+# Buff" pair identifies the stamping kind without hardcoding one card.
+SHOPBUFF_PREFIX = "BG_ShopBuff_"
+STAMPER_NAME = "Tavern Minion Buff"
+ACCUM_TAGS = {"TAG_SCRIPT_DATA_NUM_1": "atk", "TAG_SCRIPT_DATA_NUM_2": "hp"}
+# The same totals (and RESOURCES) are mirrored onto a bracketed enchantment,
+# cardId Bacon_TagTransferPlayerE, one step behind the battletag entity. It is
+# read as a REDUNDANT source for the player tags: for a battletag the log
+# spells strangely, the mirror is the only copy that still attributes.
+TAGTRANSFER = "Bacon_TagTransferPlayerE"
 
 _NAME_TRIBES = None
 
@@ -221,6 +268,8 @@ class CounterState:
         self.trinket_in = {}        # "lesser"/"greater" -> turns left
         self.elem_atk = self.elem_hp = 0
         self.gem_atk = self.gem_hp = 0
+        self.shop_buffs = {}        # accumulator entity id -> {card, label,
+                                    # atk, hp} - the standing tavern buffs
         self.board = []             # minion names, from the reader's board event
         self.version = 0
         self._blk = None
@@ -405,6 +454,27 @@ class CounterState:
             return
         card, zone = br.group("card"), br.group("zone")
 
+        # The standing tavern buffs (see the SHOPBUFF_PREFIX block above).
+        # PLAY and SETASIDE both accepted: an accumulator is a hidden
+        # bookkeeping enchantment and the client has parked it in either.
+        if tag in ACCUM_TAGS and zone in ("PLAY", "SETASIDE"):
+            self._accum(br.group("id"), card, br.group("name"),
+                        ACCUM_TAGS[tag], val)
+            return
+        # A stamping accumulator's visible copy ("Eastern Winds") names the
+        # buff the player is actually shown - claim it as the chip label.
+        if card and card.endswith("e") and self.shop_buffs:
+            self._accum_name(card, br.group("name"))
+
+        # The TagTransfer mirror: redundant copies of the player tags. Applied
+        # through the same field map, so whichever spelling the log manages to
+        # attribute first wins and the other only ever restates it.
+        if card == TAGTRANSFER:
+            field = PLAYER_TAGS.get(tag)
+            if field is not None:
+                self._bump(field, val)
+            return
+
         owned = OWNED_TAGS.get(tag)
         if owned is not None and zone == owned[1]:
             self._bump(owned[0], val)
@@ -430,6 +500,44 @@ class CounterState:
             slot = TRINKET_SLOT.get(card)
             if slot is not None and self.trinket_in.get(slot) != val:
                 self.trinket_in[slot] = val
+                self.version += 1
+
+    def _accum(self, eid, card, name, half, val):
+        """One script-data write on an entity we own: is it a tavern buff?
+
+        Only the two known accumulator shapes are believed - script data is a
+        general-purpose scratchpad and most of it is not a buff. An unknown
+        enchantment writing script data is silently ignored, which is the
+        honest failure: no chip, rather than a chip with a wrong meaning.
+        """
+        if card.startswith(SHOPBUFF_PREFIX) and not card.endswith("_Ench"):
+            # The bare family cardId is the accumulator; the game stamps a
+            # per-minion copy with _Ench appended ("Elemental Tavern Buffed",
+            # 16 of them in one replayed game) that carries the same numbers
+            # and would each have shown up as its own chip.
+            label = card[len(SHOPBUFF_PREFIX):].upper()   # the tribe
+        elif card.endswith("pe") and STAMPER_NAME in (name or ""):
+            label = None                    # named by its visible stamp later
+        else:
+            return
+        rec = self.shop_buffs.get(eid)
+        if rec is None:
+            rec = self.shop_buffs[eid] = {"card": card, "label": label,
+                                          "atk": 0, "hp": 0}
+        if rec[half] != val:
+            rec[half] = val
+            self.version += 1
+
+    def _accum_name(self, card, name):
+        """A visible stamped enchantment sighted: its cardId is the stamper's
+        minus the 'p' (BG34_854pe stamps BG34_854e), and its NAME is the words
+        on the player's screen."""
+        if not name or name.startswith("UNKNOWN"):
+            return
+        for rec in self.shop_buffs.values():
+            if (rec["label"] is None and rec["card"].endswith("pe")
+                    and rec["card"][:-2] + "e" == card):
+                rec["label"] = name
                 self.version += 1
 
 
@@ -680,7 +788,31 @@ class CountersWindow(BaseWindow):
 
         if s.extra_next:
             out.append((f"+{s.extra_next}g next", GOOD))
-        if s.elem_atk or s.elem_hp:
+
+        # The standing tavern buffs, from the accumulator enchantments the
+        # current patch actually maintains. A tribe-wide buff is labelled by
+        # its tribe ("elem +133/+136"); a stamping buff by the name the game
+        # itself shows ("Eastern Winds +97/+95"). The legacy player-tag pair
+        # is drawn only when NO elemental accumulator exists - in current
+        # games it tracks a per-application size, not the total, and showing
+        # both would be two numbers claiming one meaning.
+        elem_accum = False
+        for eid in sorted(s.shop_buffs):
+            rec = s.shop_buffs[eid]
+            if not (rec["atk"] or rec["hp"]):
+                continue
+            stat = f"+{rec['atk']}/+{rec['hp']}"
+            if rec["card"].startswith(SHOPBUFF_PREFIX):
+                tribe = rec["label"]
+                if tribe == "ELEMENTAL":
+                    elem_accum = True
+                    out.append((f"elem {stat}", TRIBE_COLOR["ELEMENTAL"]))
+                else:
+                    tag = TRIBE_TAG.get(tribe, tribe[:3].lower() if tribe else "buff")
+                    out.append((f"{tag} {stat}", TRIBE_COLOR.get(tribe, SOFT)))
+            else:
+                out.append((f"{rec['label'] or 'tavern buff'} {stat}", AMBER))
+        if (s.elem_atk or s.elem_hp) and not elem_accum:
             out.append((f"elem +{s.elem_atk}/+{s.elem_hp}", TRIBE_COLOR["ELEMENTAL"]))
         if s.gem_atk or s.gem_hp:
             out.append((f"gem +{s.gem_atk}/+{s.gem_hp}", TRIBE_COLOR["QUILBOAR"]))

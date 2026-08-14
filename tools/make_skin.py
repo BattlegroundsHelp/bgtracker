@@ -109,6 +109,41 @@ def shrink(im: Image.Image, target_w: int) -> Image.Image:
                      Image.LANCZOS)
 
 
+def quiet(im: Image.Image, inset=0.0, keep_bottom=0.0,
+          knee=28, ceiling=38) -> Image.Image:
+    """Flatten the region TEXT will sit on; leave the edges as art.
+
+    The brief's acceptance rule for every text-bearing surface was "nothing
+    brighter than #241d15" (L~36), and the measured art broke it exactly where
+    it hurts: the best-plate's warm face hit L=118 at its 95th percentile and
+    the header's streaks reached 166, so 7pt parchment text sat on light
+    noise. The generator cannot be argued with, so the contract is enforced
+    here: inside the region text occupies, luminance above ``knee`` is
+    compressed hard and capped at ``ceiling``. Edges are exempt - a plate's
+    lip, a rim of gold, the header's bottom rule are art, and they carry no
+    text.
+
+    ``inset``: fraction of the height treated as edge on all four sides.
+    ``keep_bottom``: extra fraction of the height left untouched at the
+    bottom (the header's gold rule lives there).
+    """
+    w, h = im.size
+    px = im.load()
+    top = left = int(h * inset)
+    right = w - int(h * inset)
+    bottom = h - int(h * max(inset, keep_bottom))
+    for y in range(top, bottom):
+        for x in range(left, right):
+            p = px[x, y]
+            l = (p[0] * 299 + p[1] * 587 + p[2] * 114) // 1000
+            if l <= knee:
+                continue
+            nl = min(ceiling, knee + (l - knee) * 0.35)
+            f = nl / l
+            px[x, y] = (int(p[0] * f), int(p[1] * f), int(p[2] * f)) + tuple(p[3:])
+    return im
+
+
 def save(im: Image.Image, name: str):
     p = OUT / name
     scrub_key(im).save(p)
@@ -121,8 +156,11 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     print(f"writing {OUT}")
 
-    # Opaque surfaces: no key to cut, just size and scrub.
-    save(shrink(Image.open(RAW / "panel_wood.jpg").convert("RGB"), 1024),
+    # Opaque surfaces: no key to cut, just size, quiet, and scrub. The wood
+    # is quieted over its WHOLE face (text lands anywhere on it), with a
+    # tighter ceiling: it is the floor everything else sits on.
+    save(quiet(shrink(Image.open(RAW / "panel_wood.jpg").convert("RGB"), 1024),
+               knee=22, ceiling=30),
          "panel_wood.png")
     save(shrink(Image.open(RAW / "settings_bg.jpg").convert("RGB"), 848),
          "settings_bg.png")
@@ -130,19 +168,25 @@ def main() -> int:
     # Keyed assets: cut, crop, size. Working sizes are chosen so the LARGEST
     # thing ever painted from each (a 4K panel at UI scale 3) still downscales
     # rather than stretches.
-    for raw, name, target in [
-        ("frame_gold.jpg", "frame_gold.png", 512),
-        ("header_bar.jpg", "header_bar.png", 1024),
-        ("plate.jpg", "plate.png", 1024),
-        ("plate_best.jpg", "plate_best.png", 1024),
-        ("artframe.jpg", "artframe.png", 256),
-        ("chip_on.jpg", "chip_on.png", 256),
-        ("chip_off.jpg", "chip_off.png", 256),
-        ("corner.jpg", "corner.png", 256),
-        ("app_icon.jpg", "app_icon.png", 512),
+    # (asset, working width, quiet arguments). The header keeps its bottom
+    # band (the gold rule); the plates keep an edge band (the lip, and the
+    # best-plate's gold rim - its MEANING); the frame, chips and icon carry
+    # no text and stay loud.
+    for raw, name, target, q in [
+        ("frame_gold.jpg", "frame_gold.png", 512, None),
+        ("header_bar.jpg", "header_bar.png", 1024, {"keep_bottom": 0.18}),
+        ("plate.jpg", "plate.png", 1024, {"inset": 0.14}),
+        ("plate_best.jpg", "plate_best.png", 1024, {"inset": 0.14}),
+        ("artframe.jpg", "artframe.png", 256, None),
+        ("chip_on.jpg", "chip_on.png", 256, None),
+        ("chip_off.jpg", "chip_off.png", 256, None),
+        ("corner.jpg", "corner.png", 256, None),
+        ("app_icon.jpg", "app_icon.png", 512, None),
     ]:
-        im = crop_content(cut_magenta(Image.open(RAW / raw)))
-        save(shrink(im, target), name)
+        im = shrink(crop_content(cut_magenta(Image.open(RAW / raw))), target)
+        if q is not None:
+            im = quiet(im, **q)
+        save(im, name)
 
     # The exe / taskbar icon, straight from the cut shield.
     icon = Image.open(OUT / "app_icon.png")

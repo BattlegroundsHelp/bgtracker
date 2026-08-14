@@ -608,11 +608,22 @@ def test_geometry():
                        if strip.canvas.type(i) == "text"
                        and strip.canvas.itemcget(i, "text") == "best"})
 
-    strip.show(rows, rect, min_sample=25)
-    before = (strip.min_sample, best_xs())
-    ui.base.set_badge_scale(1.3)           # re-shows every visible strip
-    after = (strip.min_sample, best_xs())
-    ui.base.set_badge_scale(1.0)
+    # set_badge_scale re-shows every visible strip from the LIVE game window
+    # (hs_rect) - correct in production, but this test measures chip x against
+    # its own fabricated rect, and with Hearthstone actually running the
+    # assertion drifted with wherever the real window happened to sit that
+    # day (caught 2026-08-13: pass at one window position, +9px fail after
+    # the window was moved). Pin the rect for the duration of the nudge.
+    real_hs_rect = ui.base.hs_rect
+    ui.base.hs_rect = lambda: rect
+    try:
+        strip.show(rows, rect, min_sample=25)
+        before = (strip.min_sample, best_xs())
+        ui.base.set_badge_scale(1.3)       # re-shows every visible strip
+        after = (strip.min_sample, best_xs())
+        ui.base.set_badge_scale(1.0)
+    finally:
+        ui.base.hs_rect = real_hs_rect
     slot_b = int(1920 * 0.586)             # SLOT_X["hero"][2][1]: row B's slot
     on_b = (lambda xs: bool(xs) and all(abs(x - slot_b) <= 4 for x in xs))
     print(f"  badge nudge: min_sample {before[0]} -> {after[0]}, 'best' chip at "

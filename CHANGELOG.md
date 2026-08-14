@@ -12,6 +12,28 @@
   new can fail closed. All labels, numbers and data colours are untouched -
   paint changed, meaning did not.
 
+### Fixed
+
+- **The tavern-buff counters track the numbers the game actually shows now.**
+  Caught live: the game's tooltip said the standing elemental buff was
+  +59/+54 while the strip said "elem +3/+4". The strip was faithfully
+  mirroring a pair of player tags whose meaning the game changed under it -
+  the real totals moved to hidden accumulator enchantments. The strip now
+  reads those accumulators (verified against a full replayed game: every
+  value matches the log's own shop-phase truth), labels a tribe-wide buff by
+  its tribe and a stamping buff by the name the game shows ("Eastern Winds
+  +103/+101"), and only falls back to the legacy tags for old logs. Found in
+  the same sweep: a battletag containing a space would have made every
+  counter unreadable (fixed), the player tags are now also read from the
+  game's own mirror enchantment as a second road, and the "extra gold next
+  turn" tag simply no longer exists in current logs - it is kept for old
+  ones, and finding its replacement needs a game that actually banks gold.
+- **Text sits on quiet wood again.** The generated art broke the brief's own
+  readability rule exactly where text lives: the highlighted row plate hit
+  brightness 118 where the contract says 38. The skin bake now flattens the
+  interior of every text-bearing surface and leaves the edges - the gold
+  rim, the plate lip, the header rule - as loud as the art drew them.
+
 ## v0.3.4-alpha (13 August 2026)
 
 ### Fixed
