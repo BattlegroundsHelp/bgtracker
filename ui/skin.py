@@ -244,8 +244,47 @@ def header(c, w, h, r):
     return _photo(key, im, c)
 
 
+def _slice_filled(src, w, h, cd):
+    """The plate redrawn at (w, h) with its corners kept at ``cd`` px.
+
+    The row art is wide (about 7:1); stretched onto a TALL block - the comps
+    window's expanded comp, the browser's opened row - a whole resize
+    balloons the corners and drags the bright edge band (art the quiet pass
+    exempts) right under the text. Same lesson as the quiet pass itself, one
+    day later: art holds its shape at the EDGES and the interior is the flat
+    face - so corners are copied, edges stretch along their length only, and
+    the face fills the middle.
+    """
+    sw, sh = src.size
+    cs = min(sw, sh) // 3
+    cd = max(3, min(cd, w // 3, h // 3))
+    out = Image.new("RGBA", (w, h))
+
+    def put(box, size, at):
+        out.paste(src.crop(box).resize(size, Image.LANCZOS), at)
+
+    put((0, 0, cs, cs), (cd, cd), (0, 0))
+    put((sw - cs, 0, sw, cs), (cd, cd), (w - cd, 0))
+    put((0, sh - cs, cs, sh), (cd, cd), (0, h - cd))
+    put((sw - cs, sh - cs, sw, sh), (cd, cd), (w - cd, h - cd))
+    if w > 2 * cd:
+        put((cs, 0, sw - cs, cs), (w - 2 * cd, cd), (cd, 0))
+        put((cs, sh - cs, sw - cs, sh), (w - 2 * cd, cd), (cd, h - cd))
+    if h > 2 * cd:
+        put((0, cs, cs, sh - cs), (cd, h - 2 * cd), (0, cd))
+        put((sw - cs, cs, sw, sh - cs), (cd, h - 2 * cd), (w - cd, cd))
+        if w > 2 * cd:
+            put((cs, cs, sw - cs, sh - cs), (w - 2 * cd, h - 2 * cd), (cd, cd))
+    return out
+
+
 def plate(c, w, h, best):
-    """One row's plate. Feathered edges stay: it lies ON the opaque panel."""
+    """One row's plate. Feathered edges stay: it lies ON the opaque panel.
+
+    A row-shaped target takes the art whole, as approved on screen. A target
+    much taller than the art's own aspect is sliced instead (_slice_filled):
+    the STRETCH, not the art, was what read as broken.
+    """
     if not active():
         return None
     key = _key(c, "plate", w, h, best)
@@ -255,7 +294,15 @@ def plate(c, w, h, best):
     src = _load("plate_best.png" if best else "plate.png")
     if src is None or w < 4 or h < 4:
         return None
-    return _photo(key, src.resize((w, h), Image.LANCZOS), c)
+    sw, sh = src.size
+    if h * sw > w * sh * 1.5:
+        # Corner size follows the smaller target dimension at the art's own
+        # corner-to-width proportion, so a sliced plate's corners carry the
+        # same visual weight as a whole-resized row's.
+        im = _slice_filled(src, w, h, round(min(w, h) * (sh // 3) / sw))
+    else:
+        im = src.resize((w, h), Image.LANCZOS)
+    return _photo(key, im, c)
 
 
 def art_frame(c, w, h, best):
