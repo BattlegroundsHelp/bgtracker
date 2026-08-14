@@ -49,10 +49,10 @@ ARM_SECONDS = 3.0
 # real game-range socket is confirmed back (or the attempt failed/timed out).
 # No wall-clock gate.
 
-# Both buttons now run the same adaptive block (hold only until the game
-# socket actually dies, then lift). The dial is merely the give-up ceiling for
-# a quiet client with nothing in flight to time out.
-BLIP_CHOICES = (20.0, 25.0, 15.0)
+# The fixed blip length, Breekys' default first. Short is the point: a brief
+# outbound blip skips the fight without a deep disconnect. The dial only exists
+# to nudge it if 4s ever proves too short to trip the server-side skip.
+BLIP_CHOICES = (4.0, 5.0, 6.0, 3.0)
 
 VK_CONTROL, VK_MENU, VK_D = 0x11, 0x12, 0x44
 
@@ -105,7 +105,7 @@ class Trial:
         self.busy = False
         self._combo = False
 
-        root.title("dc/rc trial")
+        root.title("dc/rc trial  v3 (4s blip)")
         root.attributes("-topmost", True)
         root.configure(bg="#14140f")
         root.geometry("620x440")
@@ -175,41 +175,37 @@ class Trial:
                               bg=ARMED_BG)
         self.say("armed", "ARM")
 
-    def fire(self, ceiling: float = 20.0) -> None:
-        """The dc/rc: adaptive firewall block, per the audit's fix plan.
+    def fire(self, ceiling: float = 4.0) -> None:
+        """The fight-skip: a brief fixed traffic blip, Breekys' proven recipe.
 
-        NOT drop_sockets. The socket abort tells the client the server hung up
-        on it, which it survives exactly once per session - that was the whole
-        'works only the first time'. The block is what the maintained tools
-        do, and ours lifts the moment the socket dies so the client's retries
-        actually get through.
+        NOT a socket kill, and NOT a wait-until-dead deep disconnect. Both of
+        those wedged the client on the second use. This blocks the game's
+        traffic for a fixed few seconds so the server skips the combat, then
+        lets it straight back - the shallowest disconnect that still skips.
         """
         self.armed_until = 0.0
         if self.pid is None:
             self.say("Hearthstone is gone", "ABORT")
             return
         if self.busy:
-            self.say("a cycle is still in flight - the next press unlocks on "
-                     "a CONFIRMED reconnect, a timeout, or a restart",
+            self.say("a blip is still in flight - wait for it to finish",
                      "REFUSED")
             return
         before = established(self.pid)
         game = [c for c in before if dcrc.is_game_conn(c)]
         self.say(f"{len(before)} established, {len(game)} of them the game: "
-                 + (", ".join(sorted(_sig(c) for c in game)) or "NONE")
-                 + "   | leaving alone: "
-                 + ", ".join(sorted(_sig(c) for c in before
-                                    if not dcrc.is_game_conn(c))), "BEFORE")
+                 + (", ".join(sorted(_sig(c) for c in game)) or "NONE"), "BEFORE")
         if not game:
-            self.say("no game connection to cut - join a match first", "VOID")
+            self.say("no game connection - join a match first", "VOID")
             return
         self.busy = True
         pid = self.pid
-        self.say(f"blocking until the game socket dies (ceiling "
-                 f"{ceiling:.0f}s), then lifting immediately", "CUT")
+        secs = ceiling
+        self.say(f"blipping the game's traffic for a fixed {secs:.0f}s "
+                 f"(server skips the fight, socket left alone)", "BLIP")
 
         def run():
-            r = dcrc.block_until_dropped(pid, ceiling)
+            r = dcrc.disconnect_via_firewall(pid, secs)
             self.root.after(0, lambda: self._work_done(r))
 
         threading.Thread(target=run, daemon=True).start()
@@ -228,16 +224,18 @@ class Trial:
         self.say(str(r), "RESULT")
         if r.get("errors"):
             self.say("!! " + "; ".join(r["errors"]), "WARN")
-        if r.get("dropped"):
-            self.drop_at = time.monotonic()
-            self.say("game socket is dead, block lifted - watching for a NEW "
-                     "game-range connection", "WAIT")
-        else:
-            # Nothing was disconnected (idle client, not elevated, rule
-            # failed). Nothing to time, and no reason to stay locked.
+        if r.get("blocked"):
+            # The blip ran and lifted. The socket is usually still alive (a
+            # brief blip does not kill it), so there is no reconnect to wait
+            # for - the fight was skipped server-side. Ready for the next round
+            # as soon as this returns.
             self.busy = False
-            self.say("nothing was disconnected, so there is nothing to time",
-                     "VOID")
+            self.say("blip done, traffic restored - skip should have landed, "
+                     "ready for the next round", "OK")
+        else:
+            # Not elevated, rule failed, or no game connection.
+            self.busy = False
+            self.say("nothing was blocked (see the error above)", "VOID")
 
     def restart(self) -> None:
         """Always available - it IS the escape hatch when a cycle went bad."""

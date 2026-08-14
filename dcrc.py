@@ -400,18 +400,18 @@ def set_block(on: bool) -> bool:
     return r.returncode == 0
 
 
-def disconnect_via_firewall(pid: int, seconds: float = 9.0) -> dict:
-    """Block the game's traffic for a fixed spell, exactly like Vaiz's tool.
+def disconnect_via_firewall(pid: int, seconds: float = 4.0) -> dict:
+    """A brief traffic blip, matching Breekys' Hearthstone_Battlegrounds_Skip -
+    the one BG fight-skip tool with zero crash reports.
 
-    Its defaults are DisconnectIntervalMin=8 / DisconnectIntervalMax=10, and it
-    sleeps a random interval in that range with the rule enabled the WHOLE
-    time. My earlier version lifted the block the moment the socket died, on
-    the reasoning that the client needed its retries to get through; that was
-    a deviation from the one design known to work, and it produced a client
-    that reconnected in a second and then quit anyway.
+    The lesson learned the hard way: the skip does NOT need the game socket to
+    die. Breekys blocks Hearthstone's outbound for a FIXED ~4s and lets the
+    rule off again; the server fast-forwards past the combat and the client
+    resyncs into the next recruit phase. Our previous approach held the block
+    until the socket fully died - 9 to 11 seconds - which is a far harsher
+    disconnect, and that depth is what wedged the client on the second use.
 
-    Hold it. The client is supposed to come out of this having decided it lost
-    the connection, which is the state its rejoin path is written for.
+    So: short, fixed, do not wait for death. Its default 4s is Breekys' default.
     """
     exe = hs_exe_path(pid)
     report = {"exe": exe, "seconds": round(seconds, 1), "blocked": False,
@@ -438,22 +438,39 @@ def disconnect_via_firewall(pid: int, seconds: float = 9.0) -> dict:
     return report
 
 
-def block_until_dropped(pid: int, max_seconds: float = 20.0,
+def _session_up(pid: int) -> bool:
+    """Is a Battle.net login/session socket still established?
+
+    Its loss is what wedges the client. If it survives the block, the hang
+    mechanism did not fire; if it is gone afterwards, a hang is likely coming.
+    """
+    for c in connections(pid):
+        if c["state"] != MIB_TCP_STATE_ESTAB:
+            continue
+        host = c["remote"][0]
+        if host.startswith(BNET_PREFIXES) and c["remote"][1] in GAME_PORTS:
+            return True
+    return False
+
+
+def block_until_dropped(pid: int, max_seconds: float = 12.0,
                         grace: float = 0.4) -> dict:
-    """Block the game's packets only until its connection actually dies.
+    """Block ONLY the game server's outbound until that socket dies.
 
-    A fixed duration is the wrong shape, and the 10s run proved it: the game
-    socket died two seconds in, the client immediately began retrying, and it
-    spent every one of those retries against a firewall still held shut. Eight
-    seconds later the block lifted and the client had already given up - alive,
-    but with no game connection and no intention of making one.
+    The 2nd-use hang was diagnosed to a real code fact: the block was
+    program-scoped to the whole Hearthstone.exe, so it starved the Battle.net
+    SESSION socket too - fine for a 3.6s hold, fatal for a 9.7s one, after
+    which the session's own check wedged the client ~12s later. is_game_conn
+    was only ever choosing WHEN to lift, never WHAT to block.
 
-    So the block is held for exactly as long as it takes to do its one job, and
-    dropped the instant the socket is gone. The client's next retry is the
-    first one that gets through, which is the whole point.
+    So we now scope the firewall rule to the game server's remote IP (captured
+    at fire time). The session socket sits on a different IP and keeps its
+    outbound the whole time, so it never starves - which is the entire fix.
+    The hold length stops mattering because only the game connection is touched.
     """
     exe = hs_exe_path(pid)
     report = {"exe": exe, "dropped": False, "held": 0.0, "max": max_seconds,
+              "game_ips": [], "session_survived": None,
               "elevated": is_admin(), "errors": []}
     if not exe:
         report["errors"].append("could not read the game's exe path")
@@ -463,19 +480,21 @@ def block_until_dropped(pid: int, max_seconds: float = 20.0,
         return any(is_game_conn(c) for c in connections(pid)
                    if c["state"] == MIB_TCP_STATE_ESTAB)
 
-    # Without this, a client that is ALREADY disconnected reports a perfect
-    # result: the "has it died yet" test passes on the first poll, so the run
-    # ends in 0.4s having blocked nothing, and whatever the client does next
-    # gets credited to it. That happened once and read as a real measurement.
-    if not game_is_up():
+    game_ips = sorted({c["remote"][0] for c in connections(pid)
+                       if c["state"] == MIB_TCP_STATE_ESTAB and is_game_conn(c)})
+    report["game_ips"] = game_ips
+    if not game_ips:
         report["errors"].append(
             "no game connection to interrupt - the client is already "
             "disconnected, or you are not in a match. Nothing was blocked.")
         return report
 
     clear_block_rule()
+    # program=exe AND remoteip=<game ips>: only Hearthstone's traffic to the
+    # game server is cut. The session, auth and loopback sockets are untouched.
     add = _netsh("add", "rule", f"name={BLOCK_RULE}", "dir=out",
-                 f"program={exe}", "action=block", "enable=yes")
+                 f"program={exe}", f"remoteip={','.join(game_ips)}",
+                 "action=block", "enable=yes")
     if add.returncode != 0:
         report["errors"].append(f"add rule failed: {add.stdout.strip()}")
         return report
@@ -497,6 +516,9 @@ def block_until_dropped(pid: int, max_seconds: float = 20.0,
                 "was probably idle, so nothing was in flight to time out")
     finally:
         report["held"] = round(time.monotonic() - t0, 1)
+        # Diagnostic: with the block IP-scoped this should ALWAYS be True. If it
+        # ever reads False, the session was collateral-hit and a hang may follow.
+        report["session_survived"] = _session_up(pid)
         rm = _netsh("delete", "rule", f"name={BLOCK_RULE}")
         report["unblocked"] = rm.returncode == 0
         if rm.returncode != 0:
