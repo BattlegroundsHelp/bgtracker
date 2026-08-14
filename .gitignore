@@ -62,3 +62,7 @@ EMAIL_FIRESTONE.md
 
 # the manifest signing key: the private half never goes in the repository
 manifest_signing_key.pem
+
+# local working doc for HUD asset generation - not repo material
+HUD_GENERATION_BRIEF.md
+assets_hud_raw/
