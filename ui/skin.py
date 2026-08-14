@@ -420,6 +420,32 @@ def tile(c, card, w, h, best=False):
 
 
 _CROP_DIR = APP_DIR / "assets" / "crops"
+_UI_DIR = APP_DIR / "assets" / "ui"
+
+
+def ui_icon(c, name, px):
+    """One piece of fetched UI chrome (the deck-list gem), scaled. None when
+    fetch-art has not run - the caller keeps its drawn look."""
+    if not _PIL or px < 6:
+        return None
+    key = _key(c, "ui", name, px)
+    got = _get(key)
+    if got is not None:
+        return got
+    skey = "ui:" + name
+    if skey not in _src:
+        im = None
+        p = _UI_DIR / f"{name}.png"
+        if p.is_file():
+            try:
+                im = Image.open(p).convert("RGBA")
+            except Exception:
+                im = None
+        _src[skey] = im
+    src = _src[skey]
+    if src is None:
+        return None
+    return _photo(key, src.resize((px, px), Image.LANCZOS), c)
 
 
 def round_icon(c, card, px, ring=None):
@@ -436,7 +462,11 @@ def round_icon(c, card, px, ring=None):
         return got
     src = None
     stem = card[:-2] if card.endswith("pe") else card
-    for cid in {card, stem, stem[:-1] if stem.endswith("e") else stem}:
+    # Try the id itself, its base card, and the base's visible enchantment
+    # ("...pe" accumulators stamp "...e" copies - Eastern Winds' art lives on
+    # the stamp, not the bookkeeping id). First art on disk wins.
+    for cid in (card, stem, stem + "e",
+                stem[:-1] if stem.endswith("e") else stem):
         p = _CROP_DIR / f"{cid}.jpg"
         if p.is_file():
             try:

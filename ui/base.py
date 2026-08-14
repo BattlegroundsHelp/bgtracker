@@ -652,16 +652,29 @@ def plate(c, x1, y1, x2, y2, r=9, best=False, tags=()):
           outline=GOLD if best else "", tags=tags)
 
 
-def tile_row(c, x1, y1, x2, y2, card, best=False, tags=()):
+def tile_row(c, x1, y1, x2, y2, card, best=False, tags=(), tier=None):
     """A minion row drawn the way every Hearthstone tracker draws one: the
     game's own deck-list art slice IS the row, right-aligned, fading into
     the dark bar the name sits on (skin.tile). True when it painted; False
-    means no tile on disk and the caller draws its icon-and-text row."""
+    means no tile on disk and the caller draws its icon-and-text row.
+
+    ``tier`` completes the deck-list anatomy: the gem on the row's left with
+    the number in it, exactly where a deck list wears its cost. The gem
+    image is fetch-art's UI chrome; without it the number is drawn bare in
+    the same spot, so the column exists either way."""
     img = skin.tile(c, card, round((x2 - x1) * _scale),
                     round((y2 - y1) * _scale), bool(best))
     if img is None:
         return False
     c.create_image(x1, y1, image=img, anchor="nw", tags=tags)
+    if tier is not None:
+        h = y2 - y1
+        g = min(h - 2, 20)
+        gy = y1 + (h - g) / 2
+        gem = skin.ui_icon(c, "gem", round(g * _scale))
+        if gem is not None:
+            c.create_image(x1 + 3, gy, image=gem, anchor="nw", tags=tags)
+        shadow_text(c, x1 + 3 + g / 2, y1 + h / 2, str(tier), TEXT, F_CHIP)
     return True
 
 

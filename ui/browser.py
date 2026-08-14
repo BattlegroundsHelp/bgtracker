@@ -677,8 +677,8 @@ class BrowserWindow(BaseWindow):
         # Firestone draw a minion in the match (founder's direction,
         # 2026-08-14). No tile on disk and the icon-and-text row returns.
         tiled = tile_row(c, 8, y + 1, self.WIDTH - 8, y + 27, m["id"],
-                         best=opened)
-        name_x = 14 if tiled else 44
+                         best=opened, tier=m["techLevel"])
+        name_x = 32 if tiled else 44
         if not tiled:
             # The pool's own cardId is the art id; the name lookup is the same
             # fallback the offer rows use, for a card whose art landed
@@ -692,11 +692,9 @@ class BrowserWindow(BaseWindow):
                 col = TRIBE_COLOR.get(m["races"][0] if m["races"] else "", LINE)
                 rrect(c, 14, y + 3, 36, y + 25, 5, fill=PANEL, outline=col)
         c.create_text(name_x, y + 14, anchor="w", font=F_SUB,
-                      fill=TEXT if opened else SOFT, text=m["name"][:30])
-        if tiled:
-            shadow_text(c, self.WIDTH - 14, y + 14, f"T{m['techLevel']}",
-                        DIM, F_SUB, anchor="e")
-        else:
+                      fill=TEXT if opened else SOFT, text=m["name"][:28])
+        if not tiled:
+            # No tile: the gem never drew, so the tier keeps its old column.
             c.create_text(self.WIDTH - 14, y + 14, anchor="e", fill=DIM,
                           font=F_SUB, text=f"T{m['techLevel']}")
         races = [r for r in m["races"] if r in TRIBE_TAG]

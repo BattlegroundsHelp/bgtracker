@@ -100,7 +100,8 @@ class TavernWindow(BaseWindow):
             # 2026-08-14). No tile on disk - art not fetched, a brand-new
             # card - and the old icon-and-text row draws instead.
             tiled = tile_row(c, 8, y - 1, self.WIDTH - 8, y + 20,
-                             r.get("card"), best=mine)
+                             r.get("card"), best=mine,
+                             tier=r.get("tier") or None)
             if not tiled:
                 # A shop row is 22px and there are up to seven of them, so
                 # this is the one window where a plate per row would be a
@@ -116,7 +117,7 @@ class TavernWindow(BaseWindow):
             # arrives flagged graded carries a number read off the card, and
             # that number ranks bodies rather than cards (see the note up top),
             # so it is not drawn at all rather than drawn in another colour.
-            star_x, name_x = (14, 60) if tiled else (44, 90)
+            star_x, name_x = (32, 78) if tiled else (44, 90)
             if s and not r.get("graded"):
                 c.create_text(star_x, y + 10, text="★" * s, anchor="w",
                               font=F_STARS, fill=STAR_COLOR.get(s, DIM))
