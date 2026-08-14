@@ -104,8 +104,8 @@ from pathlib import Path
 
 import bgtracker as bg
 
-from .base import (ACCENT, AMBER, DIM, F_SUB, GOOD, LINE, PANEL_HI, SOFT,
-                   TRIBE_COLOR, TRIBE_TAG, BaseWindow, advance, rrect)
+from .base import (ACCENT, AMBER, DIM, F_CHIP, F_NAME, F_SUB, GOOD, SOFT,
+                   TRIBE_COLOR, BaseWindow, advance)
 
 # The screen-synced copy. Every VALUE below is taken from it and nothing else.
 PTL = "PowerTaskList"
@@ -749,53 +749,44 @@ class CountersWindow(BaseWindow):
             self.hide()
 
     # --------------------------------------------------------------- drawing
+    #
+    # The layout is HSReplay's, looked up and copied (their HDT overlay
+    # screenshot, measured 2026-08-14): stats are LABELLED COLUMNS - a tiny
+    # muted label over a plain bright value ("Start" over "5,095"), in a flat
+    # box, no pills, no chips - and the standing effects are plain text rows
+    # with only the VALUE coloured. The founder's rule: copy how the shipped
+    # trackers handle it, never invent.
 
-    def _chip(self, c, x, y, text, fill, limit):
-        """One counter pill. Returns the next x, or None when it would not fit
-        - chips are drawn in importance order, so overflow drops the least
-        important instead of clipping."""
-        t = c.create_text(x + 8, y + self.ROW_H // 2 + 1, text=text, anchor="w",
-                          fill=fill, font=F_SUB)
-        # advance(), not bbox()[2]: the pill is measured against a base-pixel
-        # limit, and the raw bbox is in the pixels actually painted.
-        x2 = advance(c, t) + 8
-        if x2 > limit:
-            c.delete(t)
-            return None
-        r = rrect(c, x, y, x2, y + self.ROW_H, 7, fill=PANEL_HI, outline=LINE)
-        c.tag_lower(r, t)
-        return x2 + self.GAP
-
-    def _chips(self):
-        """(text, colour) for every counter that has a value, most useful
-        first. A counter the log has not stated is simply absent - except the
-        three the strip always keeps a slot for, which show a dash."""
+    def _stats(self):
+        """The labelled columns, importance order. Always the first three."""
         s = self.state
-        out = []
-
         gold, gmax = s.gold, s.gold_max
-        out.append((f"{gold}/{gmax}g" if gold is not None else "—g",
-                    AMBER if gold else DIM))
-        out.append((f"T{s.tier}" if s.tier else "T—",
-                    ACCENT if s.tier else DIM))
+        cols = [("GOLD", f"{gold}/{gmax}" if gold is not None else "—",
+                 AMBER if gold else DIM),
+                ("TIER", f"{s.tier}" if s.tier else "—",
+                 ACCENT if s.tier else DIM)]
         if s.at_max_tier:
-            out.append(("top tier", DIM))
+            cols.append(("UPGRADE", "max", DIM))
         elif s.next_cost is not None:
             afford = gold is not None and gold >= s.next_cost
-            out.append((f"↑T{s.next_tier} {s.next_cost}g", GOOD if afford else SOFT))
+            cols.append(("UPGRADE", f"{s.next_cost}g", GOOD if afford else SOFT))
         else:
-            out.append(("↑ —", DIM))
-
+            cols.append(("UPGRADE", "—", DIM))
+        if s.triples:
+            cols.append(("TRIPLES", f"{s.triples}", SOFT))
+        if s.free_rolls:
+            cols.append(("ROLLS", f"{s.free_rolls} free", GOOD))
         if s.extra_next:
-            out.append((f"+{s.extra_next}g next", GOOD))
+            cols.append(("NEXT TURN", f"+{s.extra_next}g", GOOD))
+        nxt = min((v for v in s.trinket_in.values() if v > 0), default=None)
+        if nxt:
+            cols.append(("TRINKET", f"in {nxt}", SOFT))
+        return cols
 
-        # The standing tavern buffs, from the accumulator enchantments the
-        # current patch actually maintains. A tribe-wide buff is labelled by
-        # its tribe ("elem +133/+136"); a stamping buff by the name the game
-        # itself shows ("Eastern Winds +97/+95"). The legacy player-tag pair
-        # is drawn only when NO elemental accumulator exists - in current
-        # games it tracks a per-application size, not the total, and showing
-        # both would be two numbers claiming one meaning.
+    def _effects(self):
+        """(name, value, colour) rows for the standing tavern effects."""
+        s = self.state
+        out = []
         elem_accum = False
         for eid in sorted(s.shop_buffs):
             rec = s.shop_buffs[eid]
@@ -806,33 +797,20 @@ class CountersWindow(BaseWindow):
                 tribe = rec["label"]
                 if tribe == "ELEMENTAL":
                     elem_accum = True
-                    out.append((f"elem {stat}", TRIBE_COLOR["ELEMENTAL"]))
+                    out.append(("Elementals", stat, TRIBE_COLOR["ELEMENTAL"]))
                 else:
-                    tag = TRIBE_TAG.get(tribe, tribe[:3].lower() if tribe else "buff")
-                    out.append((f"{tag} {stat}", TRIBE_COLOR.get(tribe, SOFT)))
+                    nm = (tribe or "buff").capitalize() + "s"
+                    out.append((nm, stat, TRIBE_COLOR.get(tribe, SOFT)))
             else:
-                out.append((f"{rec['label'] or 'tavern buff'} {stat}", AMBER))
+                out.append((rec["label"] or "Tavern buff", stat, AMBER))
+        # The legacy pair only when no accumulator claims the meaning - in
+        # current games it tracks a per-application size, not the total.
         if (s.elem_atk or s.elem_hp) and not elem_accum:
-            out.append((f"elem +{s.elem_atk}/+{s.elem_hp}", TRIBE_COLOR["ELEMENTAL"]))
+            out.append(("Elementals", f"+{s.elem_atk}/+{s.elem_hp}",
+                        TRIBE_COLOR["ELEMENTAL"]))
         if s.gem_atk or s.gem_hp:
-            out.append((f"gem +{s.gem_atk}/+{s.gem_hp}", TRIBE_COLOR["QUILBOAR"]))
-
-        tribes, wild = tribe_counts(s.board)
-        for t, n in sorted(tribes.items(), key=lambda kv: (-kv[1], kv[0]))[:3]:
-            out.append((f"{TRIBE_TAG[t]} {n}", TRIBE_COLOR[t]))
-        if wild:
-            out.append((f"any {wild}", SOFT))
-
-        # From here down are extras: they are the ones that get dropped when
-        # the two rows are full, so the counters the strip promises always fit.
-        if s.free_rolls:
-            out.append((f"{s.free_rolls} free roll" + ("s" if s.free_rolls > 1 else ""),
-                        GOOD))
-        if s.triples:
-            out.append((f"{s.triples} triple" + ("s" if s.triples > 1 else ""), SOFT))
-        nxt_trinket = min((v for v in s.trinket_in.values() if v > 0), default=None)
-        if nxt_trinket:
-            out.append((f"trinket in {nxt_trinket}", SOFT))
+            out.append(("Blood Gems", f"+{s.gem_atk}/+{s.gem_hp}",
+                        TRIBE_COLOR["QUILBOAR"]))
         return out
 
     def draw(self, c):
@@ -846,17 +824,39 @@ class CountersWindow(BaseWindow):
                           fill=DIM, font=F_SUB)
             return y + 22
 
-        limit = self.WIDTH - 12
-        x, rows = 12, 1
-        for text, fill in self._chips():
-            nx = self._chip(c, x, y, text, fill, limit)
-            if nx is None:
-                if rows >= 2:
-                    break               # the band is two rows; drop the rest
-                rows += 1
-                x, y = 12, y + self.ROW_H + 2
-                nx = self._chip(c, x, y, text, fill, limit)
-                if nx is None:
+        # The labelled columns: label at the top in the muted small type,
+        # value under it in the plain bright one. Columns that stop fitting
+        # drop from the right - the first three always fit.
+        # The band is 34px of body under the header; that is exactly one
+        # label line (F_CHIP), one value line (F_SUB) and one effects line
+        # (F_SUB) at Tk's real line boxes - measured, not hoped, after two
+        # rounds of the window test catching painted ink below the panel.
+        x, limit = 14, self.WIDTH - 8
+        for label, value, fill in self._stats():
+            w = max(F_CHIP.measure(label), F_SUB.measure(value)) + 14
+            if x + w > limit:
+                break
+            c.create_text(x, y, text=label, anchor="nw", fill=DIM,
+                          font=F_CHIP)
+            c.create_text(x, y + 8, text=value, anchor="nw", fill=fill,
+                          font=F_SUB)
+            x = x + w
+        y += 21
+
+        # The standing effects on one line, name plain and value coloured,
+        # dropped from the end when the line is out of room.
+        effects = self._effects()
+        if effects:
+            x = 14
+            for name, value, fill in effects:
+                seg_w = F_SUB.measure(f"{name} {value}") + 14
+                if x + seg_w > limit and x > 14:
                     break
-            x = nx
-        return y + self.ROW_H + 3
+                t = c.create_text(x, y, text=name, anchor="nw",
+                                  fill=SOFT, font=F_SUB)
+                vx = advance(c, t) + 4
+                c.create_text(vx, y, text=value, anchor="nw", fill=fill,
+                              font=F_SUB)
+                x = vx + F_SUB.measure(value) + 12
+            y += 14
+        return y

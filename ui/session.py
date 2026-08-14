@@ -58,7 +58,7 @@ import collect
 
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_HUGE, F_NAME, F_SUB,
                    F_TITLE, GOOD, LINE, OFF_TRIBE, ON_CHIP, PANEL, SHADE, SOFT,
-                   TEXT, TRIBE_COLOR, TRIBE_TAG, BaseWindow, rrect)
+                   TEXT, TRIBE_COLOR, TRIBE_TAG, BaseWindow, advance, rrect)
 
 # A sitting idle this long is over: the next launch starts a new session
 # instead of resuming a stale one from yesterday.
@@ -544,25 +544,31 @@ class SessionWindow(BaseWindow):
                           text="MMR needs the optional memory reader")
             return y + 22
 
+        # HSReplay's own MMR block, looked up and copied (HDT overlay,
+        # 2026-08-14): two labelled columns, "Start" and "Current", tiny
+        # muted label over the plain big number, the session delta in its
+        # colour beside the current value. No boxes, no chips.
         cur, start = self.mmr, self.start_mmr
-        c.create_text(14, y + 15, anchor="w", font=F_HUGE,
-                      text=f"{cur:,}" if cur else "—",
-                      fill=TEXT if cur else DIM)
-        if cur is not None and start is not None:
+        c.create_text(14, y + 2, text="START", anchor="nw", fill=DIM,
+                      font=F_CHIP)
+        c.create_text(14, y + 12, anchor="nw", font=F_HUGE,
+                      text=f"{start:,}" if start is not None else "—",
+                      fill=TEXT if start is not None else DIM)
+        cx = self.WIDTH // 2
+        c.create_text(cx, y + 2, text="CURRENT", anchor="nw", fill=DIM,
+                      font=F_CHIP)
+        t = c.create_text(cx, y + 12, anchor="nw", font=F_HUGE,
+                          text=f"{cur:,}" if cur is not None else "—",
+                          fill=TEXT if cur is not None else DIM)
+        if cur is not None and start is not None and cur != start:
             d = cur - start
-            col = GOOD if d > 0 else BAD if d < 0 else DIM
-            rrect(c, self.WIDTH - 84, y + 4, self.WIDTH - 12, y + 26, 8,
-                  fill=PANEL, outline=col)
-            c.create_text(self.WIDTH - 48, y + 15, font=F_NAME, fill=col,
-                          text=f"{d:+,}" if d else "even")
+            col = GOOD if d > 0 else BAD
+            c.create_text(advance(c, t) + 8, y + 14, text=f"{d:+,}",
+                          anchor="nw", fill=col, font=F_NAME)
         if start is None:
-            sub = "waiting for a rating read"
-        elif cur is None:
-            sub = f"session started at {start:,}"
-        else:
-            sub = f"from {start:,} this session"
-        c.create_text(14, y + 34, text=sub, anchor="w", fill=DIM, font=F_SUB)
-        return y + 46
+            c.create_text(14, y + 34, text="waiting for a rating read",
+                          anchor="w", fill=DIM, font=F_SUB)
+        return y + 44
 
     def _rows_that_fit(self, y, extra=0):
         """How many game rows fit without spilling past this window's band.
