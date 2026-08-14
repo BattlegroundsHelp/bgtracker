@@ -18,7 +18,7 @@ rather than showing an empty box.
 from __future__ import annotations
 
 from .base import (AMBER, DIM, F_NAME, F_SUB, LINE, PANEL_HI, SOFT, TEXT,
-                   TRIBE_COLOR, BaseWindow, rrect)
+                   TRIBE_COLOR, BaseWindow, get_scale, rrect)
 from . import skin
 
 # The pill grid: sized for "+123/+456" beside a 20px icon, two per row -
@@ -40,7 +40,9 @@ class EffectsWindow(BaseWindow):
     COLUMN = "float"                # not part of either tiled column: it is
     DY = 792                        # the one window whose whole point is
     RESERVE = 64                    # being moved wherever the player wants
-    MAX_H = 92
+    MAX_H = 124                     # three pill rows + the names line; the
+                                    # review caught 5-6 live effects painting
+                                    # a third row below a 92px clamp
     WIDTH = 8 + 2 * PILL_W + GAP + 8
     EVENTS = ("game",)
 
@@ -49,6 +51,11 @@ class EffectsWindow(BaseWindow):
         self._seen = -1
 
     def reset(self):
+        # Re-arm the version watch too: new_game() resets the counter
+        # state's version to 0, and a _seen left at an old value could
+        # EQUAL a fresh version and swallow the first update of the next
+        # game (review find, 2026-08-14).
+        self._seen = -1
         self.hide()
 
     def on_event(self, name, payload):
@@ -61,7 +68,14 @@ class EffectsWindow(BaseWindow):
 
     def tick(self, rect, game_front):
         s = self._counters_state()
-        if s is not None and s.version != self._seen:
+        if s is None:
+            # The counters window is switched OFF (it is this window's only
+            # data source) - hide rather than freeze on the last paint. The
+            # review caught both halves: never-shows when counters starts
+            # disabled, AND stale pills when it is disabled mid-game.
+            self._seen = -1
+            self.hide()
+        elif s.version != self._seen:
             self._seen = s.version
             if s.effects() and s.known():
                 self.show()
@@ -80,7 +94,11 @@ class EffectsWindow(BaseWindow):
             rrect(c, px1, py1, px1 + PILL_W, py1 + PILL_H, PILL_H // 2,
                   fill=PANEL_HI, outline=LINE)
             cy = py1 + PILL_H // 2
-            icon = skin.round_icon(c, eff["card"], 20) if eff["card"] else None
+            # Icons bake at FINAL pixels (base 20 x the UI scale): the canvas
+            # transform moves an image's anchor and never resizes the bitmap.
+            ipx = max(12, round(20 * get_scale()))
+            icon = (skin.round_icon(c, eff["card"], ipx)
+                    if eff["card"] else None)
             if icon is None:
                 # No card art for this source (a bookkeeping id, or the CDN
                 # has none): the designed emblem for what the effect IS -
@@ -90,7 +108,7 @@ class EffectsWindow(BaseWindow):
                         "stamper": "tribe_buff"}.get(eff["kind"])
                 if name is None:
                     name = "tribe_" + (eff["label"] or "buff").lower()
-                icon = skin.ui_icon(c, name, 20)
+                icon = skin.ui_icon(c, name, ipx)
             if icon is not None:
                 c.create_image(px1 + 4, cy - 10, image=icon, anchor="nw")
             else:

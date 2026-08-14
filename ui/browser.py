@@ -638,7 +638,10 @@ class BrowserWindow(BaseWindow):
             if self.sort == "type":
                 g = self._group(m)
                 if g != last_group:
-                    if y + 16 + need > limit:
+                    # 17 = what the header actually consumes (review caught
+                    # the off-by-one admitting an orphan header at the exact
+                    # boundary, with no row under it).
+                    if y + 17 + need > limit:
                         break
                     c.create_rectangle(8, y + 1, self.WIDTH - 8, y + 15,
                                        fill=SHADE, outline="")

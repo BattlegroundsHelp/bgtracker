@@ -206,9 +206,19 @@ The overlay takes the same options: `bgtracker.bat --mmr 10 --time past-seven`,
 plus `--demo <log>` to replay a Power.log through the UI.
 
 Optional, for real card portraits instead of colored dots:
-`pip install pillow`, then `python fetch_art.py --all` once (tiles + crops from
-the HearthstoneJSON CDN into `assets/`; re-run after a new card set). In the
-download that is `fetch-art.exe --all`, with Pillow already inside.
+`pip install pillow`, then `python fetch_art.py --everything` once (tiles +
+crops for the whole Battlegrounds card universe - minions, heroes, spells,
+trinkets - from the HearthstoneJSON CDN into `assets/`, plus the deck-list
+gem; re-run after a new card set). In the download that is
+`fetch-art.exe --everything`, with Pillow already inside. `--all` still
+fetches just minions and trinkets. And with the game installed,
+`python tools/extract_game_assets.py` (needs `pip install UnityPy`) pulls
+the game's own tavern-tier shield and placement medals out of YOUR install -
+they never ship in the repo.
+
+Looks: the default is the flat presentation the established trackers use.
+The settings panel's "Tavern skin" switch turns on a generated wood-and-gold
+look, live. Standing tavern buffs float in their own draggable BUFFS window.
 
 For the plain console version (`bgtracker-cli.exe` in the download):
 

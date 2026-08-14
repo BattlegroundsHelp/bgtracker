@@ -93,7 +93,11 @@ class HeroPowerWindow(BaseWindow):
                 c.create_text(self.WIDTH - 16, y + 13, text=f"{avg:.2f}",
                               anchor="e", fill=avg_color(avg), font=F_NAME)
             y += 28
-        if not any(r.get("avg") is not None for r in self.rows):
+        if (not any(r.get("avg") is not None for r in self.rows)
+                and y + 26 <= self.MAX_H):
+            # Only when it FITS: four no-stat rows plus this line overran the
+            # 150px band by 5px (review find, surfaced by the stats feed
+            # 404ing) - and the dashes on every row already say "no numbers".
             c.create_text(14, y + 8, text="no hero-power stats - names only",
                           anchor="w", fill=SOFT, font=F_SUB)
             y += 20

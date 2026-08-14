@@ -85,13 +85,11 @@ def active() -> bool:
     """
     global _active, _dir, _enabled
     if _enabled is None:
-        # Not wired by the host (a bare test, a script): the settings file
-        # decides, so `python overlay.py` and a standalone demo agree.
-        try:
-            import settings
-            _enabled = bool(settings.Settings.load().get("tavern_skin"))
-        except Exception:
-            _enabled = False
+        # Not wired by a host: OFF. The overlay wires it at boot and the
+        # settings panel live; a lazy read of the user's real settings.json
+        # was tried here and reviewed out - it made TEST outcomes depend on
+        # whatever the machine's live file said (2026-08-14).
+        _enabled = False
     if not _enabled:
         return False
     if _active is None:
@@ -120,7 +118,7 @@ def _load(name):
                     im = im.crop(bbox)
         except Exception:
             im = None
-        _src[name] = im
+        _keep_src(name, im)
     return _src[name]
 
 
@@ -364,21 +362,32 @@ _BAR_BEST = (36, 29, 21, 255)   # ui.base PANEL_HI, as pixels
 _GOLD = (168, 133, 74, 255)     # ui.base GOLD - the one accent
 
 
+def _keep_src(key, im):
+    """The source cache is BOUNDED too (review find: it interned one PIL
+    image per browsed card forever while only the photo cache had the LRU).
+    Plain FIFO is enough - sources are cheap to reload on a rare revisit."""
+    if len(_src) > 512:
+        for k in list(_src)[:128]:
+            del _src[k]
+    _src[key] = im
+    return im
+
+
 def _tile_src(card):
-    """The art slice for a cardId, golden ids folded onto their base."""
-    key = "tile:" + card
-    if key not in _src:
-        im = None
-        for cid in (card, card[:-2] if card.endswith("_G") else card):
-            p = _TILE_DIR / f"{cid}.png"
-            if p.is_file():
-                try:
-                    im = Image.open(p).convert("RGBA")
-                except Exception:
-                    im = None
-                break
-        _src[key] = im
-    return _src[key]
+    """The art slice for a cardId, golden ids folded onto their base BEFORE
+    the cache key - a golden pair used to decode the same file twice."""
+    base = card[:-2] if card.endswith("_G") else card
+    key = "tile:" + base
+    if key in _src:
+        return _src[key]
+    im = None
+    p = _TILE_DIR / f"{base}.png"
+    if p.is_file():
+        try:
+            im = Image.open(p).convert("RGBA")
+        except Exception:
+            im = None
+    return _keep_src(key, im)
 
 
 def tile(c, card, w, h, best=False):
@@ -447,7 +456,7 @@ def ui_icon(c, name, px):
                 except Exception:
                     im = None
                 break
-        _src[skey] = im
+        _keep_src(skey, im)
     src = _src[skey]
     if src is None:
         return None

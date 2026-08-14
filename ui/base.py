@@ -671,7 +671,11 @@ def tile_row(c, x1, y1, x2, y2, card, best=False, tags=(), tier=None):
         h = y2 - y1
         g = min(h - 2, 20)
         gy = y1 + (h - g) / 2
-        gem = skin.ui_icon(c, "gem", round(g * _scale))
+        # The game's own tavern-tier shield when extracted
+        # (tools/extract_game_assets.py), the deck-list gem otherwise; the
+        # number is drawn, because five baked stars at 18px are mush.
+        gem = (skin.ui_icon(c, "game/shield", round(g * _scale))
+               or skin.ui_icon(c, "gem", round(g * _scale)))
         if gem is not None:
             c.create_image(x1 + 3, gy, image=gem, anchor="nw", tags=tags)
         shadow_text(c, x1 + 3 + g / 2, y1 + h / 2, str(tier), TEXT, F_CHIP)
@@ -1629,10 +1633,19 @@ class BadgeStrip(tk.Toplevel):
                 # the card - the label tiny and muted, the value under it -
                 # in flat dark boxes. The best offer wears the one gold
                 # accent as its cells' outline; nothing says "best" in words.
-                cw, ch = b(58), b(33)
+                # Cell width is capped by the slot spacing so neighbouring
+                # offers' cells cannot overlap at high badge scales (review
+                # find: two b(58) cells x bs 3.0 out-ran the hero slots).
+                if len(xs) > 1:
+                    gap = int(gw * min(abs(b2 - a2) for a2, b2
+                                       in zip(xs, xs[1:])))
+                else:
+                    gap = gw
                 cells = [("AVG", f"{shown:.2f}", col)]
                 if r.get("pick") is not None:
                     cells.append(("PICK", f"{r['pick']:.0f}%", TEXT))
+                cw = min(b(58), (gap - b(8)) // len(cells) - b(2))
+                ch = b(33)
                 total = len(cells) * cw + (len(cells) - 1) * b(4)
                 x = cx - total // 2
                 for label, value, vcol in cells:

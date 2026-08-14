@@ -599,10 +599,24 @@ class SessionWindow(BaseWindow):
             fit = self._rows_that_fit(y, extra=16)     # room for "+N earlier"
         for g in games[:fit]:
             place = g.get("place")
-            rrect(c, 14, y + 2, 36, y + 18, 5, fill=place_color(place),
-                  outline="")
-            c.create_text(25, y + 10, text=str(place) if place else "?",
-                          fill=ON_CHIP, font=F_CHIP)
+            # Top-three finishes wear the game's own medals when they are
+            # extracted (tools/extract_game_assets.py); every other place
+            # keeps the colour-graded square. The number stays on both -
+            # the medal decorates the fact, it does not replace it.
+            from . import skin
+            from .base import get_scale
+            medal = (skin.ui_icon(c, f"game/medal_{place}",
+                                  max(12, round(17 * get_scale())))
+                     if place in (1, 2, 3) else None)
+            if medal is not None:
+                c.create_image(14, y + 2, image=medal, anchor="nw")
+                c.create_text(25, y + 10, text=str(place),
+                              fill=ON_CHIP, font=F_CHIP)
+            else:
+                rrect(c, 14, y + 2, 36, y + 18, 5, fill=place_color(place),
+                      outline="")
+                c.create_text(25, y + 10, text=str(place) if place else "?",
+                              fill=ON_CHIP, font=F_CHIP)
             x = 44
             icon = self.app.art.icon(g.get("hero"), 16)
             if icon is not None:

@@ -40,6 +40,21 @@
 
 ### Fixed
 
+- **The log reader survives what used to kill it silently.** Twice over: a
+  card the daily pool cache does not know yet (every patch day) crashed the
+  reader thread and froze every window on its last state while the overlay
+  still looked alive - guarded; and the log-follow loop itself could die on
+  a rotation race when the client prunes old log folders at launch - now it
+  reports "reconnecting" in the status line and re-attaches.
+- **A day-long adversarial review swept everything above** and its fixes
+  shipped with it: the BUFFS window no longer goes dead or stale when the
+  COUNTERS window is switched off; its pill icons scale with the UI; five
+  or more live buffs no longer clip; hero-pick cells cannot overlap
+  neighbouring offers at high badge scales; an off-by-one that could strand
+  an orphan tribe header at the bottom of the minion browser; the
+  hero-power panel's no-stats footer no longer overruns its band; image
+  source caches are bounded; and test outcomes no longer depend on the
+  machine's live settings file.
 - **The tavern-buff counters track the numbers the game actually shows now.**
   Caught live: the game's tooltip said the standing elemental buff was
   +59/+54 while the strip said "elem +3/+4". The strip was faithfully

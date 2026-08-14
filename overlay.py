@@ -866,28 +866,49 @@ class Reader(threading.Thread):
                         f'set "hs_logs" in settings.json'))
             return
         errs = 0
-        for line in bg.follow(path):
+        while True:
+            # The OUTER loop is the second half of the crash guard: the
+            # follow generator itself raises at the for-statement when its
+            # rotate check stats a log folder the client just pruned (it
+            # prunes at launch, i.e. exactly at rotation time) - which is
+            # OUTSIDE any per-line try. Reviewed 2026-08-14: the inner guard
+            # alone still died exactly the silent death it claimed to
+            # survive. Re-enter follow() after a breath.
             try:
-                if line is None:
-                    emit_hero(det.flush())
-                    flush_board()  # catch msync updates between log bursts
-                    flush_players()
-                else:
-                    consume(line)
+                for line in bg.follow(path):
+                    try:
+                        if line is None:
+                            emit_hero(det.flush())
+                            flush_board()  # msync updates between bursts
+                            flush_players()
+                        else:
+                            consume(line)
+                    except Exception:
+                        # One poisoned line must not end the session's
+                        # tracking. This thread dying leaves every window
+                        # frozen on its last state with nothing on screen
+                        # saying why - lived 2026-08-14, when a patch-day
+                        # minion missing from the pool cache killed the
+                        # reader a minute in and the whole evening ran on a
+                        # tracker that still LOOKED alive. Loud in the
+                        # console, counted in the status line, the reading
+                        # continues. The demo/replay path above stays
+                        # unguarded on purpose: a crash during a test
+                        # replay should fail the test, not be survived.
+                        errs += 1
+                        traceback.print_exc()
+                        self.q.put(("status",
+                                    f"reader error #{errs} survived - "
+                                    f"see console"))
+                return      # follow() only ends when the overlay is closing
             except Exception:
-                # One poisoned line must not end the session's tracking. This
-                # thread dying leaves every window frozen on its last state
-                # with nothing on screen saying why - lived 2026-08-14, when
-                # a patch-day minion missing from the pool cache killed the
-                # reader a minute in and the whole evening ran on a tracker
-                # that still LOOKED alive. Loud in the console, counted in
-                # the status line, and the reading continues. The demo/replay
-                # path above stays unguarded on purpose: a crash during a
-                # test replay should fail the test, not be survived.
                 errs += 1
                 traceback.print_exc()
                 self.q.put(("status",
-                            f"reader error #{errs} survived - see console"))
+                            f"log reader hiccup #{errs} (rotation race?) - "
+                            f"reconnecting"))
+                time.sleep(2)
+                path = bg.newest_power_log() or path
 
 
 class Router:

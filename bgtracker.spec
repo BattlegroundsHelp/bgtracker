@@ -76,10 +76,12 @@ DATAS.append((os.path.join(ROOT, "data", "comp_roles.json"), "data"))
 # The painted skin (ui/skin.py, same APP_DIR-then-BUNDLE_DIR pair again).
 # Every file individually, through the same existence check below: a skin
 # that half-ships would paint half the chrome as wood and half as vectors,
-# with nothing anywhere saying why.
+# with nothing anywhere saying why. ONLY the files ui/skin.py actually
+# loads: chips, the parchment and the corner stay in the repo for a future
+# wiring but do not ride in every download (review find - 1.1MB of dead
+# payload).
 for _f in ("panel_wood.png", "frame_gold.png", "header_bar.png", "plate.png",
-           "plate_best.png", "artframe.png", "chip_on.png", "chip_off.png",
-           "settings_bg.png", "corner.png", "app_icon.png"):
+           "plate_best.png", "artframe.png", "app_icon.png"):
     DATAS.append((os.path.join(ROOT, "data", "skin", _f),
                   os.path.join("data", "skin")))
 

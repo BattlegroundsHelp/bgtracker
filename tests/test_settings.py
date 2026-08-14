@@ -599,19 +599,25 @@ def test_geometry():
 
     # -- the badge nudge keeps the window's min_sample -----------------------
     strip = mgr.by_key["heropick"].badges
+    # Row B carries a pick rate so the TWO-cell branch draws (review find:
+    # without it the single-cell layout multiplied the spacing term by zero
+    # and the PICK cell had never run under any test).
     rows = [{"pos": 1, "name": "A", "avg": 1.50, "n": 3},
-            {"pos": 2, "name": "B", "avg": 3.00, "n": 100}]
+            {"pos": 2, "name": "B", "avg": 3.00, "n": 100, "pick": 41.0}]
 
     def best_xs():
         # The best offer is marked by the GOLD outline on its stat cells
         # (the HSReplay-cell restyle, 2026-08-14 - there is no "best" text
         # any more). The cells straddle the slot, so the marker position is
-        # the MEAN of their centres.
+        # the MEAN of their centres - and row B has a pick rate, so there
+        # must be exactly TWO gold cells or the layout branch regressed.
         xs = [(strip.canvas.coords(i)[0] + strip.canvas.coords(i)[2]) / 2
               for i in strip.canvas.find_all()
               if strip.canvas.type(i) == "rectangle"
               and strip.canvas.itemcget(i, "outline") == ui.base.GOLD]
-        return [round(sum(xs) / len(xs))] if xs else []
+        if len(xs) != 2:
+            return []
+        return [round(sum(xs) / len(xs))]
 
     # set_badge_scale re-shows every visible strip from the LIVE game window
     # (hs_rect) - correct in production, but this test measures chip x against

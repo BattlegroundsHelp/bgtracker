@@ -30,6 +30,7 @@ Two rules run through everything below:
 | [Comps and your board](#comps-and-your-board) | bgtracker | nothing; a comps source for measured rows; memory reader for your board |
 | [Lobby tribes](#lobby-tribes) | bgtracker, SESSION, MINIONS | nothing; memory reader for exactness at turn zero |
 | [Counters](#counters) | COUNTERS | nothing; memory reader for board tribe counts |
+| Standing tavern buffs | BUFFS | nothing - a pill per accumulator (Eastern-Winds-style stamps, tribe shop buffs, Blood Gems), draggable on its own; reads the COUNTERS state, so it needs that window enabled |
 | [Minion browser](#minion-browser) | MINIONS | nothing; a cards source turns the computed stars into measured ones |
 | [Session](#session) | SESSION | nothing; memory reader for MMR |
 | [The other players](#the-other-players) | OTHER PLAYERS | the memory reader - without it the window never appears |
