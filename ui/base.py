@@ -96,6 +96,8 @@ from tkinter import font as tkfont
 
 from paths import APP_DIR
 
+from . import skin
+
 # DPI awareness, and it has to be PER MONITOR rather than merely "aware".
 #
 # With the old system-DPI level, Windows lies to a process about any monitor
@@ -559,8 +561,20 @@ def panel_frame(c, w, h, r=RADIUS):
 
     Tagged "frame" so redraw() can drop the whole thing underneath the body in
     one call, with its own layers still in order.
+
+    The skin, when data/skin/ is present, paints the same slab as ONE image
+    item instead (generated wood + a nine-sliced gold frame), baked at the
+    FINAL pixel size because Canvas.scale moves an image's anchor and nothing
+    else. The anchor is (0, 0), which the scale maps to (0, 0), so the same
+    coordinate path serves both chromes. A None from the skin - no folder, no
+    Pillow, a bad file, headless - falls through to the vectors below.
     """
     t = ("frame",)
+    img = skin.panel(c, round(w * _scale), round(h * _scale),
+                     round(r * _scale), _scale)
+    if img is not None:
+        c.create_image(0, 0, image=img, anchor="nw", tags=t)
+        return
     rrect(c, 0, 0, w, h, r, fill=EDGE, outline="", tags=t)
     rrect(c, 1, 1, w - 1, h - 1, r - 1, fill=GOLD_LO, outline="", tags=t)
     rrect(c, 1.6, 1.6, w - 1.6, h - 1.6, r - 2, fill=GOLD, outline="", tags=t)
@@ -581,8 +595,17 @@ def header_slab(c, w, h=HEADER_H):
     is what makes it read as a bar laid ON the panel rather than a differently
     coloured stripe. The groove is one dark line with one lit line under it:
     a two-pixel bevel is the cheapest thing that has an edge.
+
+    Skinned, the slab is the generated wood strip with its own gold rule
+    along the bottom, top corners masked to the panel's radius. Same inset,
+    same tag, same fallback rule as panel_frame.
     """
     t = ("header",)
+    img = skin.header(c, round((w - 6) * _scale), round((h + 1) * _scale),
+                      round((RADIUS - 3) * _scale))
+    if img is not None:
+        c.create_image(3, 3, image=img, anchor="nw", tags=t)
+        return
     rrect(c, 3, 3, w - 3, h + 3, RADIUS - 3, fill=HEADER_BG, outline="",
           tags=t)
     c.create_rectangle(3, h - 6, w - 3, h + 3, fill=HEADER_BG, outline="",
@@ -598,7 +621,17 @@ def plate(c, x1, y1, x2, y2, r=9, best=False, tags=()):
     lip. ``best`` is the ONE place a gold outline is spent inside a panel -
     the row the player is being pointed at - so the accent still means
     something when it appears. Every other row is the same quiet plate.
+
+    Skinned, the plate is the generated wooden plate (the gold-rimmed one for
+    ``best``), stretched to the row. Its feathered edges are safe here - the
+    plate lies entirely on the opaque panel, never over the click-through
+    hole - and its lip and shadow are baked into the art.
     """
+    img = skin.plate(c, round((x2 - x1) * _scale), round((y2 - y1) * _scale),
+                     bool(best))
+    if img is not None:
+        c.create_image(x1, y1, image=img, anchor="nw", tags=tags)
+        return
     rrect(c, x1, y1, x2, y2, r, fill=PANEL_HI if best else ROW,
           outline=GOLD if best else "", tags=tags)
     c.create_line(x1 + r, y1 + 0.5, x2 - r, y1 + 0.5,
@@ -607,7 +640,16 @@ def plate(c, x1, y1, x2, y2, r=9, best=False, tags=()):
 
 def art_frame(c, x1, y1, x2, y2, best=False):
     """A thin metal edge around a piece of card art - the game frames every
-    card it draws, and unframed art on a dark panel reads as a sticker."""
+    card it draws, and unframed art on a dark panel reads as a sticker.
+
+    Skinned, the edge is the generated brass frame, dimmed for the rows that
+    are not ``best`` (the same GOLD vs GOLD_LO split the vector draws). The
+    hole in its middle is real alpha, so the art shows through it."""
+    img = skin.art_frame(c, round((x2 - x1) * _scale),
+                         round((y2 - y1) * _scale), bool(best))
+    if img is not None:
+        c.create_image(x1, y1, image=img, anchor="nw")
+        return
     c.create_rectangle(x1, y1, x2, y2, outline=GOLD if best else GOLD_LO,
                        fill="")
 
@@ -2102,6 +2144,14 @@ class WindowManager:
         self.headless = headless
         self.root = tk.Tk()
         self.root.withdraw()
+        # The taskbar/alt-tab face for every window this root owns. Guarded
+        # like the rest of the skin: no folder, no icon, no error.
+        try:
+            ico = skin.icon(self.root)
+            if ico is not None:
+                self.root.iconphoto(True, ico)
+        except Exception:
+            pass
         self.pos = PosStore(pos_file)
         # Every window draws card art through this one cache (built before the
         # windows, because they reach for app.art inside their first redraw).

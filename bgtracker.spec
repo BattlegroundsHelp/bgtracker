@@ -73,6 +73,16 @@ DATAS.append((os.path.join(ROOT, "data", "hero_tips.json"), "data"))
 # a missing roles file just means "no roles", by design.
 DATAS.append((os.path.join(ROOT, "data", "comp_roles.json"), "data"))
 
+# The painted skin (ui/skin.py, same APP_DIR-then-BUNDLE_DIR pair again).
+# Every file individually, through the same existence check below: a skin
+# that half-ships would paint half the chrome as wood and half as vectors,
+# with nothing anywhere saying why.
+for _f in ("panel_wood.png", "frame_gold.png", "header_bar.png", "plate.png",
+           "plate_best.png", "artframe.png", "chip_on.png", "chip_off.png",
+           "settings_bg.png", "corner.png", "app_icon.png"):
+    DATAS.append((os.path.join(ROOT, "data", "skin", _f),
+                  os.path.join("data", "skin")))
+
 # Every file promised above must exist NOW, by its exact name. The failure
 # mode this catches is a rename or a fresh checkout missing a data file: the
 # feature that reads it degrades silently at runtime (that is its offline
@@ -110,6 +120,10 @@ def program(analysis, name, console=True):
         [],
         exclude_binaries=True,
         name=name,
+        # The tavern-shield face on every exe (tools/make_skin.py bakes it
+        # from the generated icon art). Explorer and the taskbar read it from
+        # the file; the running overlay sets the same art via iconphoto.
+        icon=os.path.join(ROOT, "data", "app.ico"),
         debug=False,
         bootloader_ignore_signals=False,
         strip=False,

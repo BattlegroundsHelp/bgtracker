@@ -24,6 +24,10 @@ data/*
 !data/hero_tips.json
 !data/hero_tips.schema.json
 !data/comp_roles.json
+# ...and the painted skin: generated art that ships with the tool, plus the
+# exe icon baked from it (tools/make_skin.py writes both).
+!data/skin/
+!data/app.ico
 tests/.livetest/
 .overlay.json
 overlay_out.log

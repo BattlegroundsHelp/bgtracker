@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **A painted skin: wood, brass, parchment.** Every panel, header, row plate
+  and card frame is now drawn from generated tavern art (`data/skin/`)
+  instead of flat vector fills, and the exe wears a tavern-shield icon. The
+  four drawing helpers stay the seam: a build without the skin folder or
+  without Pillow paints the exact vector chrome it painted before, so nothing
+  new can fail closed. All labels, numbers and data colours are untouched -
+  paint changed, meaning did not.
+
 ## v0.3.4-alpha (13 August 2026)
 
 ### Fixed
