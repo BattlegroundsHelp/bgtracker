@@ -435,12 +435,18 @@ def ui_icon(c, name, px):
     skey = "ui:" + name
     if skey not in _src:
         im = None
-        p = _UI_DIR / f"{name}.png"
-        if p.is_file():
-            try:
-                im = Image.open(p).convert("RGBA")
-            except Exception:
-                im = None
+        # Shipped chrome first (data/ui, in the repo and the build - the
+        # designed tribe emblems), fetched chrome second (assets/ui, what
+        # fetch-art pulled - the deck-list gem).
+        for d in (APP_DIR / "data" / "ui", BUNDLE_DIR / "data" / "ui",
+                  _UI_DIR):
+            p = d / f"{name}.png"
+            if p.is_file():
+                try:
+                    im = Image.open(p).convert("RGBA")
+                except Exception:
+                    im = None
+                break
         _src[skey] = im
     src = _src[skey]
     if src is None:

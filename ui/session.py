@@ -634,6 +634,25 @@ class SessionWindow(BaseWindow):
                       text="TRIBES IN LOBBY" if self.exact
                       else ("TRIBES SEEN" if self.tribes else "TRIBES"))
         y += 14
+        # The reference's "Available Minions" row: an EMBLEM per tribe with
+        # the tag under it (the emblems are the overlay's own designed
+        # chrome, data/ui/ - rendered headless, original glyphs, never
+        # Blizzard's). A tribe out of the lobby keeps its ring but dims its
+        # tag. Without the icons on disk the old text chips draw instead.
+        from . import skin
+        from .base import get_scale
+        px = max(12, round(18 * get_scale()))
+        icons = {t: skin.ui_icon(c, f"tribe_{t.lower()}", px)
+                 for t in bg.TRIBES}
+        if all(v is not None for v in icons.values()):
+            x = 14.0
+            for t in bg.TRIBES:
+                on = t in self.tribes
+                c.create_image(x, y, image=icons[t], anchor="nw")
+                c.create_text(x + 9, y + 24, text=TRIBE_TAG[t], font=F_CHIP,
+                              fill=TRIBE_COLOR[t] if on else OFF_TRIBE)
+                x += 29.5
+            return y + 32 + 4
         x = 12.0
         for t in bg.TRIBES:
             on = t in self.tribes

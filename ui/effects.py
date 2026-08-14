@@ -81,11 +81,19 @@ class EffectsWindow(BaseWindow):
                   fill=PANEL_HI, outline=LINE)
             cy = py1 + PILL_H // 2
             icon = skin.round_icon(c, eff["card"], 20) if eff["card"] else None
+            if icon is None:
+                # No card art for this source (a bookkeeping id, or the CDN
+                # has none): the designed emblem for what the effect IS -
+                # its tribe's, Blood Gems the quilboar one, a stamper the
+                # buff arrow.
+                name = {"gem": "tribe_quilboar",
+                        "stamper": "tribe_buff"}.get(eff["kind"])
+                if name is None:
+                    name = "tribe_" + (eff["label"] or "buff").lower()
+                icon = skin.ui_icon(c, name, 20)
             if icon is not None:
                 c.create_image(px1 + 4, cy - 10, image=icon, anchor="nw")
             else:
-                # No art for this source (a bookkeeping id, art not fetched):
-                # a plain circle in the effect's own colour keeps the shape.
                 c.create_oval(px1 + 4, cy - 10, px1 + 24, cy + 10,
                               fill=_colour(eff), outline="")
             c.create_text(px1 + 30, cy, anchor="w", fill=TEXT, font=F_NAME,

@@ -25,8 +25,10 @@ data/*
 !data/hero_tips.schema.json
 !data/comp_roles.json
 # ...and the painted skin: generated art that ships with the tool, plus the
-# exe icon baked from it (tools/make_skin.py writes both).
+# exe icon baked from it (tools/make_skin.py writes both), and the designed
+# UI emblems (tools/make_ui_icons.py) - original chrome, safe to publish.
 !data/skin/
+!data/ui/
 !data/app.ico
 tests/.livetest/
 .overlay.json

@@ -83,6 +83,14 @@ for _f in ("panel_wood.png", "frame_gold.png", "header_bar.png", "plate.png",
     DATAS.append((os.path.join(ROOT, "data", "skin", _f),
                   os.path.join("data", "skin")))
 
+# The designed tribe emblems (tools/make_ui_icons.py) - the session widget's
+# tribe row and the buff pills' fallback icons. Same rule: every promised
+# file checked below, a half-shipped set never leaves the build quietly.
+for _t in ("beast", "demon", "dragon", "elemental", "mechanical", "murloc",
+           "naga", "pirate", "quilboar", "undead", "all", "buff"):
+    DATAS.append((os.path.join(ROOT, "data", "ui", f"tribe_{_t}.png"),
+                  os.path.join("data", "ui")))
+
 # Every file promised above must exist NOW, by its exact name. The failure
 # mode this catches is a rename or a fresh checkout missing a data file: the
 # feature that reads it degrades silently at runtime (that is its offline
