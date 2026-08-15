@@ -1,18 +1,28 @@
 # Changelog
 
-## Unreleased
+## v0.3.6-alpha (15 August 2026)
 
 ### Added
 
 - **The extracted game icons the HUD was still sitting on are worn now.**
   The minion browser's tier filter is the game's own seven tavern-tier
   shields - the tab strip the reference overlay fronts its browser with -
-  lit gold when selected, faded when not, at the 28px where the star count
+  lit when selected, faded when not, at the 28px where the star count
   actually reads (at row size the shields are mush, which is why minion
   rows keep the number on the shield instead - measured, not guessed).
   The other-players list crowns the current leader with the game's own
   crown, the way the in-game scoreboard does. Both fall back to the old
   drawing on a machine that has not run the extractor.
+- **A LEVELING window: the ideal curve for your hero, live.** A little
+  draggable window that opens with the first shop: the tier-per-turn
+  milestones for your hero's bucket (economy, 1-gold power, 2-gold power,
+  tempo, tank, dark-gift heroes - everyone else gets the standard line),
+  the next milestone lit, one honest verdict (on curve / behind / ahead)
+  from your actual tier and turn, and the bucket's own advice underneath.
+  The curves are curated written strategy in `data/curves.json` - dated,
+  per season, researched from public guides the way the hero tips were,
+  never scraped stats - and a user can edit their copy beside the exe.
+  The hero is read from its own entity entering play at the draft's end.
 - **The overlay survives a flaky Tk start.** Creating the very first window
   can transiently fail to read Tcl's own startup file on a busy Windows
   machine (measured at roughly one launch in four during test batteries) -
@@ -24,6 +34,14 @@
 
 ### Fixed
 
+- **The game's own icons were being drawn as opaque squares.** The
+  atlas they come out of carries no transparency at all: the game packs
+  each shape's alpha as a separate black-on-white silhouette beside the
+  colour art, so cropping the colour alone baked a grey backdrop and a
+  white edge into every tavern-tier shield the rows wear. The extractor
+  now composes that silhouette back in as the alpha (and keys the star
+  off its own backdrop), so re-running it gives the real shapes. The
+  placement medals were always fine - that atlas has true alpha.
 - **A 22-screenshot polish review swept all thirteen windows** and its
   findings shipped: five-star rows no longer run under the name (tavern
   and discover); the BUFFS window has its title bar, a caption that fits,
@@ -37,18 +55,6 @@
   the 14px rule across windows; and every colour used against its meaning
   went back to it (a tier is not a link, a caveat is not clickable, a
   wide minion is not "good", a plain count is not a warning).
-
-
-- **A LEVELING window: the ideal curve for your hero, live.** A little
-  draggable window that opens with the first shop: the tier-per-turn
-  milestones for your hero's bucket (economy, 1-gold power, 2-gold power,
-  tempo, tank, dark-gift heroes - everyone else gets the standard line),
-  the next milestone lit, one honest verdict (on curve / behind / ahead)
-  from your actual tier and turn, and the bucket's own advice underneath.
-  The curves are curated written strategy in `data/curves.json` - dated,
-  per season, researched from public guides the way the hero tips were,
-  never scraped stats - and a user can edit their copy beside the exe.
-  The hero is read from its own entity entering play at the draft's end.
 
 ## v0.3.5-alpha (14 August 2026)
 
