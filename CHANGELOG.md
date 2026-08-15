@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.3.5-alpha (14 August 2026)
 
 ### Changed
 
@@ -30,6 +30,21 @@
 
 ### Added
 
+- **The whole art universe, three ways.** `fetch-art --everything` pulls
+  tiles and crops for every Battlegrounds card id there is - heroes, hero
+  powers, buddies, spells, trinkets - so offer rows, the session's hero
+  list and the buff pills wear real portraits; it also fetches the
+  deck-list gem that now sits on every minion row carrying the tier.
+  `tools/extract_game_assets.py` (with UnityPy installed) goes further and
+  pulls the game's own tavern-tier shield, tier star, placement medals and
+  first-place crown out of YOUR Hearthstone install - rows wear the real
+  shield, session top-three finishes wear the real medals, and none of it
+  ever enters the repository. The one thing no source publishes - tribe
+  emblems - ships as twelve original designed icons in the session
+  widget's tribe row and as the pills' fallback.
+- **The session widget reads like the reference's.** START and CURRENT MMR
+  as labelled columns with the coloured session delta, the games list under
+  them, the tribe emblem row at the bottom.
 - **A generated tavern skin, opt-in.** Wood, brass and parchment art
   (`data/skin/`) for every panel, header and plate, behind a settings-panel
   switch ("Tavern skin") - off by default, applied live, and the exe wears
@@ -74,6 +89,15 @@
   brightness 118 where the contract says 38. The skin bake now flattens the
   interior of every text-bearing surface and leaves the edges - the gold
   rim, the plate lip, the header rule - as loud as the art drew them.
+- **The stats server is whole for the first time.** The deploy script never
+  shipped the image build's context files, so every server build since the
+  tips service was written had failed on the box - silently, because docker
+  kept running the old images. Fixed: the tips voting server is deployed
+  and routed at last (the 121 shipped hero tips are its seed ballot), and
+  the hero-powers feed publishes - which retires the "heropowers feed
+  unreachable" warning every overlay start printed. That feed stays empty
+  until enough shared games carry hero-power picks; that part is data, not
+  code.
 
 ## v0.3.4-alpha (13 August 2026)
 
