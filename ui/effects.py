@@ -18,7 +18,7 @@ rather than showing an empty box.
 from __future__ import annotations
 
 from .base import (AMBER, DIM, F_NAME, F_SUB, LINE, PANEL_HI, SOFT, TEXT,
-                   TRIBE_COLOR, BaseWindow, get_scale, rrect)
+                   TRIBE_COLOR, BaseWindow, fit_text, get_scale, rrect)
 from . import skin
 
 # The pill grid: sized for "+123/+456" beside a 20px icon, two per row -
@@ -40,9 +40,10 @@ class EffectsWindow(BaseWindow):
     COLUMN = "float"                # not part of either tiled column: it is
     DY = 792                        # the one window whose whole point is
     RESERVE = 64                    # being moved wherever the player wants
-    MAX_H = 124                     # three pill rows + the names line; the
-                                    # review caught 5-6 live effects painting
-                                    # a third row below a 92px clamp
+    MAX_H = 150                     # header + three pill rows + the names
+                                    # line; two reviews taught this number
+                                    # (92 clipped the third row, 124 had no
+                                    # room for the header)
     WIDTH = 8 + 2 * PILL_W + GAP + 8
     EVENTS = ("game",)
 
@@ -88,7 +89,11 @@ class EffectsWindow(BaseWindow):
         effects = s.effects() if s is not None else []
         if not effects:
             return 24
-        x, y, col = 8, 6, 0
+        # The header names the window (the review found this was the one
+        # surface with no title - unidentifiable when dragging it).
+        y = self.header(c)
+        x, col = 8, 0
+        y += 4
         for eff in effects[:6]:
             px1, py1 = x + col * (PILL_W + GAP), y
             rrect(c, px1, py1, px1 + PILL_W, py1 + PILL_H, PILL_H // 2,
@@ -125,6 +130,6 @@ class EffectsWindow(BaseWindow):
         # carry numbers, and two nameless pills of the same colour would be
         # a guessing game.
         names = " · ".join((e["label"] or "?").title()[:14] for e in effects[:6])
-        c.create_text(10, y + 2, anchor="nw", fill=DIM, font=F_SUB,
-                      text=names[:52])
+        c.create_text(8, y + 2, anchor="nw", fill=DIM, font=F_SUB,
+                      text=fit_text(names, self.WIDTH - 16))
         return y + 16

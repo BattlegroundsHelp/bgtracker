@@ -28,7 +28,8 @@ class CurveWindow(BaseWindow):
     COLUMN = "float"                # free-floating, like BUFFS: made to be
     DY = 928                        # dragged where the player wants it
     RESERVE = 88
-    MAX_H = 118
+    MAX_H = 126                     # header + wrapped milestones + verdict +
+                                    # two note lines, at Tk's real line boxes
     WIDTH = 232
     EVENTS = ("game",)
 
@@ -86,8 +87,14 @@ class CurveWindow(BaseWindow):
         if hp is not None and rules:
             hp_col = (BAD if hp < rules["danger"]
                       else AMBER if hp < rules["caution"] else GOOD)
-        y = self.header(c, f"{bucket['label']}  ·  {hp} hp" if hp is not None
-                        else bucket["label"], hp_col)
+        # Only the hp wears the health colour - the bucket label is not
+        # health data (hue is the number). The label sits beside it in DIM.
+        y = self.header(c, f"{hp} hp" if hp is not None else bucket["label"],
+                        hp_col if hp is not None else SOFT)
+        if hp is not None:
+            c.create_text(self.WIDTH - 14 - F_SUB.measure(f"{hp} hp") - 10,
+                          14, text=bucket["label"], anchor="e", fill=DIM,
+                          font=F_SUB)
         turn = (s.bg_turn or 0) if s is not None else 0
         tier = (s.tier or 1) if s is not None else 1
 
@@ -123,7 +130,9 @@ class CurveWindow(BaseWindow):
                 verdict = rules["danger_note" if danger else "caution_note"]
                 col = BAD if danger else AMBER
             elif tier > expected:
-                verdict, col = f"ahead of curve (T{tier} on t{turn})", ACCENT
+                # GOOD, not ACCENT: ahead-of-schedule is a good state, and
+                # ACCENT is reserved for clickable / yours.
+                verdict, col = f"ahead of curve (T{tier} on t{turn})", GOOD
             elif tier == expected:
                 verdict, col = "on curve", GOOD
             else:

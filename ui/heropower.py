@@ -87,10 +87,10 @@ class HeroPowerWindow(BaseWindow):
                           fill=TEXT, font=F_NAME)
             avg = r.get("avg")
             if avg is None:
-                c.create_text(self.WIDTH - 16, y + 13, text="—", anchor="e",
+                c.create_text(self.WIDTH - 14, y + 13, text="—", anchor="e",
                               fill=DIM, font=F_NAME)
             else:
-                c.create_text(self.WIDTH - 16, y + 13, text=f"{avg:.2f}",
+                c.create_text(self.WIDTH - 14, y + 13, text=f"{avg:.2f}",
                               anchor="e", fill=avg_color(avg), font=F_NAME)
             y += 28
         if (not any(r.get("avg") is not None for r in self.rows)

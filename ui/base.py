@@ -826,25 +826,29 @@ def offer_rows(c, y, rows, width, art, min_sample=0):
                 sub += " · thin!"
         c.create_text(tx, y + 31, text=sub, anchor="w", fill=DIM, font=F_SUB)
         tip = " ".join(str(r.get("tip") or "").split())
+        # width-14, the doctrine's right margin - the polish review measured
+        # a 4px stagger between these values and every header's right edge.
         if shown is not None:
             col = avg_color(shown)
-            c.create_text(width - 18, y + 16, text=f"{shown:.2f}", anchor="e",
+            c.create_text(width - 14, y + 16, text=f"{shown:.2f}", anchor="e",
                           fill=col, font=F_BIG)
             if r.get("adj") is not None and r.get("avg") is not None:
                 d = r["adj"] - r["avg"]
-                c.create_text(width - 18, y + 32, text=f"{d:+.2f} here", anchor="e",
+                c.create_text(width - 14, y + 32, text=f"{d:+.2f} here", anchor="e",
                               fill=col if d < 0 else DIM, font=F_DELTA)
             if not tip:
                 frac = max(0.10, min(1.0, (5.2 - shown) / 2.2))
-                c.create_rectangle(20, y + 41, width - 98, y + 43, fill=LINE, outline="")
-                c.create_rectangle(20, y + 41, 20 + (width - 118) * frac, y + 43,
+                c.create_rectangle(20, y + 41, width - 94, y + 43, fill=LINE, outline="")
+                c.create_rectangle(20, y + 41, 20 + (width - 114) * frac, y + 43,
                                    fill=col, outline="")
         else:
-            c.create_text(width - 18, y + 16, text="—", anchor="e",
+            c.create_text(width - 14, y + 16, text="—", anchor="e",
                           fill=DIM, font=F_BIG)
         if tip:
-            c.create_text(tx, y + 41, text=fit_text(tip, width - tx - 18),
-                          anchor="w", fill=SOFT, font=F_SUB)
+            # F_CHIP inside the plate: the review measured the F_SUB tip's
+            # descenders striking through the best row's gold outline.
+            c.create_text(tx, y + 40, text=fit_text(tip, width - tx - 18),
+                          anchor="w", fill=SOFT, font=F_CHIP)
         y += 48
     return y
 

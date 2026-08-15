@@ -156,7 +156,7 @@ class HeroPickWindow(BaseWindow):
             self.reset()
 
     def draw(self, c):
-        y = self.header(c, self._subtitle(), AMBER)
+        y = self.header(c, self._subtitle(), DIM)
         if not self.rows:
             c.create_text(14, y + 8, text="waiting for the draft", anchor="w",
                           fill=DIM, font=F_SUB)

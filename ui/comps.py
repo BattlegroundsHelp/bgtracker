@@ -30,8 +30,8 @@ import bgtracker as bg
 from .base import (ACCENT, AMBER, BAD, DIM, F_BRAND, F_CHIP, F_NAME, F_STATUS,
                    F_SUB, F_TITLE, GOOD, LINE, OFF_CHIP, OFF_TRIBE, ON_CHIP,
                    PANEL, SHADE, SOFT, TEXT, TRIBE_COLOR, TRIBE_TAG,
-                   BaseWindow, art_frame, avg_color, badge_edit, plate, rrect,
-                   set_badge_edit)
+                   BaseWindow, art_frame, avg_color, badge_edit, fit_text,
+                   plate, rrect, set_badge_edit, shadow_text, tile_row)
 
 # Difficulty word color: reads like the placement colors do - green is
 # comfortable, red is a commitment.
@@ -386,15 +386,17 @@ class CompsWindow(BaseWindow):
                     line = " · ".join(comp["key"][:3])
                     if diff:
                         # The word and the core tier at a glance; the minion
-                        # line gives up the width the tag needs (the full line
-                        # budget is 46 characters).
-                        if len(line) > 30:
-                            line = line[:29] + "…"
+                        # line gives up the width the tag needs. MEASURED
+                        # fits, not character cuts - the review caught the
+                        # old [:29] colliding with the tag on wide glyphs.
+                        tag = f"{diff['word']} · t{round(diff['tier'])}"
                         c.create_text(self.WIDTH - 14, y + 26, anchor="e",
                                       fill=DIFF_COLOR[diff["word"]], font=F_SUB,
-                                      text=f"{diff['word']} · t{round(diff['tier'])}")
-                    elif len(line) > 46:
-                        line = line[:45] + "…"
+                                      text=tag)
+                        line = fit_text(line, self.WIDTH - 14
+                                        - F_SUB.measure(tag) - 66 - 8)
+                    else:
+                        line = fit_text(line, self.WIDTH - 14 - 66)
                     c.create_text(66, y + 26, text=line, anchor="w",
                                   fill=DIM, font=F_SUB)
                 y += 38
@@ -406,16 +408,30 @@ class CompsWindow(BaseWindow):
         name, and how often it appears on this comp's real winning boards
         (stats path only; curated rows carry no frequencies and invent
         none)."""
+        # The deck-list tile first, same as every minion row (the doctrine's
+        # rows-are-tiles rule); the icon row stays as the no-tile fallback.
+        cid = self.app.art.id_for(name)
+        tiled = bool(cid) and tile_row(c, 66, y, self.WIDTH - 14, y + 19, cid)
         if mark:
-            c.create_text(68, y + 9, text=mark, fill=mark_fill, font=F_SUB)
-        ic = self.app.art.icon_for_name(name, 18)
-        if ic is not None:
-            c.create_image(76, y + 9, image=ic, anchor="w")
-            art_frame(c, 75, y, 95, y + 19)
-        c.create_text(98, y + 9, text=name[:24], anchor="w",
-                      fill=SOFT, font=F_SUB)
+            if tiled:
+                shadow_text(c, 68, y + 9, mark, mark_fill, F_SUB)
+            else:
+                c.create_text(68, y + 9, text=mark, fill=mark_fill,
+                              font=F_SUB)
+        if not tiled:
+            ic = self.app.art.icon_for_name(name, 18)
+            if ic is not None:
+                c.create_image(76, y + 9, image=ic, anchor="w")
+                art_frame(c, 75, y, 95, y + 19)
+        c.create_text(98 if not tiled else 80, y + 9, text=name[:24],
+                      anchor="w", fill=SOFT, font=F_SUB)
         share = freq.get(name)
         if share:
-            c.create_text(self.WIDTH - 14, y + 9, text=f"{share * 100:.0f}%",
-                          anchor="e", fill=DIM, font=F_SUB)
+            if tiled:
+                shadow_text(c, self.WIDTH - 18, y + 9, f"{share * 100:.0f}%",
+                            DIM, F_SUB, anchor="e")
+            else:
+                c.create_text(self.WIDTH - 14, y + 9,
+                              text=f"{share * 100:.0f}%",
+                              anchor="e", fill=DIM, font=F_SUB)
         return y + 20

@@ -575,7 +575,7 @@ class BrowserWindow(BaseWindow):
             return y + 30
 
         y = self._filters(c, y)
-        c.create_line(12, y, self.WIDTH - 12, y, fill=LINE)
+        c.create_line(14, y, self.WIDTH - 14, y, fill=LINE)
         return self._list(c, y + 6)
 
     def _hint(self):
@@ -592,7 +592,7 @@ class BrowserWindow(BaseWindow):
 
     def _filters(self, c, y):
         # -- tavern tier ---------------------------------------------------
-        c.create_text(12, y + 8, text="TIER", anchor="w", fill=DIM, font=F_TITLE)
+        c.create_text(14, y + 8, text="TIER", anchor="w", fill=DIM, font=F_TITLE)
         self._chip(c, 46, y, 26, "all", not self.sel_tiers, ("tier", None))
         x = 78
         for t in range(1, 8):
@@ -601,7 +601,7 @@ class BrowserWindow(BaseWindow):
         y += 20
 
         # -- tribe (default = this lobby) ----------------------------------
-        c.create_text(12, y + 18, text="TRIBE", anchor="w", fill=DIM, font=F_TITLE)
+        c.create_text(14, y + 18, text="TRIBE", anchor="w", fill=DIM, font=F_TITLE)
         for i, t in enumerate(bg.TRIBES):
             self._chip(c, 46 + (i % 5) * 30, y + (i // 5) * 20, 27, TRIBE_TAG[t],
                        t in self.sel_tribes, ("tribe", t), color=TRIBE_COLOR[t])
@@ -615,7 +615,7 @@ class BrowserWindow(BaseWindow):
 
         # -- trait ---------------------------------------------------------
         key, label, count = self._trait()
-        c.create_text(12, y + 8, text="TRAIT", anchor="w", fill=DIM, font=F_TITLE)
+        c.create_text(14, y + 8, text="TRAIT", anchor="w", fill=DIM, font=F_TITLE)
         self._chip(c, 46, y, 18, "‹", False, "trait_prev")
         self._chip(c, 68, y, 170, f"{label} · {count}", key is not None, "trait_any")
         self._chip(c, 242, y, 18, "›", False, "trait_next")
@@ -662,8 +662,8 @@ class BrowserWindow(BaseWindow):
                 if text is TURNS:
                     y = self._turn_strip(c, y, fill)
                     continue
-                c.create_text(44, y + 5, text=text, anchor="w", fill=fill,
-                              font=F_SUB)
+                c.create_text(getattr(self, "_name_x", 44), y + 5, text=text,
+                              anchor="w", fill=fill, font=F_SUB)
                 y += self.LINE_H
             if opened:
                 y += 6
@@ -679,9 +679,12 @@ class BrowserWindow(BaseWindow):
         # The row is the game's own deck-list tile - how HSReplay and
         # Firestone draw a minion in the match (founder's direction,
         # 2026-08-14). No tile on disk and the icon-and-text row returns.
+        # best=False always: the opened row's PLATE already wears the one
+        # gold outline - the review caught the tile adding a second.
         tiled = tile_row(c, 8, y + 1, self.WIDTH - 8, y + 27, m["id"],
-                         best=opened, tier=m["techLevel"])
+                         best=False, tier=m["techLevel"])
         name_x = 32 if tiled else 44
+        self._name_x = name_x       # the detail lines indent to the name
         if not tiled:
             # The pool's own cardId is the art id; the name lookup is the same
             # fallback the offer rows use, for a card whose art landed
@@ -712,16 +715,27 @@ class BrowserWindow(BaseWindow):
                           font=F_CHIP)
         if self.rated or self.graded:
             s, graded = self.rating(m)
+            # Over the tile's art half these wear the badge halo, exactly as
+            # the tavern's right-hand labels do (review find: a DIM dash
+            # washed out over parchment-coloured art).
             if s is None:
-                c.create_text(self.WIDTH - 74, y + 14, text="—", anchor="e",
-                              fill=DIM, font=F_SUB)
+                if tiled:
+                    shadow_text(c, self.WIDTH - 74, y + 14, "—", DIM, F_SUB,
+                                anchor="e")
+                else:
+                    c.create_text(self.WIDTH - 74, y + 14, text="—",
+                                  anchor="e", fill=DIM, font=F_SUB)
             else:
                 # Filled and colour graded = measured. Hollow and muted = read
                 # off the card. Same glyph rule as the tavern row, so the two
                 # windows never say the same thing two ways.
-                c.create_text(self.WIDTH - 74, y + 14, anchor="e", font=F_STARS,
-                              text="★" * s,
-                              fill=SOFT if graded else STAR_COLOR.get(s, DIM))
+                fill = SOFT if graded else STAR_COLOR.get(s, DIM)
+                if tiled:
+                    shadow_text(c, self.WIDTH - 74, y + 14, "★" * s, fill,
+                                F_STARS, anchor="e")
+                else:
+                    c.create_text(self.WIDTH - 74, y + 14, anchor="e",
+                                  font=F_STARS, text="★" * s, fill=fill)
 
     def _detail(self, m):
         """The opened row: what it is, what it does, and - only with a real
@@ -737,9 +751,14 @@ class BrowserWindow(BaseWindow):
             out.append((line, DIM))
         st = self.cards.get(m["id"]) or {}
         if st.get("delta") is not None:
-            out.append((f"{st['avg']:.2f} avg when bought vs "
-                        f"{st['avg'] - st['delta']:.2f} without · "
-                        f"{st.get('n', 0):,} games", ACCENT))
+            # SOFT, not ACCENT (a stat is not clickable), and thin samples
+            # say so - the same convention every offer row follows.
+            line = (f"{st['avg']:.2f} avg when bought vs "
+                    f"{st['avg'] - st['delta']:.2f} without · "
+                    f"{st.get('n', 0):,} games")
+            if st.get("n", 0) < bg.MIN_SAMPLE:
+                line += " · thin!"
+            out.append((line, SOFT))
         else:
             out.extend(self._grade_lines(m))
         rows = self.turns.get(m["id"])
@@ -807,7 +826,7 @@ class BrowserWindow(BaseWindow):
         return y + self.LINE_H
 
     def _footer(self, c, y, total, drawn):
-        c.create_line(12, y + 2, self.WIDTH - 12, y + 2, fill=LINE)
+        c.create_line(14, y + 2, self.WIDTH - 14, y + 2, fill=LINE)
         y += 6
         self._chip(c, 14, y, 26, "▲", False, "up")
         self._chip(c, 44, y, 26, "▼", False, "down")

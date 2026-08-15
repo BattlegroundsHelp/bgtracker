@@ -40,7 +40,8 @@ no clipping.
 from __future__ import annotations
 
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_NAME, F_SUB, F_TITLE,
-                   GOOD, LINE, SOFT, TEXT, BaseWindow, art_frame, plate)
+                   GOOD, LINE, SOFT, TEXT, BaseWindow, art_frame, plate,
+                   shadow_text, tile_row)
 
 # Backstop for the shared band: if the trinket window's "picks are over" event
 # never arrives, come back on our own instead of staying hidden all game.
@@ -241,19 +242,29 @@ class PlayersWindow(BaseWindow):
             return y + 30
 
         for m in board:
-            ic = self.app.art.icon(m.get("card"), 16)
-            tx = 16
-            if ic is not None:
-                c.create_image(16, y + 8, image=ic, anchor="w")
-                tx = 36
+            # The deck-list tile first, like every minion row; SOFT stats
+            # always - attack >= health is a shape, not a quality, and the
+            # old GOOD-when-wide colouring lied about the number.
+            tiled = tile_row(c, 8, y - 1, self.WIDTH - 8, y + 17,
+                             m.get("card"))
+            tx = 14
+            if not tiled:
+                ic = self.app.art.icon(m.get("card"), 16)
+                tx = 16
+                if ic is not None:
+                    c.create_image(16, y + 8, image=ic, anchor="w")
+                    tx = 36
             nm = m.get("name") or m.get("card") or "?"
             c.create_text(tx, y + 8, text=nm[:22], anchor="w", fill=SOFT,
                           font=F_SUB)
             atk, hp = m.get("atk"), m.get("health")
             if atk is not None and hp is not None:
-                c.create_text(self.WIDTH - 14, y + 8, text=f"{atk}/{hp}",
-                              anchor="e", fill=GOOD if atk >= hp else SOFT,
-                              font=F_SUB)
+                if tiled:
+                    shadow_text(c, self.WIDTH - 14, y + 8, f"{atk}/{hp}",
+                                SOFT, F_SUB, anchor="e")
+                else:
+                    c.create_text(self.WIDTH - 14, y + 8, text=f"{atk}/{hp}",
+                                  anchor="e", fill=SOFT, font=F_SUB)
             y += self.MINION_H
         c.create_text(14, y + 8, text="as it was when their fight was on screen",
                       anchor="w", fill=DIM, font=F_CHIP)

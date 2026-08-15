@@ -135,6 +135,6 @@ class CombatWindow(BaseWindow):
             c.create_text(14, y + 7, text=f"{n:,} simulated fights", anchor="w",
                           fill=DIM, font=F_CHIP)
             c.create_text(self.WIDTH - 14, y + 7, text="log-only sim", anchor="e",
-                          fill=ACCENT, font=F_CHIP)
+                          fill=DIM, font=F_CHIP)
             y += 16
         return y + 8

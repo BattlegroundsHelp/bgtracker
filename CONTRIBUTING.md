@@ -1,5 +1,7 @@
 # Contributing
 
+Touching any window's look? Read docs/HUD_GUIDELINES.md first - it is the design contract (the reference-copying rule, palette law, band budgets, asset ladder).
+
 Help is welcome - [ROADMAP.md](ROADMAP.md) lists what's open, sized, and why
 the not-built things aren't built. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 is the map of how it all fits together, including every log-parsing gotcha we

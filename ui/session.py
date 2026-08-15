@@ -58,7 +58,8 @@ import collect
 
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_HUGE, F_NAME, F_SUB,
                    F_TITLE, GOOD, LINE, OFF_TRIBE, ON_CHIP, PANEL, SHADE, SOFT,
-                   TEXT, TRIBE_COLOR, TRIBE_TAG, BaseWindow, advance, rrect)
+                   TEXT, TRIBE_COLOR, TRIBE_TAG, BaseWindow, advance,
+                   avg_color, rrect)
 
 # A sitting idle this long is over: the next launch starts a new session
 # instead of resuming a stale one from yesterday.
@@ -581,8 +582,15 @@ class SessionWindow(BaseWindow):
         placed = [g["place"] for g in games if g.get("place")]
         label = f"GAMES ({len(games)})" if games else "GAMES"
         if placed:
-            label += f"  ·  avg {sum(placed) / len(placed):.1f}"
-        c.create_text(14, y + 7, text=label, anchor="w", fill=DIM, font=F_TITLE)
+            label += "  ·  avg "
+        t = c.create_text(14, y + 7, text=label, anchor="w", fill=DIM,
+                          font=F_TITLE)
+        if placed:
+            # The mean is a number with a meaning, so it wears the same
+            # placement colour scale as every other average in the HUD.
+            mean = sum(placed) / len(placed)
+            c.create_text(advance(c, t), y + 7, text=f"{mean:.1f}",
+                          anchor="w", fill=avg_color(mean), font=F_TITLE)
         rx2 = self.WIDTH - 12
         c.create_text(rx2 - 2, y + 7, text="reset ›", anchor="e",
                       fill=ACCENT, font=F_SUB)
@@ -609,7 +617,7 @@ class SessionWindow(BaseWindow):
                                   max(12, round(17 * get_scale())))
                      if place in (1, 2, 3) else None)
             if medal is not None:
-                c.create_image(14, y + 2, image=medal, anchor="nw")
+                c.create_image(25, y + 10, image=medal, anchor="center")
                 c.create_text(25, y + 10, text=str(place),
                               fill=ON_CHIP, font=F_CHIP)
             else:
@@ -622,6 +630,7 @@ class SessionWindow(BaseWindow):
             if icon is not None:
                 try:
                     c.create_image(x, y + 10, image=icon, anchor="w")
+                    art_frame(c, x - 1, y + 1, x + 17, y + 19)
                     x += 22
                 except Exception:
                     pass        # art is decoration: never lose the row over it
@@ -667,7 +676,7 @@ class SessionWindow(BaseWindow):
                               fill=TRIBE_COLOR[t] if on else OFF_TRIBE)
                 x += 29.5
             return y + 32 + 4
-        x = 12.0
+        x = 14.0
         for t in bg.TRIBES:
             on = t in self.tribes
             rrect(c, x, y, x + 27, y + 15, 7,

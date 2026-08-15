@@ -4,6 +4,28 @@
 
 ### Added
 
+- **The HUD has a written design contract.** docs/HUD_GUIDELINES.md: the
+  reference-copying rule, the measured flat doctrine, palette and
+  typography law, window anatomy, the four drawing recipes, the asset
+  ladder, and the checks to run before shipping a look change.
+
+### Fixed
+
+- **A 22-screenshot polish review swept all thirteen windows** and its
+  findings shipped: five-star rows no longer run under the name (tavern
+  and discover); the BUFFS window has its title bar, a caption that fits,
+  and room for three pill rows; measured text fits replace every blind
+  character cut (comps, discover, the buff caption); the hero-pick tip
+  sits inside its plate instead of striking through the gold outline; the
+  opened browser row wears ONE gold outline; over-art labels carry halos
+  everywhere; comps core lists, discover options and opponents' boards
+  draw as deck-list tiles like every other minion row; session medals
+  centre on their digits and hero crops get their frame; margins align on
+  the 14px rule across windows; and every colour used against its meaning
+  went back to it (a tier is not a link, a caveat is not clickable, a
+  wide minion is not "good", a plain count is not a warning).
+
+
 - **A LEVELING window: the ideal curve for your hero, live.** A little
   draggable window that opens with the first shop: the tier-per-turn
   milestones for your hero's bucket (economy, 1-gold power, 2-gold power,

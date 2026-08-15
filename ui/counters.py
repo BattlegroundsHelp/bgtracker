@@ -104,7 +104,7 @@ from pathlib import Path
 
 import bgtracker as bg
 
-from .base import (ACCENT, AMBER, DIM, F_CHIP, F_NAME, F_SUB, GOOD, SOFT,
+from .base import (AMBER, DIM, F_CHIP, F_NAME, F_SUB, GOOD, SOFT, TEXT,
                    TRIBE_COLOR, BaseWindow, advance)
 
 # The screen-synced copy. Every VALUE below is taken from it and nothing else.
@@ -839,7 +839,7 @@ class CountersWindow(BaseWindow):
         cols = [("GOLD", f"{gold}/{gmax}" if gold is not None else "—",
                  AMBER if gold else DIM),
                 ("TIER", f"{s.tier}" if s.tier else "—",
-                 ACCENT if s.tier else DIM)]
+                 TEXT if s.tier else DIM)]
         if s.at_max_tier:
             cols.append(("UPGRADE", "max", DIM))
         elif s.next_cost is not None:

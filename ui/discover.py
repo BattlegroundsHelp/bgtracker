@@ -21,7 +21,8 @@ this panel that is there with no stats source configured at all.
 from __future__ import annotations
 
 from .base import (ACCENT, DIM, F_STARS, F_SUB, GOOD, SOFT, STAR_COLOR, TEXT,
-                   BaseWindow, art_frame, fit_text, plate)
+                   BaseWindow, art_frame, fit_text, plate, shadow_text,
+                   tile_row)
 
 
 class DiscoverWindow(BaseWindow):
@@ -78,25 +79,40 @@ class DiscoverWindow(BaseWindow):
             # At most four options, so every one of them can be a plate here
             # (unlike the seven-row tavern) - and the one already in your
             # build is the only one wearing the gold edge.
-            plate(c, 8, y, self.WIDTH - 8, y + step - 4, 8, best=mine)
-            ic = (self.app.art.icon(r.get("card"), 22)
-                  or self.app.art.icon_for_name(r["name"], 22))
-            if ic is not None:
-                c.create_image(20, y + 11, image=ic, anchor="w")
-                art_frame(c, 19, y, 43, y + 22, mine)
-            c.create_text(46, y + 11, text="★" * s, anchor="w",
+            # The deck-list tile first (the rows-are-tiles rule); the plate
+            # and icon row stay for options with no tile - Dark Gifts and
+            # spells often have none.
+            tiled = tile_row(c, 8, y, self.WIDTH - 8, y + step - 4,
+                             r.get("card"), best=mine, tier=r.get("tier"))
+            if not tiled:
+                plate(c, 8, y, self.WIDTH - 8, y + step - 4, 8, best=mine)
+                ic = (self.app.art.icon(r.get("card"), 22)
+                      or self.app.art.icon_for_name(r["name"], 22))
+                if ic is not None:
+                    c.create_image(20, y + 11, image=ic, anchor="w")
+                    art_frame(c, 19, y, 43, y + 22, mine)
+            star_x, name_x = (32, 92) if tiled else (46, 92)
+            c.create_text(star_x, y + 11, text="★" * s, anchor="w",
                           fill=STAR_COLOR.get(s, DIM), font=F_STARS)
-            c.create_text(92, y + 11, text=r["name"][:16], anchor="w",
+            right_w = 74
+            c.create_text(name_x, y + 11, anchor="w",
+                          text=fit_text(r["name"],
+                                        self.WIDTH - 14 - right_w - name_x),
                           fill=TEXT if r.get("mine") else SOFT, font=F_SUB)
+
+            def right(text, fill):
+                if tiled:
+                    shadow_text(c, self.WIDTH - 14, y + 11, text, fill,
+                                F_SUB, anchor="e")
+                else:
+                    c.create_text(self.WIDTH - 14, y + 11, text=text,
+                                  anchor="e", fill=fill, font=F_SUB)
             if r.get("mine"):
-                c.create_text(self.WIDTH - 14, y + 11, text="▶ yours", anchor="e",
-                              fill=ACCENT, font=F_SUB)
+                right("▶ yours", ACCENT)
             elif r.get("comp"):
-                c.create_text(self.WIDTH - 14, y + 11, text=r["comp"][:14],
-                              anchor="e", fill=DIM, font=F_SUB)
-            elif r.get("tier"):
-                c.create_text(self.WIDTH - 14, y + 11, text=f"T{r['tier']}",
-                              anchor="e", fill=DIM, font=F_SUB)
+                right(r["comp"][:14], DIM)
+            elif r.get("tier") and not tiled:
+                right(f"T{r['tier']}", DIM)
             if step > 26 and r.get("syn_full"):
                 c.create_text(46, y + 28, anchor="w", fill=GOOD, font=F_SUB,
                               text=fit_text(r["syn_full"], self.WIDTH - 60))

@@ -117,7 +117,9 @@ class TavernWindow(BaseWindow):
             # arrives flagged graded carries a number read off the card, and
             # that number ranks bodies rather than cards (see the note up top),
             # so it is not drawn at all rather than drawn in another colour.
-            star_x, name_x = (32, 78) if tiled else (44, 90)
+            # The name column clears FIVE stars (F_STARS measures 55px for
+            # five - the review caught the fifth star under the name).
+            star_x, name_x = (32, 92) if tiled else (44, 104)
             if s and not r.get("graded"):
                 c.create_text(star_x, y + 10, text="★" * s, anchor="w",
                               font=F_STARS, fill=STAR_COLOR.get(s, DIM))
@@ -146,5 +148,5 @@ class TavernWindow(BaseWindow):
                 right(f"T{r['tier']}", DIM)
             y += 22
         c.create_text(14, y + 8, text=f"roll {self.roll}", anchor="w",
-                      fill=DIM, font=F_TITLE)
+                      fill=DIM, font=F_SUB)
         return y + 22

@@ -61,7 +61,7 @@ class TrinketWindow(BaseWindow):
             self.reset()
 
     def draw(self, c):
-        y = self.header(c, f"{len(self.rows)} on offer" if self.rows else None, AMBER)
+        y = self.header(c, f"{len(self.rows)} on offer" if self.rows else None)
         if not self.rows:
             return y + 24
         y = offer_rows(c, y, self.rows, self.WIDTH, self.app.art, bg.MIN_SAMPLE)
