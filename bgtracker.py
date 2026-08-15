@@ -654,6 +654,52 @@ def hero_tips(refresh: bool = False) -> dict:
     return out
 
 
+_CURVES_CACHE = None
+
+
+def hero_curves(refresh: bool = False) -> dict:
+    """The tavern leveling curves: {"default": {...}, "by_name": {hero name ->
+    bucket dict}}, each bucket {"label", "curve" (tier -> turn, int keys),
+    "note"}.
+
+    Same class of data as hero_tips: curated written strategy (researched from
+    public guides, dated inside the file), shipped as text, never scraped
+    stats. Same read rule too: the user's own data/curves.json beside the exe
+    wins over the bundled copy, and a missing or malformed file means no
+    curves - the curve window simply never opens.
+    """
+    global _CURVES_CACHE
+    if _CURVES_CACHE is not None and not refresh:
+        return _CURVES_CACHE
+    out = {"default": None, "by_name": {}, "season": ""}
+
+    def clean(b):
+        curve = {int(k): int(v) for k, v in (b.get("curve") or {}).items()
+                 if str(k).isdigit() and isinstance(v, int) and 1 <= v <= 20}
+        if not curve or not isinstance(b.get("label"), str):
+            return None
+        return {"label": b["label"], "curve": curve,
+                "note": b.get("note", "") if isinstance(b.get("note"), str) else ""}
+
+    for base in (APP_DIR, BUNDLE_DIR):
+        try:
+            doc = json.loads((base / "data" / "curves.json").read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        out["default"] = clean(doc.get("default") or {})
+        out["season"] = doc.get("season", "") if isinstance(doc.get("season"), str) else ""
+        for b in (doc.get("buckets") or {}).values():
+            bucket = clean(b)
+            if bucket is None:
+                continue
+            for nm in (b.get("heroes") or []):
+                if isinstance(nm, str):
+                    out["by_name"][nm] = bucket
+        break                    # first file found wins; they are not merged
+    _CURVES_CACHE = out
+    return out
+
+
 # The voted half of the same pipeline. server/tips.py collects submissions and
 # votes and publishes ONE file - the current best-voted line per hero, and only
 # for the heroes where the vote produced a clear winner (its floors: distinct

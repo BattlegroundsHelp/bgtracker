@@ -73,6 +73,10 @@ DATAS.append((os.path.join(ROOT, "data", "hero_tips.json"), "data"))
 # a missing roles file just means "no roles", by design.
 DATAS.append((os.path.join(ROOT, "data", "comp_roles.json"), "data"))
 
+# The tavern leveling curves (bgtracker.hero_curves, the curve window). Same
+# shipped-text class and read rule as the hero tips above.
+DATAS.append((os.path.join(ROOT, "data", "curves.json"), "data"))
+
 # The painted skin (ui/skin.py, same APP_DIR-then-BUNDLE_DIR pair again).
 # Every file individually, through the same existence check below: a skin
 # that half-ships would paint half the chrome as wood and half as vectors,

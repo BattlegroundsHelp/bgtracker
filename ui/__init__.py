@@ -145,6 +145,7 @@ from .browser import BrowserWindow
 from .combat import CombatWindow
 from .comps import CompsWindow
 from .counters import CountersWindow
+from .curve import CurveWindow
 from .effects import EffectsWindow
 from .discover import DiscoverWindow
 from .heropick import HeroPickWindow
@@ -158,6 +159,7 @@ from .trinkets import TrinketWindow
 WINDOWS = (
     CountersWindow,
     EffectsWindow,
+    CurveWindow,
     CombatWindow,
     TavernWindow,
     CompsWindow,

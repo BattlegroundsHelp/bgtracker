@@ -105,7 +105,23 @@ def main() -> int:
     s3.feed(f"{P}    TAG_CHANGE Entity={MIRROR} tag=RESOURCES value=9 ")
     check(s3.gold_base == 9, "mirror enchantment restates the player tags")
 
-    # 7. A new game forgets the buffs with everything else.
+    # 7. Our hero: its entity entering PLAY in a recruit phase names it; a
+    #    combat sighting (the opponent's hero mirrored into our controller)
+    #    must not.
+    s_h = CounterState()
+    boot(s_h)
+    s_h.feed(f"{P}TAG_CHANGE Entity=GameEntity tag=TURN value=2 ")
+    s_h.feed(f"{P}FULL_ENTITY - Updating [entityName=Foe id=900 zone=PLAY "
+             f"zonePos=0 cardId=BG25_HERO_999 player=2] CardID=BG25_HERO_999")
+    check(s_h.hero is None, "a fight-time hero sighting is ignored")
+    s_h.feed(f"{P}TAG_CHANGE Entity=GameEntity tag=TURN value=3 ")
+    s_h.feed(f"{P}FULL_ENTITY - Updating [entityName=Us id=901 zone=PLAY "
+             f"zonePos=0 cardId=BG25_HERO_103 player=2] CardID=BG25_HERO_103")
+    check(s_h.hero == "BG25_HERO_103", "our hero lands from the recruit phase")
+
+    # 8. A new game forgets the buffs and the hero with everything else.
+    s_h.new_game()
+    check(s_h.hero is None, "new game forgets the hero")
     s.new_game()
     check(not s.shop_buffs, "new game clears the accumulators")
 

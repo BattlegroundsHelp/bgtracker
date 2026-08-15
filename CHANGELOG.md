@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **A LEVELING window: the ideal curve for your hero, live.** A little
+  draggable window that opens with the first shop: the tier-per-turn
+  milestones for your hero's bucket (economy, 1-gold power, 2-gold power,
+  tempo, tank, dark-gift heroes - everyone else gets the standard line),
+  the next milestone lit, one honest verdict (on curve / behind / ahead)
+  from your actual tier and turn, and the bucket's own advice underneath.
+  The curves are curated written strategy in `data/curves.json` - dated,
+  per season, researched from public guides the way the hero tips were,
+  never scraped stats - and a user can edit their copy beside the exe.
+  The hero is read from its own entity entering play at the draft's end.
+
 ## v0.3.5-alpha (14 August 2026)
 
 ### Changed

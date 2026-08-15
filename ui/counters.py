@@ -270,6 +270,8 @@ class CounterState:
         self.gem_atk = self.gem_hp = 0
         self.shop_buffs = {}        # accumulator entity id -> {card, label,
                                     # atk, hp} - the standing tavern buffs
+        self.hero = None            # OUR hero's cardId, from its entity
+                                    # entering PLAY at the draft's end
         self.board = []             # minion names, from the reader's board event
         self.version = 0
         self._blk = None
@@ -439,6 +441,15 @@ class CounterState:
                 self.player = e["player"]
                 self.version += 1
                 self._resolve()
+            # The hero WE ended up with: its entity enters zone=PLAY when the
+            # draft resolves, during a recruit phase. First one wins (a hero
+            # swap mid-game is rare enough to not chase); combat is excluded
+            # because the fight mirrors the opponent's hero into our
+            # controller. This is what the curve window keys on.
+            if (self.hero is None and "HERO_" in card and zone == "PLAY"
+                    and not self.in_combat and self.player is not None
+                    and e["player"] == self.player):
+                self._bump("hero", card)
         b = BLOCK_RE.search(line)
         self._blk = b.group("ent") if b else None
 

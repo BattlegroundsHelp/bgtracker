@@ -1,0 +1,51 @@
+{
+  "_comment": "Tavern leveling curves, curated from public strategy sources the way hero_tips.json is - written text, not scraped stats. Researched 2026-08-15 against Season 14 (Dark Gifts of Dalaran, patch 36.2.1) from days-old community consensus; contested numbers went to the most recent source. curve maps tavern tier -> the turn to reach it. Heroes are matched by their printable name; a hero in no bucket follows default.",
+  "updated": "2026-08-15",
+  "season": "S14 Dark Gifts, patch 36.2.1",
+  "default": {
+    "label": "standard",
+    "curve": {"2": 2, "3": 4, "4": 6, "5": 8},
+    "note": "T5 by turn 7-8. Trinket turn 7. Tier 6 optional. Below 25 health: stop leveling, build the board."
+  },
+  "buckets": {
+    "economy": {
+      "label": "economy",
+      "curve": {"2": 2, "3": 4, "4": 5, "5": 7},
+      "note": "Extra gold levels you a beat early - but this bucket is weak this season (gifts and trinkets eat the spare gold).",
+      "heroes": ["Alexstrasza", "Captain Hooktusk", "Vol'jin", "Forest Warden Omu",
+                 "Chenvaala", "Millhouse Manastorm", "Trade Prince Gallywix"]
+    },
+    "power1": {
+      "label": "1-gold power",
+      "curve": {"2": 4, "3": 6, "4": 7, "5": 9},
+      "note": "Press the hero power every turn from turn 2; first level waits until turn 4, then levels come back-to-back.",
+      "heroes": ["Arch-Villain Rafaam", "Maiev Shadowsong", "King Mukla", "Galakrond"]
+    },
+    "power2": {
+      "label": "2-gold power",
+      "curve": {"2": 2, "3": 5, "4": 7, "5": 9},
+      "note": "Weave the power between levels - every tier lands later than the standard line.",
+      "heroes": ["Yogg-Saron, Hope's End", "Xyrella", "Scabbs Cutterbutter",
+                 "The Rat King", "Y'Shaarj"]
+    },
+    "tempo": {
+      "label": "tempo",
+      "curve": {"2": 5, "3": 5, "4": 6, "5": 8},
+      "note": "Stay tier 1 tripling premium 1-drops, then double-level 1 to 3 on turn 5 (sell a minion to afford it).",
+      "heroes": ["Dancin' Deryl", "Kael'thas Sunstrider"]
+    },
+    "tank": {
+      "label": "tank / greed",
+      "curve": {"2": 2, "3": 3, "4": 5, "5": 7},
+      "note": "Extra effective health licenses the greed line: 3 on 3, 4 on 5. Back off below 25 health like everyone else.",
+      "heroes": ["Patchwerk", "The Lich King", "Reno Jackson", "Skycap'n Kragg",
+                 "Heistbaron Togwaggle"]
+    },
+    "gift": {
+      "label": "dark gifts",
+      "curve": {"2": 2, "3": 4, "4": 6, "5": 8},
+      "note": "Xavius gifts are free - level normal or slightly greedy. Tras'tath just needs to reach turn 7 alive.",
+      "heroes": ["Nightmare Lord Xavius", "Tras'tath, Soul Parasite"]
+    }
+  }
+}
