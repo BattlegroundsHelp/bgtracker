@@ -637,10 +637,10 @@ class SessionWindow(BaseWindow):
                 # portrait. A coding error belongs in the traceback.
                 try:
                     c.create_image(x, y + 10, image=icon, anchor="w")
+                    art_frame(c, x - 1, y + 1, x + 17, y + 19)
                 except tk.TclError:
                     pass
                 else:
-                    art_frame(c, x - 1, y + 1, x + 17, y + 19)
                     x += 22
             c.create_text(x, y + 10, text=self.name_of(g.get("hero"))[:24],
                           anchor="w", fill=TEXT if place else SOFT, font=F_SUB)
