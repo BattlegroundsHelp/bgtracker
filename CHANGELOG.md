@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.3.7-alpha (15 August 2026)
+
+### Fixed
+
+- **The session window drew hero names on top of their portraits.** Only for
+  people who had run `fetch-art`, which is most of the reason to run it. The
+  frame around each little portrait was called but never imported, so it
+  raised, and a blanket `except Exception` around the whole art block
+  swallowed it - taking the "move past the portrait" step down with it. The
+  import is there, that catch is now narrowed to the Tk failure it was
+  written for, and a coding error goes back to being a traceback instead of
+  a silently overlapping row. Shipped in v0.3.6-alpha; this is the only
+  change on top of it.
+
 ## v0.3.6-alpha (15 August 2026)
 
 ### Added

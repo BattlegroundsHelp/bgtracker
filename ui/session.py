@@ -52,6 +52,7 @@ import re
 import subprocess
 import threading
 import time
+import tkinter as tk
 
 import bgtracker as bg
 import collect
@@ -59,7 +60,7 @@ import collect
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_HUGE, F_NAME, F_SUB,
                    F_TITLE, GOOD, LINE, OFF_TRIBE, ON_CHIP, PANEL, SHADE, SOFT,
                    TEXT, TRIBE_COLOR, TRIBE_TAG, BaseWindow, advance,
-                   avg_color, rrect)
+                   art_frame, avg_color, rrect)
 
 # A sitting idle this long is over: the next launch starts a new session
 # instead of resuming a stale one from yesterday.
@@ -628,12 +629,19 @@ class SessionWindow(BaseWindow):
             x = 44
             icon = self.app.art.icon(g.get("hero"), 16)
             if icon is not None:
+                # Only a Tk failure is caught - art is decoration and a dying
+                # widget must never cost the row. A blanket `except Exception`
+                # used to sit here and it swallowed a missing import for a
+                # whole release: the frame raised NameError, `x` never
+                # advanced, and the hero name drew straight on top of the
+                # portrait. A coding error belongs in the traceback.
                 try:
                     c.create_image(x, y + 10, image=icon, anchor="w")
+                except tk.TclError:
+                    pass
+                else:
                     art_frame(c, x - 1, y + 1, x + 17, y + 19)
                     x += 22
-                except Exception:
-                    pass        # art is decoration: never lose the row over it
             c.create_text(x, y + 10, text=self.name_of(g.get("hero"))[:24],
                           anchor="w", fill=TEXT if place else SOFT, font=F_SUB)
             if g.get("at"):

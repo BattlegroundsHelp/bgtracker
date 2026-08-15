@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import re
 
-VERSION = "0.3.6-alpha"
+VERSION = "0.3.7-alpha"
 
 #: What this build calls itself over HTTP. Also what the aggregator logs.
 USER_AGENT = f"bgtracker/{VERSION}"
