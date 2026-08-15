@@ -239,7 +239,15 @@ Windows install path. A Mac port means a new window layer and a new path lookup.
 source and the parsing half would carry over, but I am not writing that port myself in the
 near term.
 
-## THE CONSOLIDATED POST (DRAFT, NOT POSTED)
+## THE CONSOLIDATED POST (the LIVE body has drifted NEWER than this draft)
+
+2026-08-14: the live thread reads "current as of v0.3.5" and its WHAT IT
+DOES list carries bullets this draft predates (hero powers in the picks
+line, card payoffs, the 121 hero tips, badge dragging, other-drive
+installs, signed updates, reconnect, and the two v0.3.5 lines: the
+redrawn interface and the art pipeline). READ THE BODY OFF THE THREAD
+before editing - surgical string edits on the live text, never a paste of
+this draft over it.
 
 Posting gates, in order, all three before pasting:
 1. The v0.3.0-alpha release is live on the Releases page.
