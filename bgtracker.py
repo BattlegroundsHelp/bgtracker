@@ -671,7 +671,7 @@ def hero_curves(refresh: bool = False) -> dict:
     global _CURVES_CACHE
     if _CURVES_CACHE is not None and not refresh:
         return _CURVES_CACHE
-    out = {"default": None, "by_name": {}, "season": ""}
+    out = {"default": None, "by_name": {}, "season": "", "health_rules": None}
 
     def clean(b):
         curve = {int(k): int(v) for k, v in (b.get("curve") or {}).items()
@@ -688,6 +688,14 @@ def hero_curves(refresh: bool = False) -> dict:
             continue
         out["default"] = clean(doc.get("default") or {})
         out["season"] = doc.get("season", "") if isinstance(doc.get("season"), str) else ""
+        hr = doc.get("health_rules")
+        if (isinstance(hr, dict) and isinstance(hr.get("caution"), int)
+                and isinstance(hr.get("danger"), int)):
+            out["health_rules"] = {
+                "caution": hr["caution"], "danger": hr["danger"],
+                "caution_note": str(hr.get("caution_note", "")),
+                "danger_note": str(hr.get("danger_note", "")),
+            }
         for b in (doc.get("buckets") or {}).values():
             bucket = clean(b)
             if bucket is None:

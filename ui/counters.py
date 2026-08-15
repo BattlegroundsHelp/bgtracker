@@ -272,6 +272,13 @@ class CounterState:
                                     # atk, hp} - the standing tavern buffs
         self.hero = None            # OUR hero's cardId, from its entity
                                     # entering PLAY at the draft's end
+        self.hero_eid = None        # ...and that entity's id: health tags
+                                    # are followed BY ID, because during a
+                                    # fight "player=ours" carries the
+                                    # opponent's mirrored hero too
+        self.hero_health = None     # HEALTH / DAMAGE / ARMOR on our hero;
+        self.hero_damage = 0        # effective_hp derives from the three
+        self.hero_armor = 0
         self.board = []             # minion names, from the reader's board event
         self.version = 0
         self._blk = None
@@ -295,6 +302,14 @@ class CounterState:
     def in_combat(self):
         """Even TURN values are the fight that closes the round."""
         return bool(self.turn and self.turn % 2 == 0)
+
+    @property
+    def effective_hp(self):
+        """What the player calls their health: health minus damage plus
+        armor. None until the log has stated the hero's health at all."""
+        if self.hero_health is None:
+            return None
+        return self.hero_health - self.hero_damage + self.hero_armor
 
     @property
     def gold(self):
@@ -449,6 +464,7 @@ class CounterState:
             if (self.hero is None and "HERO_" in card and zone == "PLAY"
                     and not self.in_combat and self.player is not None
                     and e["player"] == self.player):
+                self.hero_eid = e["id"]
                 self._bump("hero", card)
         b = BLOCK_RE.search(line)
         self._blk = b.group("ent") if b else None
@@ -487,6 +503,20 @@ class CounterState:
 
         br = BRACKET_RE.match(ent)
         if br is None or self.player is None or br.group("player") != self.player:
+            return
+        # OUR hero's health, followed by ENTITY ID - the one bracket read
+        # that outranks the combat freeze, because the id is unambiguous
+        # (the fight mirrors the opponent's hero into our controller, but as
+        # a DIFFERENT entity). Damage lands at the fight's end, i.e. during
+        # an even TURN, so it rides the same pending flush the player tags
+        # use and appears with the next shop.
+        if (self.hero_eid is not None and br.group("id") == self.hero_eid
+                and tag in ("HEALTH", "DAMAGE", "ARMOR")):
+            field = "hero_" + tag.lower()
+            if self.in_combat:
+                self._pending[field] = val
+            else:
+                self._bump(field, val)
             return
         if self.in_combat:
             # DURING A FIGHT "player=<our id>" stops meaning "ours": the

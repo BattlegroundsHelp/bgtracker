@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import bgtracker as bg
 
-from .base import (ACCENT, BAD, DIM, F_CHIP, F_NAME, F_SUB, GOOD,
+from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_NAME, F_SUB, GOOD,
                    PANEL_HI, SOFT, TEXT, BaseWindow, fit_text, rrect)
 
 
@@ -78,7 +78,16 @@ class CurveWindow(BaseWindow):
                   else curves["default"]) or curves["default"]
         if bucket is None:
             return 24
-        y = self.header(c, bucket["label"], SOFT)
+        hp = s.effective_hp if s is not None else None
+        rules = curves.get("health_rules")
+        # The header's right slot carries the health the strategy keys on,
+        # coloured by the same thresholds the advice uses.
+        hp_col = SOFT
+        if hp is not None and rules:
+            hp_col = (BAD if hp < rules["danger"]
+                      else AMBER if hp < rules["caution"] else GOOD)
+        y = self.header(c, f"{bucket['label']}  ·  {hp} hp" if hp is not None
+                        else bucket["label"], hp_col)
         turn = (s.bg_turn or 0) if s is not None else 0
         tier = (s.tier or 1) if s is not None else 1
 
@@ -103,16 +112,24 @@ class CurveWindow(BaseWindow):
                 x, y = 14, y + 22
         y += 24
 
-        # The judgement line: your tier against the curve's expectation.
+        # The judgement line. Health OUTRANKS the curve: below the caution
+        # threshold the right move is no longer "keep the schedule", it is
+        # "stop leveling and survive" - the strategy switch the research
+        # named as the number one rule.
+        low = hp is not None and rules and hp < rules["caution"]
         if turn:
-            if tier > expected:
+            if low:
+                danger = hp < rules["danger"]
+                verdict = rules["danger_note" if danger else "caution_note"]
+                col = BAD if danger else AMBER
+            elif tier > expected:
                 verdict, col = f"ahead of curve (T{tier} on t{turn})", ACCENT
             elif tier == expected:
                 verdict, col = "on curve", GOOD
             else:
                 verdict, col = f"behind: curve says T{expected} now", BAD
             c.create_text(14, y + 2, anchor="nw", fill=col, font=F_SUB,
-                          text=verdict)
+                          text=fit_text(verdict, self.WIDTH - 24))
             y += 16
 
         note = (bucket.get("note") or "").strip()

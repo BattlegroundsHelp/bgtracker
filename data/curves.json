@@ -2,6 +2,12 @@
   "_comment": "Tavern leveling curves, curated from public strategy sources the way hero_tips.json is - written text, not scraped stats. Researched 2026-08-15 against Season 14 (Dark Gifts of Dalaran, patch 36.2.1) from days-old community consensus; contested numbers went to the most recent source. curve maps tavern tier -> the turn to reach it. Heroes are matched by their printable name; a hero in no bucket follows default.",
   "updated": "2026-08-15",
   "season": "S14 Dark Gifts, patch 36.2.1",
+  "health_rules": {
+    "caution": 25,
+    "caution_note": "low health: stop leveling on curve - buy and roll for board strength",
+    "danger": 15,
+    "danger_note": "critical: no tier 5 before turn 8-9, spend Dark Gifts on stats NOW"
+  },
   "default": {
     "label": "standard",
     "curve": {"2": 2, "3": 4, "4": 6, "5": 8},

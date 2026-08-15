@@ -119,7 +119,27 @@ def main() -> int:
              f"zonePos=0 cardId=BG25_HERO_103 player=2] CardID=BG25_HERO_103")
     check(s_h.hero == "BG25_HERO_103", "our hero lands from the recruit phase")
 
-    # 8. A new game forgets the buffs and the hero with everything else.
+    # 8. Our hero's health, followed by entity id: the initial dump lands,
+    #    fight damage rides the pending flush (it is written during the even
+    #    turn), and the opponent's mirrored hero - same player, DIFFERENT
+    #    id - never touches it.
+    s_h.feed(f"{P}    TAG_CHANGE Entity=[entityName=Us id=901 zone=PLAY "
+             f"zonePos=0 cardId=BG25_HERO_103 player=2] tag=HEALTH value=30 ")
+    s_h.feed(f"{P}    TAG_CHANGE Entity=[entityName=Us id=901 zone=PLAY "
+             f"zonePos=0 cardId=BG25_HERO_103 player=2] tag=ARMOR value=5 ")
+    check(s_h.effective_hp == 35, f"health + armor land ({s_h.effective_hp})")
+    s_h.feed(f"{P}TAG_CHANGE Entity=GameEntity tag=TURN value=4 ")
+    s_h.feed(f"{P}    TAG_CHANGE Entity=[entityName=Us id=901 zone=PLAY "
+             f"zonePos=0 cardId=BG25_HERO_103 player=2] tag=DAMAGE value=12 ")
+    check(s_h.effective_hp == 35, "fight damage held until the shop is back")
+    s_h.feed(f"{P}    TAG_CHANGE Entity=[entityName=Them id=955 zone=PLAY "
+             f"zonePos=0 cardId=BG25_HERO_999 player=2] tag=DAMAGE value=99 ")
+    s_h.feed(f"{P}TAG_CHANGE Entity=GameEntity tag=TURN value=5 ")
+    check(s_h.effective_hp == 23,
+          f"damage lands with the next shop ({s_h.effective_hp}), the "
+          f"mirrored hero's write never did")
+
+    # 9. A new game forgets the buffs and the hero with everything else.
     s_h.new_game()
     check(s_h.hero is None, "new game forgets the hero")
     s.new_game()
