@@ -39,6 +39,7 @@ no clipping.
 
 from __future__ import annotations
 
+from . import skin
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_NAME, F_SUB, F_TITLE,
                    GOOD, LINE, SOFT, TEXT, BaseWindow, art_frame, plate,
                    shadow_text, tile_row)
@@ -169,8 +170,18 @@ class PlayersWindow(BaseWindow):
             if seen and not dead:
                 plate(c, 8, y + 1, self.WIDTH - 8, y + self.ROW_H - 3, 7)
 
-            c.create_text(16, y + 12, text=str(r["place"]), anchor="w",
-                          fill=DIM, font=F_CHIP)
+            # The current leader wears the game's own crown, exactly as the
+            # in-game scoreboard marks first place (extracted chrome; the
+            # plain number stands in everywhere else and always did).
+            from .base import get_scale
+            crown = (skin.ui_icon(c, "game/crown",
+                                  max(10, round(14 * get_scale())))
+                     if r["place"] == 1 and not dead else None)
+            if crown is not None:
+                c.create_image(14, y + 12, image=crown, anchor="w")
+            else:
+                c.create_text(16, y + 12, text=str(r["place"]), anchor="w",
+                              fill=DIM, font=F_CHIP)
             ic = self.app.art.icon(r.get("card"), 18)
             tx = 28
             if ic is not None:

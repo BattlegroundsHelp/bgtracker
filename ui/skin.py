@@ -432,12 +432,14 @@ _CROP_DIR = APP_DIR / "assets" / "crops"
 _UI_DIR = APP_DIR / "assets" / "ui"
 
 
-def ui_icon(c, name, px):
+def ui_icon(c, name, px, dim=False):
     """One piece of fetched UI chrome (the deck-list gem), scaled. None when
-    fetch-art has not run - the caller keeps its drawn look."""
+    fetch-art has not run - the caller keeps its drawn look. ``dim`` returns
+    a faded copy - the browser's unselected tier tabs - since a Tk canvas
+    cannot fade an image it is given."""
     if not _PIL or px < 6:
         return None
-    key = _key(c, "ui", name, px)
+    key = _key(c, "ui", name, px, dim)
     got = _get(key)
     if got is not None:
         return got
@@ -460,7 +462,15 @@ def ui_icon(c, name, px):
     src = _src[skey]
     if src is None:
         return None
-    return _photo(key, src.resize((px, px), Image.LANCZOS), c)
+    # Fit inside the box instead of forcing a square: most chrome is square
+    # already, but the game's crown is 240x215 and a forced square quietly
+    # stretches it (review find).
+    scale = px / max(src.size)
+    im = src.resize((max(1, round(src.size[0] * scale)),
+                     max(1, round(src.size[1] * scale))), Image.LANCZOS)
+    if dim:
+        im.putalpha(im.getchannel("A").point(lambda v: v * 2 // 5))
+    return _photo(key, im, c)
 
 
 def round_icon(c, card, px, ring=None):

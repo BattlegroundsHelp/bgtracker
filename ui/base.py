@@ -2212,7 +2212,20 @@ class WindowManager:
 
     def __init__(self, classes, headless=False, pos_file=POS_FILE, names_fn=None):
         self.headless = headless
-        self.root = tk.Tk()
+        # Tk() reads init.tcl off disk and that read transiently fails on
+        # Windows under interp churn ("couldn't read file ... No error") -
+        # measured live at roughly 1-in-4 across a test battery, and a real
+        # launch on a busy machine rolls the same dice. Three tries covers it;
+        # a machine that fails all three has a broken Tcl install and the
+        # original error is the right report.
+        for attempt in (1, 2, 3):
+            try:
+                self.root = tk.Tk()
+                break
+            except tk.TclError:
+                if attempt == 3:
+                    raise
+                time.sleep(0.3)
         self.root.withdraw()
         # The taskbar/alt-tab face for every window this root owns. Guarded
         # like the rest of the skin: no folder, no icon, no error.

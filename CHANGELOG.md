@@ -4,6 +4,19 @@
 
 ### Added
 
+- **The extracted game icons the HUD was still sitting on are worn now.**
+  The minion browser's tier filter is the game's own seven tavern-tier
+  shields - the tab strip the reference overlay fronts its browser with -
+  lit gold when selected, faded when not, at the 28px where the star count
+  actually reads (at row size the shields are mush, which is why minion
+  rows keep the number on the shield instead - measured, not guessed).
+  The other-players list crowns the current leader with the game's own
+  crown, the way the in-game scoreboard does. Both fall back to the old
+  drawing on a machine that has not run the extractor.
+- **The overlay survives a flaky Tk start.** Creating the very first window
+  can transiently fail to read Tcl's own startup file on a busy Windows
+  machine (measured at roughly one launch in four during test batteries) -
+  it now retries before giving up, so a real launch stops rolling that die.
 - **The HUD has a written design contract.** docs/HUD_GUIDELINES.md: the
   reference-copying rule, the measured flat doctrine, palette and
   typography law, window anatomy, the four drawing recipes, the asset

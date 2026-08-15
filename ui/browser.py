@@ -55,6 +55,7 @@ import threading
 import bgtracker as bg
 import grades
 
+from . import skin
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_STARS, F_SUB, F_TITLE,
                    GOOD, LINE, OFF_CHIP, ON_CHIP, PANEL, SHADE, SOFT,
                    STAR_COLOR, TEXT, TRIBE_COLOR, TRIBE_TAG, BaseWindow,
@@ -592,13 +593,47 @@ class BrowserWindow(BaseWindow):
 
     def _filters(self, c, y):
         # -- tavern tier ---------------------------------------------------
-        c.create_text(14, y + 8, text="TIER", anchor="w", fill=DIM, font=F_TITLE)
-        self._chip(c, 46, y, 26, "all", not self.sel_tiers, ("tier", None))
-        x = 78
-        for t in range(1, 8):
-            self._chip(c, x, y, 22, str(t), t in self.sel_tiers, ("tier", t))
-            x += 26
-        y += 20
+        # The game's own tavern-tier shields, the tab strip the reference
+        # overlay fronts its browser with (measured off its page 2026-08-14:
+        # seven shields in tier order, the active one lit). 28px is the floor
+        # where the star count reads - at chip size the shields are mush,
+        # which is why the ROWS keep a number instead. Not extracted
+        # (tools/extract_game_assets.py) and the numbered chips return.
+        from .base import get_scale
+        px = 28
+        ipx = max(20, round(px * get_scale()))   # bitmaps never canvas-scale
+        # All seven or none: a partial extraction (review find: the guard
+        # probed tier_1 alone) would draw invisible-but-clickable ghost tabs
+        # for the missing ones. The chips row is one coherent fallback.
+        if all(skin.ui_icon(c, f"game/tier_{t}", ipx) is not None
+               for t in range(1, 8)):
+            c.create_text(14, y + px / 2, text="TIER", anchor="w", fill=DIM,
+                          font=F_TITLE)
+            self._chip(c, 46, y + (px - 15) / 2, 26, "all",
+                       not self.sel_tiers, ("tier", None))
+            x = 78
+            for t in range(1, 8):
+                on = not self.sel_tiers or t in self.sel_tiers
+                ic = skin.ui_icon(c, f"game/tier_{t}", ipx, dim=not on)
+                c.create_image(x, y, image=ic, anchor="nw")
+                if t in self.sel_tiers:
+                    # ACCENT, not gold: an active filter speaks ACCENT
+                    # everywhere else in this window (review find), and the
+                    # gold stays reserved for the row being pointed at.
+                    c.create_rectangle(x + 4, y + px, x + px - 4, y + px + 2,
+                                       fill=ACCENT, outline="")
+                self._hit(("tier", t), x, y, x + px, y + px + 2)
+                x += px + 4
+            y += px + 6
+        else:
+            c.create_text(14, y + 8, text="TIER", anchor="w", fill=DIM,
+                          font=F_TITLE)
+            self._chip(c, 46, y, 26, "all", not self.sel_tiers, ("tier", None))
+            x = 78
+            for t in range(1, 8):
+                self._chip(c, x, y, 22, str(t), t in self.sel_tiers, ("tier", t))
+                x += 26
+            y += 20
 
         # -- tribe (default = this lobby) ----------------------------------
         c.create_text(14, y + 18, text="TRIBE", anchor="w", fill=DIM, font=F_TITLE)

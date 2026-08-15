@@ -31,7 +31,7 @@ import sys
 import warnings
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import bgtracker as bg  # noqa: E402  (the install locator lives there)
@@ -118,8 +118,31 @@ def main() -> int:
     # ---- the tier shield and star (atlas quadrants, alpha-tightened) -----
     tech = found["Bacon_TechLevel_Banner"]
     w, h = tech.size
-    shield = tight(tech.crop((0, 0, w // 2, h // 2)))
-    star = tight(tech.crop((int(w * 0.84), int(h * 0.84), w, h)))
+    # This atlas carries NO real alpha (extrema 255..255, measured
+    # 2026-08-15): the game packs each shape's alpha as a separate
+    # silhouette next to the colour art - the shield's colour sits in the
+    # top-left quadrant and its BLACK-on-white mask in the top-right.
+    # Cropping the colour alone bakes the atlas background into the icon
+    # (that is exactly the opaque grey box plus white edge the first
+    # extraction shipped); the mask, inverted, IS the alpha.
+    q = w // 2
+    rgb = tech.crop((0, 0, q, q)).convert("RGB")
+    mask = ImageOps.invert(tech.crop((q, 0, 2 * q, q)).convert("L"))
+    shield = tight(Image.merge("RGBA", (*rgb.split(), mask)))
+
+    # The star has no packed mask, only a flat backdrop - key it out by
+    # colour distance from the corner pixel, graded so the edge stays soft.
+    sc = tech.crop((int(w * 0.84), int(h * 0.84), w, h)).convert("RGB")
+    bg = sc.getpixel((2, sc.height - 2))
+    alpha = Image.new("L", sc.size)
+    ap, sp = alpha.load(), sc.load()
+    for yy in range(sc.height):
+        for xx in range(sc.width):
+            r, g, b = sp[xx, yy]
+            d = abs(r - bg[0]) + abs(g - bg[1]) + abs(b - bg[2])
+            ap[xx, yy] = 255 if d >= 88 else (0 if d <= 24 else
+                                              (d - 24) * 255 // 64)
+    star = tight(Image.merge("RGBA", (*sc.split(), alpha)))
     shield.save(OUT / "shield.png")
     star.save(OUT / "star.png")
 
@@ -138,6 +161,8 @@ def main() -> int:
     print("  tier_1..7 composited from shield + star")
 
     # ---- the placement medals and the crown (4x4 grid, bottom row) -------
+    # This atlas DOES carry real alpha (extrema 0..255, measured
+    # 2026-08-15) - a straight crop is correct here.
     lead = found["BaconLeaderboardIcons"]
     cell = lead.size[0] // 4
     row = 3
