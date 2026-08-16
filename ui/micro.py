@@ -42,8 +42,12 @@ class MicroWindow(BaseWindow):
     implement value()."""
 
     COLUMN = "float"                # every one of them is movable
-    RESERVE = 44
-    MAX_H = 44
+    #: Pulled inward off the right edge into their own rail, so the default
+    #: stack stands BESIDE the BUFFS and LEVELING windows instead of under
+    #: them (review find: DY 720-924 ran straight through both bands).
+    DX = 240
+    RESERVE = 46
+    MAX_H = 46           # PAD + row + PAD + hover label line, measured 45
     MIN_H = 0            # sized to its content; the 40px floor is for panels
     WIDTH = 78
     EVENTS = ("game",)
@@ -115,10 +119,17 @@ class MicroWindow(BaseWindow):
         s = self._state()
         got = self.value(s) if s is not None else None
         text = got[0] if got else ""
-        w = PAD + ICON_PX + GAP + F_NAME.measure(text) + PAD
+        w = PAD + self._slot() + GAP + F_NAME.measure(text) + PAD
         if self._hover:
             w = max(w, PAD + F_SUB.measure(self.LABEL) + PAD)
         return max(38, w)
+
+    def _slot(self):
+        """The icon column's width: the icon, or the three-letter fallback,
+        whichever is wider ("TAV" measures 24px in F_NAME against the 18px
+        icon - review find). One rule for measuring AND drawing, or the
+        width and the paint disagree exactly when the fallback shows."""
+        return max(ICON_PX, F_NAME.measure(self.TITLE[:3].upper()))
 
     @property
     def LABEL(self):
@@ -162,13 +173,15 @@ class MicroWindow(BaseWindow):
         x = PAD
         if icon is not None:
             c.create_image(x, cy - ICON_PX // 2, image=icon, anchor="nw")
-            x += ICON_PX + GAP
+            x += self._slot() + GAP
         else:
             # No icon on disk: the label's first letters stand in, so the
-            # window still says which number it is holding.
-            c.create_text(x, cy, text=self.TITLE[:3].upper(), anchor="w",
-                          fill=DIM, font=F_NAME)
-            x += ICON_PX + GAP
+            # window still says which number it is holding. The slot is
+            # MEASURED - "TAV" is 24px in F_NAME, one more than the icon
+            # slot it replaces (review find).
+            tag = self.TITLE[:3].upper()
+            c.create_text(x, cy, text=tag, anchor="w", fill=DIM, font=F_NAME)
+            x += max(ICON_PX, F_NAME.measure(tag)) + GAP
         # The value wears a halo: these float over the board rather than over
         # a panel, so there is card art behind them as often as not.
         shadow_text(c, x, cy, text, fill, F_NAME, anchor="w")
@@ -198,7 +211,7 @@ class ExtraGoldMicro(MicroWindow):
     TITLE = "Gold extra"
     BLURB = "Gold already banked for next turn. Only up when you have some."
     ICON = ("game/counter_gold", "counter_gold")
-    DY = 720
+    DY = 766
     WIDTH = 62
 
     def value(self, s):
@@ -220,7 +233,7 @@ class TierMicro(MicroWindow):
     # The game's own tavern shield where it has been extracted
     # (tools/extract_game_assets.py); the drawn label stands in otherwise.
     ICON = ("game/shield",)
-    DY = 754
+    DY = 812
     WIDTH = 62
 
     def value(self, s):
@@ -234,7 +247,7 @@ class UpgradeMicro(MicroWindow):
     TITLE = "Upgrade cost"
     BLURB = "What the next tavern tier costs right now, green when you can afford it."
     ICON = ("game/counter_upgrade", "counter_upgrade")
-    DY = 788
+    DY = 858
 
     def value(self, s):
         if s.at_max_tier:
@@ -250,7 +263,7 @@ class TriplesMicro(MicroWindow):
     TITLE = "Triples"
     BLURB = "Triples earned so far. Hidden until you have one."
     ICON = ("game/star", "counter_triples")
-    DY = 822
+    DY = 904
     WIDTH = 62
 
     def value(self, s):
@@ -265,7 +278,7 @@ class RollsMicro(MicroWindow):
     TITLE = "Free rerolls"
     BLURB = "Free rerolls in hand. Hidden when there are none."
     ICON = ("counter_rolls",)
-    DY = 856
+    DY = 950
     WIDTH = 62
 
     def value(self, s):
@@ -279,7 +292,7 @@ class TrinketMicro(MicroWindow):
     TITLE = "Trinket in"
     BLURB = "Turns until the next trinket is offered."
     ICON = ("game/counter_trinket", "counter_trinket")
-    DY = 890
+    DY = 996
     WIDTH = 62
 
     def value(self, s):
@@ -294,7 +307,7 @@ class TurnMicro(MicroWindow):
     TITLE = "Turn"
     BLURB = "The Battlegrounds turn, amber while a fight is on."
     ICON = ("counter_turn",)
-    DY = 924
+    DY = 1042
     WIDTH = 62
 
     def value(self, s):

@@ -150,11 +150,22 @@ def main():
     # bytes of a tile and the CDN refuses a wide burst of them (measured
     # 2026-08-15: sixteen at once got 403s, four still did, the same urls
     # fetched one at a time were all 200). Two at a time, with the retry in
-    # one(), is what actually brings the whole pool down.
-    print(f"fetching card renders for {len(ids)} cards (gentler pass) ...")
+    # one(), is what actually brings the pool down.
+    #
+    # Only the BROWSABLE pool: the browser's opened row is the one surface
+    # that draws a render, and it only ever opens pool minions. The full
+    # --everything list is 5,600+ ids, which at two workers with a retry on
+    # every 404 is hours of fetching for art nothing displays (review find).
+    try:
+        render_ids = sorted({m["id"] for m in bg.bg_pool()})
+    except Exception:
+        render_ids = []
+        print("renders: card pool unavailable, skipping this pass")
+    print(f"fetching card renders for {len(render_ids)} pool minions "
+          f"(gentler pass) ...")
     rcounts = {"ok": 0, "skip": 0, "miss": 0}
     with cf.ThreadPoolExecutor(max_workers=2) as ex:
-        futs = [ex.submit(one, cid, "renders") for cid in ids]
+        futs = [ex.submit(one, cid, "renders") for cid in render_ids]
         done = 0
         for f in cf.as_completed(futs):
             rcounts[f.result()] += 1

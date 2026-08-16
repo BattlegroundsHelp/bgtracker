@@ -801,6 +801,13 @@ class Reader(threading.Thread):
                 clear_board_state()      # and everything computed from it
                 shop_ents.clear()
                 seen_boards.clear()      # last game's boards belong to last game
+                # ...and so do last game's tavern tiers. Heroes repeat across
+                # lobbies in one session, and the lvl>0 guard deliberately
+                # ignores the value=0 washes a new game writes, so without
+                # this a hero that ENDED game one at tier 6 opens game two
+                # claiming tier 6 until its player really levels (review
+                # find, proven against a 34-game session log).
+                log_tiers.clear()
                 last_players[0] = None
                 rolls[0] = 0
                 pending_shop[0] = False

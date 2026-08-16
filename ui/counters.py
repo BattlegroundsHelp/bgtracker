@@ -746,9 +746,11 @@ class CountersWindow(BaseWindow):
     DY = 8
     RESERVE = 62
     MAX_H = 54                      # the band above COMBAT (y+70); never spills
-    WIDTH = 244                     # tightened with the columns below, and
-                                    # with GOLD gone to its own window
-                                    # (founder: "too big", 2026-08-15)
+    WIDTH = 244                     # tightened with the columns below
+                                    # (founder: "too big", 2026-08-15). GOLD
+                                    # is back among the columns - the strip
+                                    # is the compact alternative to the micro
+                                    # windows, so it carries everything.
     EVENTS = ("counters", "board", "gold", "game")
 
     ROW_H = 15
@@ -799,7 +801,13 @@ class CountersWindow(BaseWindow):
         if (not self.headless and not self._external and self._feed is None
                 and rect is not None):
             self._start_feed()
-        if self.state.version != self._seen:
+        # Sync on a version change AND on a visibility mismatch: whether the
+        # strip should be up also depends on the micro windows existing, and
+        # settings can build or tear those down without the counter state
+        # ever ticking (review find - toggling the micros left the strip
+        # wrong until the next shop event).
+        want = self.state.known() and not self._micros_up()
+        if self.state.version != self._seen or want != self._open:
             self._sync()
         super().tick(rect, game_front)
 

@@ -43,11 +43,12 @@ class EffectsWindow(BaseWindow):
     COLUMN = "float"                # not part of either tiled column: it is
     DY = 792                        # the one window whose whole point is
     RESERVE = 64                    # being moved wherever the player wants
-    MAX_H = 122                     # header + three pill rows + the names
-                                    # line, at the tightened pill size; two
-                                    # reviews taught the shape of this number
-                                    # (a short one clips the third row, and
-                                    # the header needs its own band)
+    MAX_H = 124                     # header 28 + 4 + three tightened pill
+                                    # rows (3x25) + the caption line (16) =
+                                    # 123, measured; three reviews taught
+                                    # this number (a short one clips the
+                                    # third row or the caption's last pixel,
+                                    # and the header needs its own band)
     WIDTH = 8 + 2 * PILL_W + GAP + 8
     EVENTS = ("game",)
 

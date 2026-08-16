@@ -26,15 +26,18 @@
   the finished card art where the CDN has it, the square art crop where it
   does not - and its tribe filter wears the tribe emblems.
 - **Every counter is its own micro window: an icon and its number, nothing
-  else.** Gold, tavern tier, the upgrade price, triples, free rerolls, the
-  trinket timer and the turn each get a tiny frame you drag where you want
-  it, which is the shape they were always meant to have. They wear designed
-  glyphs - a coin, an upgrade arrow, a reroll loop, a trinket, a clock -
-  except the tier, which wears the game's own tavern shield. Each hides
-  itself when it has nothing true to say (no triples yet, no free rerolls)
-  instead of showing a zero. The old one-row strip is still there for a small
-  screen: switch every micro off and it comes back, reading the same numbers.
-  The buff pills got tighter too.
+  else.** Gold, gold banked for next turn, tavern tier, the upgrade price,
+  triples, free rerolls, the trinket timer and the turn each get a tiny
+  frame you drag where you want it, sized to its own content, which is the
+  shape they were always meant to have. Hovering one names it. Run
+  `tools/extract_game_assets.py` and five of them wear the game's own art -
+  the gold coin, the tavern shield, the upgrade arrow, the tier star, the
+  trinket medallion; without it they wear the designed set. Free rerolls
+  and the turn always wear a designed glyph, because the game ships no icon
+  for either. Each window hides itself when it has nothing true to say (no
+  triples yet, nothing banked) instead of showing a zero. The old one-row
+  strip is still there for a small screen: switch every micro off and it
+  comes back, reading the same numbers. The buff pills got tighter too.
 
 ### Fixed
 

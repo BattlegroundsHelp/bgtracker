@@ -15,13 +15,16 @@ layout law in ui/__init__.py is what keeps it off the comps window.
 
 The stars carry a second signal, and it is the one this window must never
 blur: a FILLED colour-graded ★ is measured (the buy-it-vs-skip-it differential
-out of a real card table). A minion nothing has measured gets NO star: a
-rating computed from the card alone was built and measured, and it ranks
-bodies (Brann Bronzebeard came out one star, a vanilla 10/11 came out five),
-because what makes a card good here lives in the board around it
-and the board is not printed on the card. The minion browser, which has the
-room, shows the two things the card CAN prove instead: how its body compares
-with its own tier's average, and which comps are built around it.
+out of a real card table), a HOLLOW muted ☆ is the bootstrap opinion frozen
+in data/minion_ratings.json while the pool is too young to measure that card
+(it slides to filled as real games arrive - see star() in overlay.py). What a
+minion never gets is a rating computed from the card alone: that was built
+and measured, and it ranks bodies (Brann Bronzebeard came out one star, a
+vanilla 10/11 came out five), because what makes a card good here lives in
+the board around it and the board is not printed on the card. The minion
+browser, which has the room, also shows the two things the card CAN prove:
+how its body compares with its own tier's average, and which comps are built
+around it.
 
 The reroll law: a refresh RE-USES the existing TB_BaconShop_DragBuy tokens, so
 drag counts are zero on a reroll and nothing in the log ever says "this minion
@@ -113,10 +116,6 @@ class TavernWindow(BaseWindow):
                 if ic is not None:
                     c.create_image(22, y + 10, image=ic, anchor="w")
                     art_frame(c, 21, y + 1, 41, y + 20, mine)
-            # A star is a MEASUREMENT here or it is nothing. A row that
-            # arrives flagged graded carries a number read off the card, and
-            # that number ranks bodies rather than cards (see the note up top),
-            # so it is not drawn at all rather than drawn in another colour.
             # The name column clears FIVE stars (F_STARS measures 55px for
             # five - the review caught the fifth star under the name).
             star_x, name_x = (32, 92) if tiled else (44, 104)
@@ -158,4 +157,10 @@ class TavernWindow(BaseWindow):
             y += 22
         c.create_text(14, y + 8, text=f"roll {self.roll}", anchor="w",
                       fill=DIM, font=F_SUB)
+        # Both kinds of star can share one shop, so the shop names both -
+        # the guideline's own rule ("name both in the surface's footer where
+        # both can appear"), which the review found this window breaking.
+        if any(r.get("stars") for r in self.rows):
+            c.create_text(self.WIDTH - 14, y + 8, anchor="e", fill=DIM,
+                          font=F_SUB, text="★ measured · ☆ guess")
         return y + 22

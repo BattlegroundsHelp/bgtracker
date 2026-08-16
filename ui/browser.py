@@ -59,7 +59,8 @@ from . import skin
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_STARS, F_SUB, F_TITLE,
                    GOOD, LINE, OFF_CHIP, ON_CHIP, PANEL, SHADE, SOFT,
                    STAR_COLOR, TEXT, TRIBE_COLOR, TRIBE_TAG, BaseWindow,
-                   art_frame, plate, rrect, shadow_text, tile_row)
+                   art_frame, fit_text, get_scale, plate, rrect, shadow_text,
+                   tile_row)
 
 # A minion with no tribe at all is in EVERY lobby, so it is a filter of its
 # own rather than something the tribe chips can express.
@@ -718,12 +719,23 @@ class BrowserWindow(BaseWindow):
             # 89 of 274, the rest are honest 404s), while the square art
             # exists for every card, so without it two thirds of the minions
             # would open with nothing to look at.
-            mini = (skin.card_render(c, m["id"], self.MINI_W)
-                    or self.app.art.icon(m["id"], self.MINI_W)) if opened else None
+            # Bitmaps bake at FINAL pixels (the skin convention), layout runs
+            # in BASE pixels - so the render is requested at MINI_W*scale and
+            # the baked height divided back down for the block's geometry.
+            # The review caught the first version feeding baked pixels into
+            # base-pixel layout: right at scale 1.0 and only there - painting
+            # over the following rows at any other scale.
+            mini, mini_h = None, 0
+            if opened:
+                mini = (skin.card_render(c, m["id"],
+                                         round(self.MINI_W * get_scale()))
+                        or self.app.art.icon(m["id"], self.MINI_W))
+                if mini is not None:
+                    mini_h = round(mini.height() / get_scale())
             detail = self._detail(m, bool(mini)) if opened else []
             body = self._detail_h(detail)
             if mini is not None:
-                body = max(body, mini.height() + 4)
+                body = max(body, mini_h + 4)
             need = self.ROW_H + (body + 6 if opened else 0)
             # Grouped by type: a slim section header the way the reference
             # draws its Demon / Dragon / ... bars, once per tribe change.
@@ -753,10 +765,11 @@ class BrowserWindow(BaseWindow):
             if mini is not None:
                 # The card itself, down the right edge of the opened block,
                 # framed like every other piece of card art the HUD draws.
+                # All BASE coordinates - mini_h, never mini.height().
                 mx = self.WIDTH - 14 - self.MINI_W
                 c.create_image(mx, y + 2, image=mini, anchor="nw")
                 art_frame(c, mx - 1, y + 1, mx + self.MINI_W + 1,
-                          y + 3 + mini.height())
+                          y + 3 + mini_h)
             top = y
             for text, fill in detail:
                 if text is TURNS:
@@ -768,7 +781,7 @@ class BrowserWindow(BaseWindow):
             if mini is not None:
                 # Never end the block above the card - the next row would
                 # start underneath it.
-                y = max(y, top + mini.height() + 4)
+                y = max(y, top + mini_h + 4)
             if opened:
                 y += 6
             drawn += 1
@@ -858,7 +871,12 @@ class BrowserWindow(BaseWindow):
         mechs = [trait_label(k) for k in m["mechanics"] if k not in TRAIT_NOISE]
         if mechs:
             meta += " · " + ", ".join(mechs[:3])
-        out.append((meta[:cols + 4], SOFT))
+        # Measured, not a character count: beside the miniature the meta
+        # line has (WIDTH - mini - margins) pixels, and "Tier 5 · Demon,
+        # Quilboar · ..." at 38 CHARACTERS could still run under the card
+        # (review find).
+        avail = (self.WIDTH - 14 - (self.MINI_W + 6 if mini else 0) - 44)
+        out.append((fit_text(meta, avail), SOFT))
         for line in textwrap.wrap(plain(m["text"]), cols)[:keep]:
             out.append((line, DIM))
         st = self.cards.get(m["id"]) or {}

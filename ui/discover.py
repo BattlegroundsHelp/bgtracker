@@ -92,8 +92,15 @@ class DiscoverWindow(BaseWindow):
                     c.create_image(20, y + 11, image=ic, anchor="w")
                     art_frame(c, 19, y, 43, y + 22, mine)
             star_x, name_x = (32, 92) if tiled else (46, 92)
-            c.create_text(star_x, y + 11, text="★" * s, anchor="w",
-                          fill=STAR_COLOR.get(s, DIM), font=F_STARS)
+            # The two-glyph law (docs/HUD_GUIDELINES.md): solid colour-graded
+            # = measured, hollow muted = the bootstrap guess. The review
+            # caught this window drawing guesses solid AND coloured - it
+            # never read the flag before the priors made graded common.
+            curated = bool(r.get("graded"))
+            c.create_text(star_x, y + 11,
+                          text=("☆" if curated else "★") * s, anchor="w",
+                          fill=SOFT if curated else STAR_COLOR.get(s, DIM),
+                          font=F_STARS)
             right_w = 74
             c.create_text(name_x, y + 11, anchor="w",
                           text=fit_text(r["name"],

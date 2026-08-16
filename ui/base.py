@@ -1617,7 +1617,7 @@ class BadgeStrip(tk.Toplevel):
                 # is the one place the distinction must survive a scale change
                 # and a busy background - a glyph does, a hairline would not.
                 graded = bool(r.get("graded"))
-                shadow_text(c, cx, b(12), "★" * s,
+                shadow_text(c, cx, b(12), ("☆" if graded else "★") * s,
                             SOFT if graded else STAR_COLOR.get(s, DIM),
                             F_BADGE_STARS)
                 # Same ranking as the tavern row: the mechanical read wins the
@@ -1864,6 +1864,16 @@ class BaseWindow(tk.Toplevel):
 
         Dragging still works: NOACTIVATE stops a window becoming the ACTIVE
         one, it does not stop it receiving the mouse.
+
+        The flag goes on the WRAPPER (GetParent of the Tk child): activation
+        is a top-level concept and the wrapper is what Windows activates -
+        the same trap BadgeStrip._hwnd() records. The wrapper only exists
+        once the window has been MAPPED (GetParent answers 0 before that),
+        so _apply_visibility re-asserts this after every deiconify plus once
+        on the next idle, the exact recipe BadgeStrip.show() measured out
+        for click-through. The review caught the first version writing the
+        style on the child, unmapped: four Win32 calls that changed nothing
+        the founder could see.
         """
         if self.headless:
             return
@@ -1878,7 +1888,8 @@ class BaseWindow(tk.Toplevel):
             u.SetWindowLongPtrW.restype = ctypes.c_ssize_t
             u.SetWindowLongPtrW.argtypes = (wintypes.HWND, ctypes.c_int,
                                             ctypes.c_ssize_t)
-            hwnd = wintypes.HWND(int(self.winfo_id()))
+            hwnd = u.GetParent(int(self.winfo_id())) or int(self.winfo_id())
+            hwnd = wintypes.HWND(hwnd)
             style = u.GetWindowLongPtrW(hwnd, GWL_EXSTYLE)
             u.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style | WS_EX_NOACTIVATE)
         except Exception:
@@ -2123,7 +2134,13 @@ class BaseWindow(tk.Toplevel):
         if self.COLUMN == "left":
             x = rect.left + margin
         else:
-            x = rect.right - self._wpx() - margin
+            # DX pulls a right-anchored window INWARD from the edge, in base
+            # pixels like everything else here. The micro counters use it to
+            # stand in their own rail beside the BUFFS and LEVELING bands
+            # instead of underneath them (review find: their default column
+            # ran straight through both).
+            x = rect.right - self._wpx() - margin - self._px(
+                getattr(self, "DX", 0))
         return x, rect.top + self._px(self.DY)
 
     def _place(self):
@@ -2183,6 +2200,11 @@ class BaseWindow(tk.Toplevel):
             self._mapped = True
             self.deiconify()
             self.lift()
+            # AFTER the deiconify, and again on the next idle: the wrapper
+            # HWND the flag belongs on does not exist until the map lands.
+            # Same double-assert BadgeStrip.show() uses for click-through.
+            self._no_activate()
+            self.after_idle(self._no_activate)
             if self.badges is not None and self.badges.rows:
                 self.badges.reposition(self.app.rect)
         elif not want and self._mapped:
