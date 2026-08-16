@@ -171,7 +171,14 @@ class OddsEngine:
             # budget of tens of seconds - the fight ANIMATION is the
             # deadline, not the first attack (see the timing note above).
             try:
+                from ctypes import wintypes
                 k32 = ctypes.windll.kernel32
+                # Explicit signatures - see main()'s note: without them the
+                # 64-bit call is a silent no-op.
+                k32.GetCurrentThread.restype = wintypes.HANDLE
+                k32.SetThreadPriority.argtypes = (wintypes.HANDLE,
+                                                  ctypes.c_int)
+                k32.SetThreadPriority.restype = wintypes.BOOL
                 k32.SetThreadPriority(k32.GetCurrentThread(), -1)
             except Exception:
                 pass
@@ -1264,7 +1271,15 @@ def main():
     # cores first and the overlay soaks up what is left, which is plenty.
     # Children (the msync memory reader) inherit the class.
     try:
+        from ctypes import wintypes
         k32 = ctypes.windll.kernel32
+        # Explicit signatures or the call silently does nothing on 64-bit
+        # Python - VERIFIED live: without them GetPriorityClass read back 0
+        # and the "fix" was four no-op Win32 calls, the same trap ui/base.py
+        # documents for SetWindowLongPtrW.
+        k32.GetCurrentProcess.restype = wintypes.HANDLE
+        k32.SetPriorityClass.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+        k32.SetPriorityClass.restype = wintypes.BOOL
         k32.SetPriorityClass(k32.GetCurrentProcess(), 0x4000)  # BELOW_NORMAL
     except Exception:
         pass
