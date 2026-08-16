@@ -1797,6 +1797,11 @@ class BaseWindow(tk.Toplevel):
     DY = 70
     RESERVE = 120
     MAX_H = 700
+    #: The shortest this window may be drawn. 40 is the floor a panel with a
+    #: header needs to not look clipped; a window with no header (the micro
+    #: counters) sets its own, or it is padded into a box its content sits in
+    #: the corner of.
+    MIN_H = 40
     EVENTS: tuple = ()
     BADGE_KIND = None
     BADGE_PRIORITY = 0
@@ -1886,8 +1891,14 @@ class BaseWindow(tk.Toplevel):
         """A base-pixel number as the screen pixels it becomes."""
         return int(round(v * _scale))
 
+    def _wbase(self):
+        """This window's width in BASE pixels. Overridden by a window that
+        sizes itself to its content (ui/micro.py); everything else is the
+        class constant it always was."""
+        return self.WIDTH
+
     def _wpx(self):
-        return self._px(self.WIDTH)
+        return self._px(self._wbase())
 
     def _rescaled(self):
         """set_scale ran. Repaint if we are up; otherwise the next redraw
@@ -1983,8 +1994,14 @@ class BaseWindow(tk.Toplevel):
         c = self.canvas
         c.delete("all")
         h = int(self.draw(c) or 80)
-        h = max(40, min(h, self.MAX_H))
-        panel_frame(c, self.WIDTH, h)
+        h = max(self.MIN_H, min(h, self.MAX_H))
+        # The frame is drawn to the width the window ACTUALLY has. Reading
+        # WIDTH here was fine while every window was a fixed size, and wrong
+        # the moment one sized itself to its content: the micro counters
+        # measure their own value, so a frame at the class width left the row
+        # pinned to the top-left of an oversized box (founder, 2026-08-15,
+        # "looks way off center").
+        panel_frame(c, self._wbase(), h)
         # One call, and the frame's own six layers keep their order underneath
         # everything draw() put down (Tk's lower preserves relative order
         # inside the tag).

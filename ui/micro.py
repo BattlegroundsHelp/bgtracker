@@ -31,6 +31,10 @@ from .base import (AMBER, DIM, F_NAME, F_SUB, GOOD, SOFT, TEXT, BaseWindow,
 
 ICON_PX = 18            # base pixels; bitmaps bake at ICON_PX * get_scale()
 PAD = 6
+GAP = 5                 # between the icon and its number
+# Tk LINE BOXES, measured, not font points - the same numbers the rest of
+# the HUD lays out against (docs/HUD_GUIDELINES.md).
+NAME_LINE, SUB_LINE = 17, 13
 
 
 class MicroWindow(BaseWindow):
@@ -40,6 +44,7 @@ class MicroWindow(BaseWindow):
     COLUMN = "float"                # every one of them is movable
     RESERVE = 44
     MAX_H = 44
+    MIN_H = 0            # sized to its content; the 40px floor is for panels
     WIDTH = 78
     EVENTS = ("game",)
     # The game's own icon first, our designed glyph second. Extracting is
@@ -82,7 +87,10 @@ class MicroWindow(BaseWindow):
             self.reset()
 
     def _state(self):
-        w = self.app.by_key.get("counters")
+        # getattr, because this is reached during construction too: the base
+        # constructor sets the window geometry, that asks _wbase() for the
+        # width, and the manager has not finished building by_key yet.
+        w = getattr(self.app, "by_key", {}).get("counters")
         return w.state if w is not None else None
 
     # ---------------------------------------------------------------- hover
@@ -96,14 +104,21 @@ class MicroWindow(BaseWindow):
             self._hover = False
             self.redraw()
 
-    def _wpx(self):
-        # The window is as wide as it needs to be: its own WIDTH normally,
-        # and wide enough for the label while the pointer is on it. Base
-        # pixels in, screen pixels out - the scale is applied by the parent.
-        w = self.WIDTH
+    def _wbase(self):
+        """As wide as its content and no wider.
+
+        A fixed width left "7/10" sitting in the top-left corner of a box
+        with 23 spare pixels down one side, which is exactly what off-centre
+        looks like. The width is measured from what is actually drawn: the
+        icon, the value, and the label while the pointer is on it.
+        """
+        s = self._state()
+        got = self.value(s) if s is not None else None
+        text = got[0] if got else ""
+        w = PAD + ICON_PX + GAP + F_NAME.measure(text) + PAD
         if self._hover:
-            w = max(w, PAD + ICON_PX + 5 + F_SUB.measure(self.LABEL) + PAD)
-        return self._px(w)
+            w = max(w, PAD + F_SUB.measure(self.LABEL) + PAD)
+        return max(38, w)
 
     @property
     def LABEL(self):
@@ -132,30 +147,37 @@ class MicroWindow(BaseWindow):
         if got is None:
             return 20
         text, fill = got
+        # The row is centred in the band it is given, rather than pinned to
+        # the top of a box tall enough for a header this window does not
+        # have. ROW is the taller of the icon and one line of the value font.
+        row = max(ICON_PX, NAME_LINE)
+        h = PAD + row + PAD + ((SUB_LINE + 2) if self._hover else 0)
+        cy = PAD + row // 2
         px = max(12, round(ICON_PX * get_scale()))
         icon = None
         for name in self.ICON:
             icon = skin.ui_icon(c, name, px)
             if icon is not None:
                 break
-        x, cy = PAD, 15
+        x = PAD
         if icon is not None:
             c.create_image(x, cy - ICON_PX // 2, image=icon, anchor="nw")
-            x += ICON_PX + 5
+            x += ICON_PX + GAP
         else:
             # No icon on disk: the label's first letters stand in, so the
             # window still says which number it is holding.
             c.create_text(x, cy, text=self.TITLE[:3].upper(), anchor="w",
                           fill=DIM, font=F_NAME)
-            x += 28
+            x += ICON_PX + GAP
         # The value wears a halo: these float over the board rather than over
         # a panel, so there is card art behind them as often as not.
         shadow_text(c, x, cy, text, fill, F_NAME, anchor="w")
         if self._hover:
             # The name, while the pointer is on it. Under the value rather
             # than beside it, so the number never moves as the label appears.
-            shadow_text(c, PAD, cy + 13, self.LABEL, DIM, F_SUB, anchor="w")
-        return 44 if self._hover else 30
+            shadow_text(c, PAD, PAD + row + 1 + SUB_LINE // 2, self.LABEL,
+                        DIM, F_SUB, anchor="w")
+        return h
 
 
 class GoldMicro(MicroWindow):
