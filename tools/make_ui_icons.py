@@ -87,6 +87,38 @@ SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">
 <g fill="{colour}" stroke="{colour}" stroke-width="0">{glyph}</g>
 </svg>"""
 
+# The counter glyphs: one per micro window (ui/micro.py), in the same flat
+# language as the tribe emblems and for the same reason - nothing publishes
+# an icon for "your free rerolls". They have to carry their meaning at 18px,
+# so the geometry stays blunt. The NUMBER beside them is what gets read; the
+# icon only says which number it is.
+COUNTER_COLOUR = {
+    "gold": "#e0b45c", "upgrade": "#6fbf73", "triples": "#c9a227",
+    "rolls": "#6fa8dc", "trinket": "#c58fd6", "turn": "#c6b89f",
+}
+COUNTER_GLYPHS = {
+    # a coin, with a rim so it does not read as a full stop
+    "gold":    '<circle cx="32" cy="32" r="17" fill="none" stroke-width="5"/>'
+               '<circle cx="32" cy="32" r="7"/>',
+    # a tavern upgrade: an arrow standing on its step
+    "upgrade": '<path d="M32 12 L48 32 L39 32 L39 42 L25 42 L25 32 L16 32 Z"/>'
+               '<rect x="20" y="46" width="24" height="6" rx="2"/>',
+    # three of a kind
+    "triples": '<circle cx="20" cy="40" r="8"/><circle cx="44" cy="40" r="8"/>'
+               '<circle cx="32" cy="20" r="8"/>',
+    # a refresh loop, open at the top with an arrow head
+    "rolls":   '<path d="M46 32 A14 14 0 1 1 32 18" fill="none" '
+               'stroke-width="6" stroke-linecap="round"/>'
+               '<path d="M32 8 L32 26 L44 17 Z"/>',
+    # a trinket: a stone in its setting
+    "trinket": '<path d="M32 12 L46 24 L38 48 L26 48 L18 24 Z" fill="none" '
+               'stroke-width="5"/><path d="M32 24 L38 30 L32 40 L26 30 Z"/>',
+    # the turn: a clock hand
+    "turn":    '<circle cx="32" cy="32" r="18" fill="none" stroke-width="5"/>'
+               '<path d="M32 20 L32 33 L41 38" fill="none" stroke-width="5" '
+               'stroke-linecap="round"/>',
+}
+
 
 def scrub(p: Path):
     im = Image.open(p).convert("RGBA")
@@ -103,12 +135,15 @@ def main() -> int:
     if not CHROME.is_file():
         sys.exit(f"no Chrome at {CHROME} - the headless renderer needs it")
     OUT.mkdir(parents=True, exist_ok=True)
+    jobs = [(f"tribe_{n}", COLOUR[n], g) for n, g in GLYPHS.items()]
+    jobs += [(f"counter_{n}", COUNTER_COLOUR[n], g)
+             for n, g in COUNTER_GLYPHS.items()]
     with tempfile.TemporaryDirectory() as td:
-        for name, glyph in GLYPHS.items():
+        for name, colour, glyph in jobs:
             svg = Path(td) / f"{name}.svg"
-            svg.write_text(SVG.format(colour=COLOUR[name], glyph=glyph),
+            svg.write_text(SVG.format(colour=colour, glyph=glyph),
                            encoding="utf-8")
-            out = OUT / f"tribe_{name}.png"
+            out = OUT / f"{name}.png"
             r = subprocess.run(
                 [str(CHROME), "--headless=new", "--disable-gpu",
                  "--default-background-color=00000000",
@@ -119,7 +154,7 @@ def main() -> int:
                 sys.exit(f"{name}: Chrome refused "
                          f"({r.stderr.decode(errors='replace')[:200]})")
             scrub(out)
-            print(f"  tribe_{name}.png")
+            print(f"  {name}.png")
     print(f"written to {OUT}")
     return 0
 

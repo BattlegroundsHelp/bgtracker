@@ -818,9 +818,17 @@ class CountersWindow(BaseWindow):
                 pass
             self._feed = None
 
+    def _micros_up(self):
+        """Is any micro counter window built? They are the normal home of
+        these numbers (ui/micro.py), and this window is then only the engine
+        behind them: it keeps the state and the log feed, and draws nothing.
+        Switch every micro off in settings and the strip comes back, which is
+        the compact alternative for a small screen."""
+        return any(k.startswith("m_") for k in self.app.by_key)
+
     def _sync(self):
         self._seen = self.state.version
-        if self.state.known():
+        if self.state.known() and not self._micros_up():
             self.show()
         else:
             self.hide()
@@ -838,11 +846,12 @@ class CountersWindow(BaseWindow):
         """The labelled columns, importance order. Always the first three."""
         s = self.state
         gold = s.gold
-        # GOLD is NOT a column here any more: it is its own movable window
-        # (ui/gold.py), split out on founder feedback 2026-08-15 - it is the
-        # one counter looked at every turn, so it stopped being the first
-        # column of a strip. Both read this same state, so they agree.
-        cols = [("TIER", f"{s.tier}" if s.tier else "—",
+        # The strip is the compact alternative to the micro windows, so it
+        # carries every counter including gold - a strip missing the number
+        # people look at most would be a worse version of both shapes.
+        cols = [("GOLD", f"{gold}/{s.gold_max}" if gold is not None else "—",
+                 AMBER if gold else DIM),
+                ("TIER", f"{s.tier}" if s.tier else "—",
                  TEXT if s.tier else DIM)]
         if s.at_max_tier:
             cols.append(("UPGRADE", "max", DIM))
@@ -873,6 +882,14 @@ class CountersWindow(BaseWindow):
                           fill=DIM, font=F_SUB)
             return y + 22
 
+        # NOTE this strip is OFF by default now, and it is not where the
+        # numbers normally live: each counter has its own micro window
+        # (ui/micro.py), which is the shape they were always meant to have.
+        # The strip stays because this window owns the state and the log feed
+        # every micro reads, and because one compact row is still the better
+        # answer on a small screen - switch it on and the micros off. The two
+        # can never disagree: they read the same state.
+        #
         # The labelled columns: label at the top in the muted small type,
         # value under it in the plain bright one. Columns that stop fitting
         # drop from the right - the first three always fit.

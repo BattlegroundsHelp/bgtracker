@@ -147,7 +147,8 @@ from .comps import CompsWindow
 from .counters import CountersWindow
 from .curve import CurveWindow
 from .effects import EffectsWindow
-from .gold import GoldWindow
+from .micro import (GoldMicro, RollsMicro, TierMicro, TriplesMicro,
+                    TrinketMicro, TurnMicro, UpgradeMicro)
 from .discover import DiscoverWindow
 from .heropick import HeroPickWindow
 from .heropower import HeroPowerWindow
@@ -159,7 +160,16 @@ from .trinkets import TrinketWindow
 # The registry. Order is construction order only - windows are independent.
 WINDOWS = (
     CountersWindow,
-    GoldWindow,
+    # One micro window per counter - the numbers' normal home. The strip
+    # above keeps the state and the log feed they all read, and draws itself
+    # only when every one of these is switched off.
+    GoldMicro,
+    TierMicro,
+    UpgradeMicro,
+    TriplesMicro,
+    RollsMicro,
+    TrinketMicro,
+    TurnMicro,
     EffectsWindow,
     CurveWindow,
     CombatWindow,
@@ -176,8 +186,9 @@ WINDOWS = (
 
 __all__ = [
     "WINDOWS", "BrowserWindow", "CombatWindow", "CompsWindow", "CountersWindow",
-    "DiscoverWindow", "GoldWindow", "HeroPickWindow", "HeroPowerWindow",
-    "PlayersWindow",
+    "DiscoverWindow", "GoldMicro", "HeroPickWindow", "HeroPowerWindow",
+    "PlayersWindow", "RollsMicro", "TierMicro", "TriplesMicro",
+    "TrinketMicro", "TurnMicro", "UpgradeMicro",
     "SessionWindow", "TavernWindow", "TrinketWindow", "classify_choice",
 ]
 

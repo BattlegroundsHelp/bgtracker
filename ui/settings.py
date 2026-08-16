@@ -700,8 +700,12 @@ class SettingsPanel(tk.Toplevel):
             chk = self._check(sec, f"{cls.TITLE or cls.KEY}  ({cls.KEY})", var,
                               lambda k=cls.KEY: self._on_window(k))
             self.win_checks[cls.KEY] = chk
+            # A class may name itself: the seven micro counters share one
+            # module, so its docstring would otherwise be printed seven times
+            # under seven different switches.
             mod = sys.modules.get(cls.__module__)
-            blurb = _first_sentence(getattr(mod, "__doc__", ""))
+            blurb = (getattr(cls, "BLURB", "")
+                     or _first_sentence(getattr(mod, "__doc__", "")))
             extra = []
             if cls.QUIT_BUTTON:
                 # Refused rather than allowed-and-regretted: every other

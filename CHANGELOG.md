@@ -25,9 +25,16 @@
 - **The minion browser opens a row with the card itself** beside the text -
   the finished card art where the CDN has it, the square art crop where it
   does not - and its tribe filter wears the tribe emblems.
-- **Gold is its own little window**, movable like the buff pills, with the
-  spendable coins as pips. The counters strip and the buff pills both got
-  tighter.
+- **Every counter is its own micro window: an icon and its number, nothing
+  else.** Gold, tavern tier, the upgrade price, triples, free rerolls, the
+  trinket timer and the turn each get a tiny frame you drag where you want
+  it, which is the shape they were always meant to have. They wear designed
+  glyphs - a coin, an upgrade arrow, a reroll loop, a trinket, a clock -
+  except the tier, which wears the game's own tavern shield. Each hides
+  itself when it has nothing true to say (no triples yet, no free rerolls)
+  instead of showing a zero. The old one-row strip is still there for a small
+  screen: switch every micro off and it comes back, reading the same numbers.
+  The buff pills got tighter too.
 
 ### Fixed
 
