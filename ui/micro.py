@@ -26,7 +26,7 @@ now, and what colour that value should be. Everything else lives here.
 from __future__ import annotations
 
 from . import skin
-from .base import (AMBER, DIM, F_NAME, GOOD, SOFT, TEXT, BaseWindow,
+from .base import (AMBER, DIM, F_NAME, F_SUB, GOOD, SOFT, TEXT, BaseWindow,
                    get_scale, shadow_text)
 
 ICON_PX = 18            # base pixels; bitmaps bake at ICON_PX * get_scale()
@@ -38,8 +38,8 @@ class MicroWindow(BaseWindow):
     implement value()."""
 
     COLUMN = "float"                # every one of them is movable
-    RESERVE = 30
-    MAX_H = 30
+    RESERVE = 44
+    MAX_H = 44
     WIDTH = 78
     EVENTS = ("game",)
     # The game's own icon first, our designed glyph second. Extracting is
@@ -50,8 +50,19 @@ class MicroWindow(BaseWindow):
     BLURB = ""                      # the settings panel's one-liner
 
     def __init__(self, app):
+        # BEFORE super(): the base constructor sets the window geometry, and
+        # our _wpx() override reads this flag to decide the width.
+        self._hover = False
         super().__init__(app)
         self._seen = -1
+        if not self.headless:
+            # An icon and a number say WHAT but not WHICH, and a window this
+            # size has no room for a standing label. Hovering names it: the
+            # window widens for as long as the pointer is on it and goes back
+            # the moment it leaves. Nothing is covered when it matters - the
+            # mouse is not sitting on these during a fight.
+            self.canvas.bind("<Enter>", self._enter, add="+")
+            self.canvas.bind("<Leave>", self._leave, add="+")
 
     # ------------------------------------------------------------ subclass
     def value(self, s):
@@ -73,6 +84,32 @@ class MicroWindow(BaseWindow):
     def _state(self):
         w = self.app.by_key.get("counters")
         return w.state if w is not None else None
+
+    # ---------------------------------------------------------------- hover
+    def _enter(self, _e=None):
+        if not self._hover:
+            self._hover = True
+            self.redraw()
+
+    def _leave(self, _e=None):
+        if self._hover:
+            self._hover = False
+            self.redraw()
+
+    def _wpx(self):
+        # The window is as wide as it needs to be: its own WIDTH normally,
+        # and wide enough for the label while the pointer is on it. Base
+        # pixels in, screen pixels out - the scale is applied by the parent.
+        w = self.WIDTH
+        if self._hover:
+            w = max(w, PAD + ICON_PX + 5 + F_SUB.measure(self.LABEL) + PAD)
+        return self._px(w)
+
+    @property
+    def LABEL(self):
+        """What the hover says. The settings label, lowercased, because it is
+        a caption on a number and not a heading."""
+        return self.TITLE.lower()
 
     def tick(self, rect, game_front):
         s = self._state()
@@ -114,7 +151,11 @@ class MicroWindow(BaseWindow):
         # The value wears a halo: these float over the board rather than over
         # a panel, so there is card art behind them as often as not.
         shadow_text(c, x, cy, text, fill, F_NAME, anchor="w")
-        return 30
+        if self._hover:
+            # The name, while the pointer is on it. Under the value rather
+            # than beside it, so the number never moves as the label appears.
+            shadow_text(c, PAD, cy + 13, self.LABEL, DIM, F_SUB, anchor="w")
+        return 44 if self._hover else 30
 
 
 class GoldMicro(MicroWindow):
@@ -128,6 +169,26 @@ class GoldMicro(MicroWindow):
         if s.gold is None:
             return None
         return f"{s.gold}/{s.gold_max}", AMBER if s.gold else DIM
+
+
+class ExtraGoldMicro(MicroWindow):
+    KEY = "m_extra"
+    TITLE = "Gold extra"
+    BLURB = "Gold already banked for next turn. Only up when you have some."
+    ICON = ("game/counter_gold", "counter_gold")
+    DY = 720
+    WIDTH = 62
+
+    def value(self, s):
+        # Zero banked gold is the normal state and says nothing, so this
+        # window is simply not there until there is some - and comes back on
+        # its own the moment there is. NOTE the tag behind it
+        # (BACON_PLAYER_EXTRA_GOLD_NEXT_TURN) has been silent in current
+        # patches, measured 2026-08-13: when the game starts writing it again,
+        # or its replacement is found, this appears with no other change.
+        if not s.extra_next:
+            return None
+        return f"+{s.extra_next}", GOOD
 
 
 class TierMicro(MicroWindow):
@@ -220,5 +281,5 @@ class TurnMicro(MicroWindow):
         return str(s.bg_turn), AMBER if s.in_combat else TEXT
 
 
-MICROS = (GoldMicro, TierMicro, UpgradeMicro, TriplesMicro, RollsMicro,
+MICROS = (GoldMicro, ExtraGoldMicro, TierMicro, UpgradeMicro, TriplesMicro, RollsMicro,
           TrinketMicro, TurnMicro)

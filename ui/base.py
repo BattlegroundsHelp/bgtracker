@@ -1839,11 +1839,45 @@ class BaseWindow(tk.Toplevel):
         self.canvas.bind("<B1-Motion>", self._motion)
         self.canvas.bind("<ButtonRelease-1>", self._release)
         self.withdraw()
+        self._no_activate()
 
         if self.BADGE_KIND and not self.headless:
             self.badges = BadgeStrip(self, self.BADGE_KIND, self.BADGE_PRIORITY,
                                      store=app.pos)
         _LIVE.add(self)
+
+    def _no_activate(self):
+        """Never take focus from the game. Ever.
+
+        The badge strips have carried WS_EX_NOACTIVATE since they were
+        written; these windows did not, and it showed the moment the overlay
+        was started or restarted mid-game (founder, 2026-08-15: "stop opening
+        it in front of my game, that glitches everything"). A window mapping
+        without this flag can be activated by Windows, which pulls focus off
+        a fullscreen or borderless Hearthstone and makes the client stutter,
+        drop the cursor, or minimise outright.
+
+        Dragging still works: NOACTIVATE stops a window becoming the ACTIVE
+        one, it does not stop it receiving the mouse.
+        """
+        if self.headless:
+            return
+        try:
+            GWL_EXSTYLE, WS_EX_NOACTIVATE = -20, 0x8000000
+            u = ctypes.windll.user32
+            # Explicit signatures, for the reason spelled out in the badge
+            # strip's copy: without them the write silently does nothing on
+            # 64-bit Python.
+            u.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+            u.GetWindowLongPtrW.argtypes = (wintypes.HWND, ctypes.c_int)
+            u.SetWindowLongPtrW.restype = ctypes.c_ssize_t
+            u.SetWindowLongPtrW.argtypes = (wintypes.HWND, ctypes.c_int,
+                                            ctypes.c_ssize_t)
+            hwnd = wintypes.HWND(int(self.winfo_id()))
+            style = u.GetWindowLongPtrW(hwnd, GWL_EXSTYLE)
+            u.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style | WS_EX_NOACTIVATE)
+        except Exception:
+            pass        # not Windows, or a window that has not been mapped
 
     # -------------------------------------------------------------- scaling
 
@@ -1908,6 +1942,11 @@ class BaseWindow(tk.Toplevel):
         if not self._open:
             self._open = True
             self.opens += 1
+            # Re-assert it on the first real map: the style is set at build
+            # time, and a window that had never been mapped can come back
+            # without it. Cheap, and the alternative is the game losing
+            # focus the first time this window appears.
+            self._no_activate()
         self._arm_timeout()
         self.redraw()
         self._apply_visibility()
