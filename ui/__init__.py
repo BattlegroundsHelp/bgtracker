@@ -147,6 +147,7 @@ from .comps import CompsWindow
 from .counters import CountersWindow
 from .curve import CurveWindow
 from .effects import EffectsWindow
+from .gold import GoldWindow
 from .discover import DiscoverWindow
 from .heropick import HeroPickWindow
 from .heropower import HeroPowerWindow
@@ -158,6 +159,7 @@ from .trinkets import TrinketWindow
 # The registry. Order is construction order only - windows are independent.
 WINDOWS = (
     CountersWindow,
+    GoldWindow,
     EffectsWindow,
     CurveWindow,
     CombatWindow,
@@ -174,7 +176,8 @@ WINDOWS = (
 
 __all__ = [
     "WINDOWS", "BrowserWindow", "CombatWindow", "CompsWindow", "CountersWindow",
-    "DiscoverWindow", "HeroPickWindow", "HeroPowerWindow", "PlayersWindow",
+    "DiscoverWindow", "GoldWindow", "HeroPickWindow", "HeroPowerWindow",
+    "PlayersWindow",
     "SessionWindow", "TavernWindow", "TrinketWindow", "classify_choice",
 ]
 

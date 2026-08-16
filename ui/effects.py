@@ -21,9 +21,12 @@ from .base import (AMBER, DIM, F_NAME, F_SUB, LINE, PANEL_HI, SOFT, TEXT,
                    TRIBE_COLOR, BaseWindow, fit_text, get_scale, rrect)
 from . import skin
 
-# The pill grid: sized for "+123/+456" beside a 20px icon, two per row -
-# the same cluster shape the reference shows.
-PILL_W, PILL_H, GAP = 118, 26, 6
+# The pill grid: sized for "+123/+456" beside a 16px icon, two per row -
+# the same cluster shape the reference shows. Tightened 2026-08-15 on founder
+# feedback that the window sat too heavy over the board: the pill is measured
+# to the widest real string and nothing more.
+PILL_W, PILL_H, GAP = 96, 21, 4
+ICON_PX = 16
 
 
 def _colour(eff):
@@ -40,10 +43,11 @@ class EffectsWindow(BaseWindow):
     COLUMN = "float"                # not part of either tiled column: it is
     DY = 792                        # the one window whose whole point is
     RESERVE = 64                    # being moved wherever the player wants
-    MAX_H = 150                     # header + three pill rows + the names
-                                    # line; two reviews taught this number
-                                    # (92 clipped the third row, 124 had no
-                                    # room for the header)
+    MAX_H = 122                     # header + three pill rows + the names
+                                    # line, at the tightened pill size; two
+                                    # reviews taught the shape of this number
+                                    # (a short one clips the third row, and
+                                    # the header needs its own band)
     WIDTH = 8 + 2 * PILL_W + GAP + 8
     EVENTS = ("game",)
 
@@ -101,7 +105,7 @@ class EffectsWindow(BaseWindow):
             cy = py1 + PILL_H // 2
             # Icons bake at FINAL pixels (base 20 x the UI scale): the canvas
             # transform moves an image's anchor and never resizes the bitmap.
-            ipx = max(12, round(20 * get_scale()))
+            ipx = max(10, round(ICON_PX * get_scale()))
             icon = (skin.round_icon(c, eff["card"], ipx)
                     if eff["card"] else None)
             if icon is None:
@@ -114,13 +118,14 @@ class EffectsWindow(BaseWindow):
                 if name is None:
                     name = "tribe_" + (eff["label"] or "buff").lower()
                 icon = skin.ui_icon(c, name, ipx)
+            half = ICON_PX // 2
             if icon is not None:
-                c.create_image(px1 + 4, cy - 10, image=icon, anchor="nw")
+                c.create_image(px1 + 3, cy - half, image=icon, anchor="nw")
             else:
-                c.create_oval(px1 + 4, cy - 10, px1 + 24, cy + 10,
+                c.create_oval(px1 + 3, cy - half, px1 + 3 + ICON_PX, cy + half,
                               fill=_colour(eff), outline="")
-            c.create_text(px1 + 30, cy, anchor="w", fill=TEXT, font=F_NAME,
-                          text=f"+{eff['atk']} / +{eff['hp']}")
+            c.create_text(px1 + ICON_PX + 8, cy, anchor="w", fill=TEXT,
+                          font=F_SUB, text=f"+{eff['atk']}/+{eff['hp']}")
             col += 1
             if col == 2:
                 col, y = 0, y + PILL_H + GAP

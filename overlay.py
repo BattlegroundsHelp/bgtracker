@@ -417,6 +417,14 @@ class Reader(threading.Thread):
         seen_boards = {}            # hero cardId -> {"round": int, "board": [...]}
         last_players = [None]       # what we last pushed, to stay quiet when idle
         players_tick = [0.0]        # throttle: this runs off the line stream
+        # hero cardId -> that player's tavern tier, straight from the log.
+        # The memory reader takes TECH_LEVEL off the hero entity, and that is a
+        # DIFFERENT tag: TECH_LEVEL is the tier printed on a CARD, a player's
+        # tavern tier is PLAYER_TECH_LEVEL. Reading the first off a hero gave
+        # every seat the same number (measured live 2026-08-15: the whole lobby
+        # read T2 while they were on 3). The log states the real one per hero,
+        # so it wins wherever it has been seen.
+        log_tiers = {}
 
         def flush_players():
             # Ticked from the line stream rather than from the GameState copy
@@ -464,10 +472,16 @@ class Reader(threading.Thread):
                              "atk": m.get("atk"), "health": m.get("health")}
                             for m in board]}
                 kept = seen_boards.get(card) or {}
+                # The log's PLAYER_TECH_LEVEL beats the memory reader's tag
+                # (see log_tiers above); a skinned hero logs its own cardId,
+                # so the plain hero id is tried as well.
+                tier = (log_tiers.get(card)
+                        or log_tiers.get(card.split("_SKIN_")[0])
+                        or p.get("tier"))
                 rows.append({
                     "place": p.get("place"), "card": card, "name": named(card),
                     "health": p.get("health"), "armor": p.get("armor"),
-                    "tier": p.get("tier"), "you": bool(p.get("you")),
+                    "tier": tier, "you": bool(p.get("you")),
                     "board": kept.get("board") or [],
                     "seen_round": kept.get("round"),
                 })
@@ -722,6 +736,15 @@ class Reader(threading.Thread):
         def consume(line):
             nonlocal hero_open, shop_ts, me_name, last_gold
             odds.feed(line)              # combat boards -> BETA win/tie/loss
+            # Every seat's real tavern tier, before the leaderboard is rebuilt.
+            # value=0 is a reset the client writes on the way to the real
+            # number, so a zero never overwrites a tier we already know.
+            if "PLAYER_TECH_LEVEL" in line:
+                m = bg.PLAYER_TIER_RE.search(line)
+                if m:
+                    lvl = int(m.group("lvl"))
+                    if lvl > 0:
+                        log_tiers[m.group("card")] = lvl
             flush_players()              # leaderboard (memory reader only)
 
             blk = choice.feed(line)

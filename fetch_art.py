@@ -22,6 +22,7 @@ Run once; it skips anything already on disk, so re-runs only fetch new cards.
 
 import argparse
 import concurrent.futures as cf
+import time
 import urllib.request
 
 import bgtracker as bg
@@ -44,24 +45,41 @@ UI_ASSETS = {
 
 
 def one(card_id: str, kind: str) -> str:
-    """kind: 'tiles' (png bar) or 'crops' (jpg square). Returns a status token."""
-    ext = "png" if kind == "tiles" else "jpg"
+    """kind: 'tiles' (png bar), 'crops' (jpg square) or 'renders' (png, the
+    whole card as it looks in hand). Returns a status token."""
+    ext = "jpg" if kind == "crops" else "png"
     out = ASSETS / kind / f"{card_id}.{ext}"
     if out.exists() and out.stat().st_size > 0:
         return "skip"
     out.parent.mkdir(parents=True, exist_ok=True)
-    url = f"{CDN}/tiles/{card_id}.png" if kind == "tiles" \
-        else f"{CDN}/256x/{card_id}.jpg"
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "bgtracker/1.0"})
-        with urllib.request.urlopen(req, timeout=30) as r:
-            data = r.read()
-        if len(data) < 200:          # a 404 body, not an image
-            return "miss"
-        out.write_bytes(data)
-        return "ok"
-    except Exception:
-        return "miss"
+    if kind == "tiles":
+        url = f"{CDN}/tiles/{card_id}.png"
+    elif kind == "renders":
+        # The finished card - frame, name, art, text, stats - which is what
+        # the browser shows beside an opened row. Not every id has one (a
+        # tavern spell or a token often does not) and a miss is just a miss.
+        url = f"{CDN}/render/latest/enUS/256x/{card_id}.png"
+    else:
+        url = f"{CDN}/256x/{card_id}.jpg"
+    # Two tries with a pause between them. The CDN answers a burst of these
+    # with 403 rather than a queue - measured 2026-08-15: a full-card render
+    # is ~150 KB against a tile's ~20 KB, and sixteen at once got refused
+    # while the same url fetched fine one at a time. One retry turns almost
+    # all of that back into art; a real 404 still costs only one extra try.
+    for attempt in (0, 1):
+        try:
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "bgtracker/1.0"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = r.read()
+            if len(data) < 200:      # a 404 body, not an image
+                return "miss"
+            out.write_bytes(data)
+            return "ok"
+        except Exception:
+            if attempt == 0:
+                time.sleep(1.5)
+    return "miss"
 
 
 def main():
@@ -74,6 +92,16 @@ def main():
     cards = bg.card_table("100", "last-patch")
     tiers = bg.card_tiers()
     ids = [cid for cid in cards if tiers.get(cid, 0) >= 1]   # real minions
+    # The pool the BROWSER lists, which is not the same set: the lines above
+    # come from the stats table, so they carry whatever the feed happens to
+    # have measured (golden copies, pre-made champions) and MISS minions
+    # nobody has played yet. The browsable pool is the live card data, and
+    # it is what a player actually scrolls through - caught 2026-08-15, when
+    # the card miniatures existed for 60 of 274 minions because of this.
+    try:
+        ids += [m["id"] for m in bg.bg_pool()]
+    except Exception:
+        pass          # offline with a cold cache: the table's ids still work
     if args.all or args.everything:
         ids += list(bg.trinket_table("last-patch", "100").keys())
     if args.everything:
@@ -117,8 +145,26 @@ def main():
             if done % 200 == 0:
                 print(f"  {done}/{len(futs)}  {counts}", flush=True)
     print(f"done: {counts}")
+
+    # The full-card renders go in their own gentler pass: they are ~8x the
+    # bytes of a tile and the CDN refuses a wide burst of them (measured
+    # 2026-08-15: sixteen at once got 403s, four still did, the same urls
+    # fetched one at a time were all 200). Two at a time, with the retry in
+    # one(), is what actually brings the whole pool down.
+    print(f"fetching card renders for {len(ids)} cards (gentler pass) ...")
+    rcounts = {"ok": 0, "skip": 0, "miss": 0}
+    with cf.ThreadPoolExecutor(max_workers=2) as ex:
+        futs = [ex.submit(one, cid, "renders") for cid in ids]
+        done = 0
+        for f in cf.as_completed(futs):
+            rcounts[f.result()] += 1
+            done += 1
+            if done % 100 == 0:
+                print(f"  {done}/{len(futs)}  {rcounts}", flush=True)
+    print(f"renders done: {rcounts}")
     print(f"tiles: {len(list((ASSETS/'tiles').glob('*.png')))} | "
-          f"crops: {len(list((ASSETS/'crops').glob('*.jpg')))}")
+          f"crops: {len(list((ASSETS/'crops').glob('*.jpg')))} | "
+          f"renders: {len(list((ASSETS/'renders').glob('*.png')))}")
 
 
 if __name__ == "__main__":

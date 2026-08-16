@@ -473,6 +473,37 @@ def ui_icon(c, name, px, dim=False):
     return _photo(key, im, c)
 
 
+_RENDER_DIR = APP_DIR / "assets" / "renders"
+
+
+def card_render(c, card, w):
+    """The whole card as it looks in hand, scaled to ``w`` wide, aspect kept.
+    None when fetch-art has not pulled one (or the CDN has none for this id -
+    tokens and some tavern spells have none), and the caller simply draws no
+    miniature."""
+    if not _PIL or not card or w < 24:
+        return None
+    key = _key(c, "render", card, w)
+    got = _get(key)
+    if got is not None:
+        return got
+    skey = "render:" + card
+    if skey not in _src:
+        im = None
+        p = _RENDER_DIR / f"{card}.png"
+        if p.is_file():
+            try:
+                im = Image.open(p).convert("RGBA")
+            except Exception:
+                im = None
+        _keep_src(skey, im)
+    src = _src[skey]
+    if src is None:
+        return None
+    h = max(1, round(src.size[1] * w / src.size[0]))
+    return _photo(key, src.resize((w, h), Image.LANCZOS), c)
+
+
 def round_icon(c, card, px, ring=None):
     """A circular card-art icon, the way the reference draws a counter's
     source in its pill. ``card`` may be an enchantment id - the trailing

@@ -145,6 +145,17 @@ TS_RE = re.compile(r"^D ([\d:.]+)")
 TAGPOS_RE = re.compile(
     r"^D (?P<ts>[\d:.]+).*?TAG_CHANGE Entity=\[entityName=.+? id=(?P<id>\d+) "
     r"zone=HAND [^\]]*\] tag=ZONE_POSITION value=(?P<pos>\d+)")
+# A player's tavern tier, per seat. NOT tag=TECH_LEVEL - that one is the tier
+# printed on a card, it sits on minions and on the hero card alike, so reading
+# it off a hero says the same thing for everybody. PLAYER_TECH_LEVEL is the
+# tavern the player is actually standing in, and the hero cardId in the same
+# bracket says whose it is (measured against a live 8-player lobby 2026-08-15).
+# BACON_MAX_PLAYER_TECH_LEVEL is the cap rather than the tier; matching the tag
+# with "] tag=" in front of it keeps that one out.
+PLAYER_TIER_RE = re.compile(
+    r"TAG_CHANGE Entity=\[entityName=.+? id=\d+ [^\]]*cardId=(?P<card>[\w_]+)"
+    r"[^\]]*\] tag=PLAYER_TECH_LEVEL value=(?P<lvl>\d+)")
+
 # A hero REROLL rewrites the same entity in place: the bracket still carries the
 # old name/card, the trailing CardID is the hero that replaced it.
 CHANGE_RE = re.compile(

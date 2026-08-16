@@ -745,8 +745,10 @@ class CountersWindow(BaseWindow):
     COLUMN = "right"
     DY = 8
     RESERVE = 62
-    MAX_H = 62                      # the band above COMBAT (y+70); never spills
-    WIDTH = 316
+    MAX_H = 54                      # the band above COMBAT (y+70); never spills
+    WIDTH = 244                     # tightened with the columns below, and
+                                    # with GOLD gone to its own window
+                                    # (founder: "too big", 2026-08-15)
     EVENTS = ("counters", "board", "gold", "game")
 
     ROW_H = 15
@@ -835,10 +837,12 @@ class CountersWindow(BaseWindow):
     def _stats(self):
         """The labelled columns, importance order. Always the first three."""
         s = self.state
-        gold, gmax = s.gold, s.gold_max
-        cols = [("GOLD", f"{gold}/{gmax}" if gold is not None else "—",
-                 AMBER if gold else DIM),
-                ("TIER", f"{s.tier}" if s.tier else "—",
+        gold = s.gold
+        # GOLD is NOT a column here any more: it is its own movable window
+        # (ui/gold.py), split out on founder feedback 2026-08-15 - it is the
+        # one counter looked at every turn, so it stopped being the first
+        # column of a strip. Both read this same state, so they agree.
+        cols = [("TIER", f"{s.tier}" if s.tier else "—",
                  TEXT if s.tier else DIM)]
         if s.at_max_tier:
             cols.append(("UPGRADE", "max", DIM))
@@ -877,9 +881,9 @@ class CountersWindow(BaseWindow):
         # test catching painted ink below the panel. The standing effects
         # are not here any more: they are the BUFFS window's pills, movable
         # on their own, the way the reference draws each counter separately.
-        x, limit = 14, self.WIDTH - 8
+        x, limit = 12, self.WIDTH - 6
         for label, value, fill in self._stats():
-            w = max(F_CHIP.measure(label), F_SUB.measure(value)) + 14
+            w = max(F_CHIP.measure(label), F_SUB.measure(value)) + 10
             if x + w > limit:
                 break
             c.create_text(x, y, text=label, anchor="nw", fill=DIM,

@@ -145,6 +145,11 @@ class BrowserWindow(BaseWindow):
 
     ROW_H = 28
     LINE_H = 14
+    # The opened row's card miniature: the real card as it looks in hand,
+    # from assets/renders (fetch-art). 74px wide keeps its text unreadable
+    # but its FRAME, art, tribe and stats instantly recognisable, which is
+    # what a miniature is for - the words are already written out beside it.
+    MINI_W = 74
 
     def __init__(self, app):
         super().__init__(app)
@@ -636,17 +641,36 @@ class BrowserWindow(BaseWindow):
             y += 20
 
         # -- tribe (default = this lobby) ----------------------------------
+        # The chips wear the tribe emblems (data/ui/tribe_*.png, the designed
+        # set - no source publishes these) with the tribe's initial beside
+        # them: an icon is found faster than a tag is read, and a letter
+        # stays because twelve emblems at 14px are not all tellable apart.
         c.create_text(14, y + 18, text="TRIBE", anchor="w", fill=DIM, font=F_TITLE)
+        ipx = max(10, round(13 * get_scale()))
+        # Four per row, not five: the emblem keeps its whole three-letter tag
+        # beside it. An initial alone was tried and it lies - Demon and
+        # Dragon both start D, Mech and Murloc both M - and the emblems at
+        # 13px are not all tellable apart on their own either.
         for i, t in enumerate(bg.TRIBES):
-            self._chip(c, 46 + (i % 5) * 30, y + (i // 5) * 20, 27, TRIBE_TAG[t],
-                       t in self.sel_tribes, ("tribe", t), color=TRIBE_COLOR[t])
-        self._chip(c, 200, y, 30, "NTR", NEUTRAL in self.sel_tribes,
+            cx, cy = 46 + (i % 4) * 37, y + (i // 4) * 20
+            on = t in self.sel_tribes
+            emblem = skin.ui_icon(c, f"tribe_{t.lower()}", ipx, dim=not on)
+            self._chip(c, cx, cy, 34, "" if emblem is not None else TRIBE_TAG[t],
+                       on, ("tribe", t), color=TRIBE_COLOR[t])
+            if emblem is not None:
+                c.create_image(cx + 3, cy + 7, image=emblem, anchor="w")
+                c.create_text(cx + 23, cy + 8, text=TRIBE_TAG[t],
+                              anchor="center", fill=ON_CHIP if on else OFF_CHIP,
+                              font=F_CHIP)
+        # The tribe grid now runs three rows deep (four emblems each), so the
+        # side chips stack beside it instead of sharing two rows.
+        self._chip(c, 200, y, 34, "NTR", NEUTRAL in self.sel_tribes,
                    ("tribe", NEUTRAL), color=SOFT)
-        self._chip(c, 236, y, 46, "lobby", not self.tribe_touched, "tribes_lobby")
-        self._chip(c, 288, y, 34, "all",
+        self._chip(c, 240, y, 46, "lobby", not self.tribe_touched, "tribes_lobby")
+        self._chip(c, 292, y, 30, "all",
                    len(self.sel_tribes) > len(bg.TRIBES), "tribes_all")
         self._chip(c, 200, y + 20, 122, f"sort · {self.sort} ›", False, "sort")
-        y += 40
+        y += 60
 
         # -- trait ---------------------------------------------------------
         key, label, count = self._trait()
@@ -666,8 +690,23 @@ class BrowserWindow(BaseWindow):
         last_group = None
         for m in rows[self.top:]:
             opened = self.open_id == m["id"]
-            detail = self._detail(m) if opened else []
-            need = self.ROW_H + (self._detail_h(detail) + 6 if opened else 0)
+            # The miniature is fetched BEFORE the block is measured: it is
+            # taller than the text beside it, so the block has to make room
+            # for it or the card would paint over the next row.
+            #
+            # The whole card when the CDN has one, its art crop when it does
+            # not. That fallback is not a nicety: the render set only covers
+            # about a third of the Battlegrounds pool (measured 2026-08-15 -
+            # 89 of 274, the rest are honest 404s), while the square art
+            # exists for every card, so without it two thirds of the minions
+            # would open with nothing to look at.
+            mini = (skin.card_render(c, m["id"], self.MINI_W)
+                    or self.app.art.icon(m["id"], self.MINI_W)) if opened else None
+            detail = self._detail(m, bool(mini)) if opened else []
+            body = self._detail_h(detail)
+            if mini is not None:
+                body = max(body, mini.height() + 4)
+            need = self.ROW_H + (body + 6 if opened else 0)
             # Grouped by type: a slim section header the way the reference
             # draws its Demon / Dragon / ... bars, once per tribe change.
             if self.sort == "type":
@@ -693,6 +732,14 @@ class BrowserWindow(BaseWindow):
             self._row(c, y, m, opened)
             self._hit(("row", m["id"]), 8, y, self.WIDTH - 8, y + self.ROW_H)
             y += self.ROW_H
+            if mini is not None:
+                # The card itself, down the right edge of the opened block,
+                # framed like every other piece of card art the HUD draws.
+                mx = self.WIDTH - 14 - self.MINI_W
+                c.create_image(mx, y + 2, image=mini, anchor="nw")
+                art_frame(c, mx - 1, y + 1, mx + self.MINI_W + 1,
+                          y + 3 + mini.height())
+            top = y
             for text, fill in detail:
                 if text is TURNS:
                     y = self._turn_strip(c, y, fill)
@@ -700,6 +747,10 @@ class BrowserWindow(BaseWindow):
                 c.create_text(getattr(self, "_name_x", 44), y + 5, text=text,
                               anchor="w", fill=fill, font=F_SUB)
                 y += self.LINE_H
+            if mini is not None:
+                # Never end the block above the card - the next row would
+                # start underneath it.
+                y = max(y, top + mini.height() + 4)
             if opened:
                 y += 6
             drawn += 1
@@ -772,30 +823,42 @@ class BrowserWindow(BaseWindow):
                     c.create_text(self.WIDTH - 74, y + 14, anchor="e",
                                   font=F_STARS, text="★" * s, fill=fill)
 
-    def _detail(self, m):
+    def _detail(self, m, mini=False):
         """The opened row: what it is, what it does, and - only with a real
-        table behind it - what buying it actually did, and when."""
+        table behind it - what buying it actually did, and when.
+
+        ``mini`` says a card miniature is sharing the block, so the text
+        wraps into the narrower column left of it instead of running under
+        the card. One more line is allowed there, because the card is taller
+        than the text it stands beside."""
+        cols, keep = (34, 4) if mini else (52, 3)
         out = []
         races = ", ".join(r.title() for r in m["races"]) or "No tribe"
         meta = f"Tier {m['techLevel']} · {races}"
         mechs = [trait_label(k) for k in m["mechanics"] if k not in TRAIT_NOISE]
         if mechs:
             meta += " · " + ", ".join(mechs[:3])
-        out.append((meta[:56], SOFT))
-        for line in textwrap.wrap(plain(m["text"]), 52)[:3]:
+        out.append((meta[:cols + 4], SOFT))
+        for line in textwrap.wrap(plain(m["text"]), cols)[:keep]:
             out.append((line, DIM))
         st = self.cards.get(m["id"]) or {}
         if st.get("delta") is not None:
             # SOFT, not ACCENT (a stat is not clickable), and thin samples
             # say so - the same convention every offer row follows.
-            line = (f"{st['avg']:.2f} avg when bought vs "
-                    f"{st['avg'] - st['delta']:.2f} without · "
-                    f"{st.get('n', 0):,} games")
+            # Beside a miniature there is no room for the sentence, so the
+            # same two numbers go in the short form rather than being cut.
+            if mini:
+                line = (f"{st['avg']:.2f} vs {st['avg'] - st['delta']:.2f} · "
+                        f"{st.get('n', 0):,}g")
+            else:
+                line = (f"{st['avg']:.2f} avg when bought vs "
+                        f"{st['avg'] - st['delta']:.2f} without · "
+                        f"{st.get('n', 0):,} games")
             if st.get("n", 0) < bg.MIN_SAMPLE:
                 line += " · thin!"
             out.append((line, SOFT))
         else:
-            out.extend(self._grade_lines(m))
+            out.extend(self._grade_lines(m, cols))
         rows = self.turns.get(m["id"])
         if rows:
             out.append((TURNS, self._turn_bands(rows)))
@@ -807,7 +870,7 @@ class BrowserWindow(BaseWindow):
         return out
 
     @staticmethod
-    def _grade_lines(m):
+    def _grade_lines(m, cols=52):
         """The opened row for a minion NOBODY HAS MEASURED.
 
         There is deliberately no star here. A rating computed from the card
@@ -827,7 +890,7 @@ class BrowserWindow(BaseWindow):
         if not why:
             return []
         out = [("no games have measured this one yet", AMBER)]
-        for line in textwrap.wrap(", ".join(why), 52)[:2]:
+        for line in textwrap.wrap(", ".join(why), cols)[:2]:
             out.append((line, DIM))
         return out
 
