@@ -42,7 +42,11 @@ class MicroWindow(BaseWindow):
     MAX_H = 30
     WIDTH = 78
     EVENTS = ("game",)
-    ICON = None                     # data/ui/counter_<x>.png, or a game asset
+    # The game's own icon first, our designed glyph second. Extracting is
+    # per-user (tools/extract_game_assets.py) and never ships, so a fresh
+    # install runs on the designed set until it is run - the window looks
+    # different, never empty.
+    ICON = ()                       # ("game/counter_x", "counter_x")
     BLURB = ""                      # the settings panel's one-liner
 
     def __init__(self, app):
@@ -92,7 +96,11 @@ class MicroWindow(BaseWindow):
             return 20
         text, fill = got
         px = max(12, round(ICON_PX * get_scale()))
-        icon = skin.ui_icon(c, self.ICON, px) if self.ICON else None
+        icon = None
+        for name in self.ICON:
+            icon = skin.ui_icon(c, name, px)
+            if icon is not None:
+                break
         x, cy = PAD, 15
         if icon is not None:
             c.create_image(x, cy - ICON_PX // 2, image=icon, anchor="nw")
@@ -113,7 +121,7 @@ class GoldMicro(MicroWindow):
     KEY = "m_gold"
     TITLE = "Gold"
     BLURB = "The gold you have left, over what this turn gave you."
-    ICON = "counter_gold"
+    ICON = ("game/counter_gold", "counter_gold")
     DY = 720
 
     def value(self, s):
@@ -128,7 +136,7 @@ class TierMicro(MicroWindow):
     BLURB = "Your tavern tier."
     # The game's own tavern shield where it has been extracted
     # (tools/extract_game_assets.py); the drawn label stands in otherwise.
-    ICON = "game/shield"
+    ICON = ("game/shield",)
     DY = 754
     WIDTH = 62
 
@@ -142,7 +150,7 @@ class UpgradeMicro(MicroWindow):
     KEY = "m_upgrade"
     TITLE = "Upgrade cost"
     BLURB = "What the next tavern tier costs right now, green when you can afford it."
-    ICON = "counter_upgrade"
+    ICON = ("game/counter_upgrade", "counter_upgrade")
     DY = 788
 
     def value(self, s):
@@ -158,7 +166,7 @@ class TriplesMicro(MicroWindow):
     KEY = "m_triples"
     TITLE = "Triples"
     BLURB = "Triples earned so far. Hidden until you have one."
-    ICON = "counter_triples"
+    ICON = ("game/star", "counter_triples")
     DY = 822
     WIDTH = 62
 
@@ -173,7 +181,7 @@ class RollsMicro(MicroWindow):
     KEY = "m_rolls"
     TITLE = "Free rerolls"
     BLURB = "Free rerolls in hand. Hidden when there are none."
-    ICON = "counter_rolls"
+    ICON = ("counter_rolls",)
     DY = 856
     WIDTH = 62
 
@@ -187,7 +195,7 @@ class TrinketMicro(MicroWindow):
     KEY = "m_trinket"
     TITLE = "Trinket in"
     BLURB = "Turns until the next trinket is offered."
-    ICON = "counter_trinket"
+    ICON = ("game/counter_trinket", "counter_trinket")
     DY = 890
     WIDTH = 62
 
@@ -202,7 +210,7 @@ class TurnMicro(MicroWindow):
     KEY = "m_turn"
     TITLE = "Turn"
     BLURB = "The Battlegrounds turn, amber while a fight is on."
-    ICON = "counter_turn"
+    ICON = ("counter_turn",)
     DY = 924
     WIDTH = 62
 

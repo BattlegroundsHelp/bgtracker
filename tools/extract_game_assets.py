@@ -74,6 +74,27 @@ def tight(im: Image.Image) -> Image.Image:
     return im.crop(box) if box else im
 
 
+def keyed(im: Image.Image) -> Image.Image:
+    """Alpha for a texture drawn on a flat opaque backdrop.
+
+    Several of the game's small icons ship with no usable alpha channel and
+    the art simply painted onto a solid colour. The corner pixel IS that
+    colour, so transparency is distance from it - graded rather than
+    thresholded, or every edge comes out as stairs.
+    """
+    rgb = im.convert("RGB")
+    bg = rgb.getpixel((1, rgb.height - 2))
+    alpha = Image.new("L", rgb.size)
+    ap, sp = alpha.load(), rgb.load()
+    for yy in range(rgb.height):
+        for xx in range(rgb.width):
+            r, g, b = sp[xx, yy]
+            d = abs(r - bg[0]) + abs(g - bg[1]) + abs(b - bg[2])
+            ap[xx, yy] = 255 if d >= 88 else (0 if d <= 24 else
+                                              (d - 24) * 255 // 64)
+    return Image.merge("RGBA", (*rgb.split(), alpha))
+
+
 def main() -> int:
     try:
         import UnityPy
@@ -90,10 +111,16 @@ def main() -> int:
     print(f"install {install}  (unity {UnityPy.config.FALLBACK_UNITY_VERSION})")
     OUT.mkdir(parents=True, exist_ok=True)
 
-    # ---- the two source atlases ------------------------------------------
-    wanted = {"Bacon_TechLevel_Banner", "BaconLeaderboardIcons"}
+    # ---- the source textures ---------------------------------------------
+    # The two atlases the shield, star, medals and crown are cut from, plus
+    # the three standalone icons the micro counter windows wear. Those three
+    # were found by name across the whole install (2026-08-15); the game has
+    # no icon at all for a free reroll or for the turn, which is why those
+    # two windows keep a designed glyph and these do not.
+    wanted = {"Bacon_TechLevel_Banner", "BaconLeaderboardIcons",
+              "GoldCoin", "TrinketIconHeroSelect", "Bacon_TripleUpgradeArrow"}
     found: dict[str, Image.Image] = {}
-    for p in sorted(win.glob("essential_base_global-texture-*.unity3d")):
+    for p in sorted(win.glob("*.unity3d")):
         if wanted <= set(found):
             break
         try:
@@ -130,19 +157,8 @@ def main() -> int:
     mask = ImageOps.invert(tech.crop((q, 0, 2 * q, q)).convert("L"))
     shield = tight(Image.merge("RGBA", (*rgb.split(), mask)))
 
-    # The star has no packed mask, only a flat backdrop - key it out by
-    # colour distance from the corner pixel, graded so the edge stays soft.
-    sc = tech.crop((int(w * 0.84), int(h * 0.84), w, h)).convert("RGB")
-    bg = sc.getpixel((2, sc.height - 2))
-    alpha = Image.new("L", sc.size)
-    ap, sp = alpha.load(), sc.load()
-    for yy in range(sc.height):
-        for xx in range(sc.width):
-            r, g, b = sp[xx, yy]
-            d = abs(r - bg[0]) + abs(g - bg[1]) + abs(b - bg[2])
-            ap[xx, yy] = 255 if d >= 88 else (0 if d <= 24 else
-                                              (d - 24) * 255 // 64)
-    star = tight(Image.merge("RGBA", (*sc.split(), alpha)))
+    # The star has no packed mask, only a flat backdrop - keyed out below.
+    star = tight(keyed(tech.crop((int(w * 0.84), int(h * 0.84), w, h))))
     shield.save(OUT / "shield.png")
     star.save(OUT / "star.png")
 
@@ -171,6 +187,19 @@ def main() -> int:
                          (i + 1) * cell, (row + 1) * cell))).save(
             OUT / f"{name}.png")
     print("  medal_1..3 + crown")
+
+    # ---- the counter icons the micro windows wear ------------------------
+    # Straight copies where the texture already carries its own alpha, and a
+    # backdrop key where it does not (the triple arrow is drawn on opaque
+    # black, the same trick the star needed).
+    for src, name in (("GoldCoin", "counter_gold"),
+                      ("TrinketIconHeroSelect", "counter_trinket"),
+                      ("Bacon_TripleUpgradeArrow", "counter_upgrade")):
+        im = found[src]
+        if im.getchannel("A").getextrema()[1] == im.getchannel("A").getextrema()[0]:
+            im = keyed(im)
+        tight(im).save(OUT / f"{name}.png")
+        print(f"  {name} <- {src}")
 
     print(f"written to {OUT}")
     return 0
