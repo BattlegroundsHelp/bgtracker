@@ -1470,7 +1470,7 @@ def _band(vals: list, extra: int) -> dict | None:
 def simulate(
     board_a: list, board_b: list, n: int = 3000, seed=None,
     scripts: dict | None = None, calibrate: bool = True,
-    heroes: dict | None = None,
+    heroes: dict | None = None, gentle: bool = False,
 ) -> dict:
     """Monte Carlo the fight n times.
 
@@ -1506,7 +1506,17 @@ def simulate(
     w = t = loss = 0
     dealt: list[int] = []   # minion tier-sum per WINNING rollout
     taken: list[int] = []   # minion tier-sum per LOSING rollout
-    for _ in range(n):
+    for k in range(n):
+        if gentle and k and k % 500 == 0:
+            # A short sleep RELEASES the GIL. Ten thousand rollouts are
+            # ~1.5s of pure Python, and a thread that never blocks starves
+            # the Tk loop for that whole stretch - the overlay visibly hung
+            # at the start of every fight (founder, 2026-08-15: "lagging
+            # when I used it"). Twenty 2ms naps cost ~40ms of wall inside a
+            # budget of tens of seconds, and the UI paints between batches.
+            # Only when asked (the overlay's live thread): tests and batch
+            # tools keep full speed.
+            time.sleep(0.002)
         res, dmg = fight(ta, tb, rng)
         if res > 0:
             w += 1

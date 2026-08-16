@@ -665,15 +665,21 @@ class CounterFeed(threading.Thread):
     CHUNK = 8 << 20
     OVERLAP = 96                     # a match may straddle two chunks
 
-    def _scan_identity(self, f):
-        """Collect every ``PlayerID=n, PlayerName=x``, newest wins, and return
-        the byte offset of the last one - the top of the current game.
+    def _scan_identity(self, f, start=0):
+        """Collect every ``PlayerID=n, PlayerName=x`` from ``start`` on,
+        newest wins, and return the byte offset of the last one - the top of
+        the current game.
 
         Chunked bytes search: a chunk with no match is rejected by one
-        substring test, so this reads the file without decoding it.
+        substring test, so this reads the file without decoding it. The
+        caller passes the backfill window's start: identity below the parse
+        start belongs to older games whose ids were reused anyway, and on a
+        233MB marathon log the whole-file scan burned ~100MB of reads at
+        startup to learn nothing (profiled 2026-08-15; a game is ~3MB, so
+        the current game's header always sits inside the window).
         """
-        f.seek(0)
-        tail, pos, last = b"", 0, 0
+        f.seek(start)
+        tail, pos, last = b"", start, start
         while True:
             chunk = f.read(self.CHUNK)
             if not chunk:
@@ -700,8 +706,10 @@ class CounterFeed(threading.Thread):
             size = path.stat().st_size
             if self.backfill and size > self.backfill:
                 # Start at the top of the current game, unless that is further
-                # back than we are willing to read.
-                start = max(self._scan_identity(f), size - self.backfill)
+                # back than we are willing to read - and only ever SCAN the
+                # window we would be willing to parse.
+                floor = size - self.backfill
+                start = max(self._scan_identity(f, floor), floor)
                 f.seek(start)
                 f.readline()                      # drop the half line we landed in
             last_check = 0.0

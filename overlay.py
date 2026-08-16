@@ -37,6 +37,7 @@ late, disappear mid-fight, and leave a COMBAT header sitting over the tavern.
 """
 
 import argparse
+import ctypes
 import queue
 import re
 import sys
@@ -163,7 +164,18 @@ class OddsEngine:
 
     def _run(self, c, fr, en, seq):
         try:
-            r = sim_engine.simulate(fr, en, n=self.n,
+            # The sim must never cost a frame: drop THIS thread below normal
+            # so Windows schedules the game and the Tk loop first, and run
+            # the rollouts gently (the engine yields the GIL between
+            # batches). The wall cost is tens of milliseconds inside a
+            # budget of tens of seconds - the fight ANIMATION is the
+            # deadline, not the first attack (see the timing note above).
+            try:
+                k32 = ctypes.windll.kernel32
+                k32.SetThreadPriority(k32.GetCurrentThread(), -1)
+            except Exception:
+                pass
+            r = sim_engine.simulate(fr, en, n=self.n, gentle=True,
                                     heroes=c["boards_pre_attack"].get("heroes"))
         except Exception:
             return          # a sim failure means no line, never a fake one
@@ -1244,6 +1256,18 @@ def _announce_update(u):
 
 
 def main():
+    # The whole process runs BELOW NORMAL priority: the overlay shares a
+    # machine with a game whose frames the player is watching, and every
+    # spike this process has - a combat sim, a log burst, a repaint wave -
+    # was being scheduled as the game's equal (founder, 2026-08-15: "it was
+    # lagging when I used it"). Below normal, Windows hands Hearthstone the
+    # cores first and the overlay soaks up what is left, which is plenty.
+    # Children (the msync memory reader) inherit the class.
+    try:
+        k32 = ctypes.windll.kernel32
+        k32.SetPriorityClass(k32.GetCurrentProcess(), 0x4000)  # BELOW_NORMAL
+    except Exception:
+        pass
     ap = argparse.ArgumentParser(description="Anchored, per-concern Battlegrounds overlay.")
     # Every flag defaults to None: only a flag the user actually typed becomes
     # an override, and an override lasts for this run only (settings.py).
