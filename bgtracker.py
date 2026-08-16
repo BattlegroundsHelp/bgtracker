@@ -668,6 +668,46 @@ def hero_tips(refresh: bool = False) -> dict:
 _CURVES_CACHE = None
 
 
+_PRIORS_CACHE = None
+
+
+def minion_priors(refresh: bool = False) -> dict:
+    """The bootstrap star per minion NAME: {name -> {"stars", "n"}}.
+
+    Same class of shipped text as the hero curves, and read the same way (the
+    user's own data/minion_ratings.json beside the exe wins; a missing or
+    malformed file simply means no bootstrap). What it is NOT is a
+    measurement: tools/make_minion_priors.py froze it from the community pool
+    once, pulling every card toward its own tier's average by how little
+    evidence stood behind it, so the shop has something to say before the
+    pool is big enough to say it properly. The caller blends it with the live
+    table by sample size and draws anything still leaning on this file as a
+    hollow star - see star() in overlay.py.
+    """
+    global _PRIORS_CACHE
+    if _PRIORS_CACHE is not None and not refresh:
+        return _PRIORS_CACHE
+    out = {}
+    for base in (APP_DIR, BUNDLE_DIR):
+        try:
+            doc = json.loads((base / "data" / "minion_ratings.json")
+                             .read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for name, rec in (doc.get("ratings") or {}).items():
+            if not isinstance(name, str) or not isinstance(rec, dict):
+                continue
+            s, n = rec.get("stars"), rec.get("n", 0)
+            # A hand-edited file is expected, so every field is checked
+            # rather than trusted: a bad star would otherwise reach the blend
+            # and come out as a rank nobody wrote.
+            if isinstance(s, int) and 1 <= s <= 5 and isinstance(n, int):
+                out[name] = {"stars": s, "n": max(0, n)}
+        break                    # first file found wins; they are not merged
+    _PRIORS_CACHE = out
+    return out
+
+
 def hero_curves(refresh: bool = False) -> dict:
     """The tavern leveling curves: {"default": {...}, "by_name": {hero name ->
     bucket dict}}, each bucket {"label", "curve" (tier -> turn, int keys),

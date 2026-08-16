@@ -1,5 +1,41 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **The shop has stars again, and they say which kind they are.** A minion
+  needs about thirty games in the pool before its rating means anything, and
+  the pool is young, so most rows showed nothing at all. There is now a
+  starting opinion of each minion frozen from the pool itself
+  (`data/minion_ratings.json`, written by `tools/make_minion_priors.py`):
+  every card's record was pulled toward the average of its own tavern tier by
+  how little evidence stood behind it, so a card with one game says nothing
+  and a card with ten says something. The windows blend that with the live
+  table by sample size, so each game played slides a card off the guess and
+  onto its own record with nothing to switch on. A solid colour-graded star
+  is a measurement, a hollow muted one is the starting guess, and neither is
+  ever drawn as the other. It is our own pool either way - no third-party
+  stats, same as everything else here.
+- **The other players' tavern tier is right.** The game writes two tags whose
+  names nearly match: `TECH_LEVEL` is the tier printed on a card and
+  `PLAYER_TECH_LEVEL` is the tavern a player is standing in. The memory
+  reader took the first one off each hero, which is why the whole lobby read
+  the same number. It comes from the log now, per hero.
+- **The minion browser opens a row with the card itself** beside the text -
+  the finished card art where the CDN has it, the square art crop where it
+  does not - and its tribe filter wears the tribe emblems.
+- **Gold is its own little window**, movable like the buff pills, with the
+  spendable coins as pips. The counters strip and the buff pills both got
+  tighter.
+
+### Fixed
+
+- **`fetch-art` was only asking for minions the stats feed had measured**, so
+  the art for anything nobody had played yet was never even requested. It
+  asks for the whole browsable pool now. Card renders download in a slower
+  pass, because the CDN refuses a wide burst of them.
+
 ## v0.3.7-alpha (15 August 2026)
 
 ### Fixed

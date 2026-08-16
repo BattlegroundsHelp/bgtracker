@@ -77,6 +77,12 @@ DATAS.append((os.path.join(ROOT, "data", "comp_roles.json"), "data"))
 # shipped-text class and read rule as the hero tips above.
 DATAS.append((os.path.join(ROOT, "data", "curves.json"), "data"))
 
+# The bootstrap minion stars (bgtracker.minion_priors). Same class and read
+# rule again. Without this line the standalone build silently shows no stars
+# in the shop until the pool is big enough to measure every card itself -
+# which is the exact state this file exists to get us out of.
+DATAS.append((os.path.join(ROOT, "data", "minion_ratings.json"), "data"))
+
 # The painted skin (ui/skin.py, same APP_DIR-then-BUNDLE_DIR pair again).
 # Every file individually, through the same existence check below: a skin
 # that half-ships would paint half the chrome as wood and half as vectors,

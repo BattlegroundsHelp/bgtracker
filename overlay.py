@@ -525,6 +525,13 @@ class Reader(threading.Thread):
             vals.sort()
             if len(vals) >= 10:
                 _cut[t] = [vals[int(len(vals) * k)] for k in (0.08, 0.25, 0.50, 0.75)]
+        # The bootstrap opinion, by minion name (data/minion_ratings.json).
+        # It is what the shop has to say until the pool is old enough to say
+        # it properly; star() blends the two by sample size.
+        try:
+            _priors = bg.minion_priors()
+        except Exception:
+            _priors = {}
 
         def star(st, name, tier=0, card=None):
             """(stars, graded): 1..5 vs its OWN tier, +1 when it feeds the comp
@@ -544,10 +551,27 @@ class Reader(threading.Thread):
             make the two paths behave differently in the player's hand."""
             delta = (st or {}).get("delta")
             cut = _cut.get(tier) or _cut.get(0)
+            prior = _priors.get(name)
             if delta is not None and cut:
                 s = 5 if delta <= cut[0] else 4 if delta <= cut[1] else \
                     3 if delta <= cut[2] else 2 if delta <= cut[3] else 1
                 graded = False
+                if prior is not None:
+                    # Both exist: the evidence decides how much of each is
+                    # heard. w is 0 with no games and passes a half at
+                    # MIN_SAMPLE, so a card the pool has really measured ends
+                    # up saying what its own games say, while one it has
+                    # barely seen still leans on the frozen opinion. Nothing
+                    # flips a switch here - it slides.
+                    n = (st or {}).get("n", 0)
+                    w = n / (n + bg.MIN_SAMPLE)
+                    s = max(1, min(5, round(w * s + (1 - w) * prior["stars"])))
+                    graded = w < 0.5      # still mostly the bootstrap
+            elif prior is not None:
+                # No live band yet (the pool is young), so the bootstrap is
+                # the whole answer - drawn hollow, because it is an opinion
+                # frozen from thin data and not a measurement.
+                s, graded = prior["stars"], True
             else:
                 # NO STAR. A grade read off the card alone was built and then
                 # measured against the mode, and it is a body ranking: Brann

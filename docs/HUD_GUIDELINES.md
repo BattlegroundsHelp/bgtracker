@@ -112,6 +112,22 @@ never scraped stats, user-editable beside the exe, refreshed each season.
 Stats come only from the community pool. A number the log or the pool has
 not stated draws as a dash or nothing - never a guess.
 
+**Measured and guessed are different marks.** The pool is young, so
+`data/minion_ratings.json` holds a starting opinion of each minion, frozen
+once from the pool itself (`tools/make_minion_priors.py`, every card pulled
+toward its own tier's average by how little evidence stood behind it). The
+windows blend it with the live table by sample size - `w = n / (n +
+MIN_SAMPLE)` - so a card slides off the guess and onto its own record as
+games arrive. The rule that keeps this honest, and it is not negotiable:
+
+* **★ solid, colour graded** = the pool's games said this
+* **☆ hollow, muted** = the starting guess, `w < 0.5`
+
+Never draw one as the other, never mix the two glyphs on one row, and name
+both in the surface's footer where both can appear. The same holds for any
+future bootstrap: a value the tool assumed must look different from a value
+the tool measured.
+
 ## Before you ship a look change
 
 1. Screenshot the window in a REALISTIC state (seed the state, then

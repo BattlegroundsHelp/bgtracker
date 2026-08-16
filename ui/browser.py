@@ -155,6 +155,7 @@ class BrowserWindow(BaseWindow):
         super().__init__(app)
         self.pool = []               # the live minion pool, loaded once
         self.cards = {}              # cardId -> stats row; {} with no source
+        self.priors = {}             # minion name -> the bootstrap opinion
         self.turns = {}              # cardId -> [(turn, avg, other, n, other_n)]
         self.bands = {}              # tavern tier -> star cut points
         self.traits = [(None, "any trait", 0)]
@@ -267,8 +268,13 @@ class BrowserWindow(BaseWindow):
             grades.table()
         except Exception:
             pass
+        try:
+            priors = bg.minion_priors()
+        except Exception:
+            priors = {}              # no bootstrap file: rows keep their dash
         self.pool = pool
         self.cards = cards
+        self.priors = priors
         self.turns = turns
         self.bands = self._make_bands(cards, tiers)
         self.traits = self._make_traits(pool)
@@ -403,8 +409,20 @@ class BrowserWindow(BaseWindow):
         opinion differently from a measurement.
         """
         s = self.stars(m)
+        prior = self.priors.get(m["name"])
         if s is not None:
+            if prior is not None:
+                # The same slide the shop does: evidence decides how much of
+                # the live band and how much of the frozen opinion is heard.
+                n = (self.cards.get(m["id"]) or {}).get("n", 0)
+                w = n / (n + bg.MIN_SAMPLE)
+                s = max(1, min(5, round(w * s + (1 - w) * prior["stars"])))
+                return s, w < 0.5
             return s, False
+        if prior is not None:
+            # No live band yet: the bootstrap is the whole answer, drawn
+            # hollow so it can never read as a measurement.
+            return prior["stars"], True
         # No computed star. See the note in overlay.py's star(): a grade read
         # off the card alone ranks bodies, so it put Brann Bronzebeard at 1
         # star and a vanilla 10/11 at 5. The row still carries what the card
@@ -812,16 +830,18 @@ class BrowserWindow(BaseWindow):
                     c.create_text(self.WIDTH - 74, y + 14, text="—",
                                   anchor="e", fill=DIM, font=F_SUB)
             else:
-                # Filled and colour graded = measured. Hollow and muted = read
-                # off the card. Same glyph rule as the tavern row, so the two
-                # windows never say the same thing two ways.
+                # Filled and colour graded = measured by the pool's games.
+                # Hollow and muted = the bootstrap opinion in
+                # data/minion_ratings.json. Same glyph rule as the tavern
+                # row, so the two windows never say one thing two ways.
                 fill = SOFT if graded else STAR_COLOR.get(s, DIM)
+                glyph = ("☆" if graded else "★") * s
                 if tiled:
-                    shadow_text(c, self.WIDTH - 74, y + 14, "★" * s, fill,
+                    shadow_text(c, self.WIDTH - 74, y + 14, glyph, fill,
                                 F_STARS, anchor="e")
                 else:
                     c.create_text(self.WIDTH - 74, y + 14, anchor="e",
-                                  font=F_STARS, text="★" * s, fill=fill)
+                                  font=F_STARS, text=glyph, fill=fill)
 
     def _detail(self, m, mini=False):
         """The opened row: what it is, what it does, and - only with a real
@@ -940,12 +960,14 @@ class BrowserWindow(BaseWindow):
         # Both halves get named whenever both are on screen: a player who never
         # opens a row still has to be able to tell an opinion from a
         # measurement.
-        if self.rated and self.graded:
-            note, fill = f"★ measured top {self.mmr}%", DIM
+        if self.rated and self.priors:
+            note, fill = f"★ measured · ☆ starting guess · top {self.mmr}%", DIM
         elif self.rated:
             note, fill = f"rated vs own tier · top {self.mmr}%", DIM
-        elif self.graded:
-            note, fill = "no games have measured these yet", AMBER
+        elif self.priors:
+            # Every star on screen is the bootstrap, so say so once here
+            # rather than leaving the glyph to carry it alone.
+            note, fill = "☆ starting guess, not measured yet", AMBER
         else:
             note, fill = "no stats source", AMBER
         c.create_text(self.WIDTH - 14, y + 8, anchor="e", font=F_SUB,

@@ -1,0 +1,273 @@
+{
+  "_comment": "A STARTING opinion of each minion, frozen from the community pool by tools/make_minion_priors.py. It is not a measurement: every card's differential was pulled toward its own tavern tier's average by how few games stood behind it, so a card with one game sits at its tier's average rather than wherever that one game happened to land. The overlay blends these with the live table by sample size (weight n/(n+30)), so a card the pool has really measured stops listening to this file. A star that still leans on this file is drawn hollow, never as a measurement. Regenerate after a patch, or edit by hand - your copy beside the exe wins over the bundled one.",
+  "dated": "2026-08-15",
+  "method": "shrunk-to-tier-mean, K=30, all-time, top 100%",
+  "source": "the community pool only - no third-party stats",
+  "ratings": {
+    "Amber Guardian": {
+      "stars": 3,
+      "n": 4,
+      "tier": 3
+    },
+    "Balinda Stonehearth": {
+      "stars": 1,
+      "n": 15,
+      "tier": 6
+    },
+    "Barrier Banshee": {
+      "stars": 3,
+      "n": 4,
+      "tier": 5
+    },
+    "Bile Spitter": {
+      "stars": 5,
+      "n": 6,
+      "tier": 5
+    },
+    "Blade Collector": {
+      "stars": 3,
+      "n": 4,
+      "tier": 4
+    },
+    "Bronze Timewalker": {
+      "stars": 3,
+      "n": 3,
+      "tier": 4
+    },
+    "Costume Enthusiast": {
+      "stars": 5,
+      "n": 6,
+      "tier": 5
+    },
+    "Crimson Vindicator": {
+      "stars": 3,
+      "n": 4,
+      "tier": 6
+    },
+    "Dancing Barnstormer": {
+      "stars": 2,
+      "n": 4,
+      "tier": 5
+    },
+    "Dead Bellringer": {
+      "stars": 1,
+      "n": 4,
+      "tier": 4
+    },
+    "Deadly Spore": {
+      "stars": 3,
+      "n": 3,
+      "tier": 3
+    },
+    "Deathly Striker": {
+      "stars": 2,
+      "n": 6,
+      "tier": 6
+    },
+    "Deathstrider": {
+      "stars": 4,
+      "n": 3,
+      "tier": 6
+    },
+    "Decoy Conjurer": {
+      "stars": 3,
+      "n": 3,
+      "tier": 2
+    },
+    "Deft Deserter": {
+      "stars": 2,
+      "n": 3,
+      "tier": 5
+    },
+    "Devilish Distractor": {
+      "stars": 2,
+      "n": 6,
+      "tier": 4
+    },
+    "Diremuck Forager": {
+      "stars": 4,
+      "n": 3,
+      "tier": 3
+    },
+    "Drakkari Enchanter": {
+      "stars": 3,
+      "n": 6,
+      "tier": 5
+    },
+    "Drustfallen Butcher": {
+      "stars": 2,
+      "n": 4,
+      "tier": 5
+    },
+    "Enterprising Escapee": {
+      "stars": 2,
+      "n": 5,
+      "tier": 4
+    },
+    "Eternal Knight": {
+      "stars": 2,
+      "n": 3,
+      "tier": 2
+    },
+    "Falling Sky Golem": {
+      "stars": 1,
+      "n": 3,
+      "tier": 6
+    },
+    "Fauna Whisperer": {
+      "stars": 3,
+      "n": 12,
+      "tier": 6
+    },
+    "Felboar": {
+      "stars": 1,
+      "n": 6,
+      "tier": 5
+    },
+    "Fire-forged Evoker": {
+      "stars": 3,
+      "n": 4,
+      "tier": 6
+    },
+    "Flaming Enforcer": {
+      "stars": 5,
+      "n": 3,
+      "tier": 4
+    },
+    "Friendly Geist": {
+      "stars": 3,
+      "n": 3,
+      "tier": 4
+    },
+    "Gatekeeper Amalgam": {
+      "stars": 2,
+      "n": 9,
+      "tier": 6
+    },
+    "Glowscale": {
+      "stars": 3,
+      "n": 3,
+      "tier": 5
+    },
+    "Imp-lusionist": {
+      "stars": 1,
+      "n": 3,
+      "tier": 5
+    },
+    "Insatiable Ur'zul": {
+      "stars": 3,
+      "n": 3,
+      "tier": 5
+    },
+    "Jailbird Juggernaut": {
+      "stars": 1,
+      "n": 3,
+      "tier": 5
+    },
+    "Lava Lurker": {
+      "stars": 1,
+      "n": 5,
+      "tier": 2
+    },
+    "Leeroy the Reckless": {
+      "stars": 4,
+      "n": 6,
+      "tier": 5
+    },
+    "Lurking Lionfish": {
+      "stars": 3,
+      "n": 3,
+      "tier": 2
+    },
+    "Maritime Extortionist": {
+      "stars": 4,
+      "n": 3,
+      "tier": 4
+    },
+    "Mummifier": {
+      "stars": 1,
+      "n": 6,
+      "tier": 3
+    },
+    "Rescue Bot": {
+      "stars": 2,
+      "n": 3,
+      "tier": 3
+    },
+    "Rimescale Priestess": {
+      "stars": 2,
+      "n": 6,
+      "tier": 4
+    },
+    "Seafloor Recruiter": {
+      "stars": 2,
+      "n": 4,
+      "tier": 4
+    },
+    "Showy Cyclist": {
+      "stars": 4,
+      "n": 3,
+      "tier": 5
+    },
+    "Sky-hatch Runaway": {
+      "stars": 2,
+      "n": 5,
+      "tier": 4
+    },
+    "Snazzy Phantom": {
+      "stars": 4,
+      "n": 7,
+      "tier": 6
+    },
+    "Soulkeeping Jailer": {
+      "stars": 4,
+      "n": 3,
+      "tier": 4
+    },
+    "Tasty Lobster": {
+      "stars": 2,
+      "n": 4,
+      "tier": 3
+    },
+    "Thaumaturgist": {
+      "stars": 4,
+      "n": 4,
+      "tier": 2
+    },
+    "Titus Rivendare": {
+      "stars": 2,
+      "n": 10,
+      "tier": 5
+    },
+    "Twilight Tidehunter": {
+      "stars": 5,
+      "n": 4,
+      "tier": 4
+    },
+    "Vigilant Bristlemane": {
+      "stars": 1,
+      "n": 4,
+      "tier": 5
+    },
+    "Warpwing": {
+      "stars": 3,
+      "n": 3,
+      "tier": 6
+    },
+    "Waverider": {
+      "stars": 1,
+      "n": 5,
+      "tier": 3
+    },
+    "Wolf Pup": {
+      "stars": 3,
+      "n": 3,
+      "tier": 3
+    },
+    "Zesty Shaker": {
+      "stars": 1,
+      "n": 3,
+      "tier": 4
+    }
+  }
+}

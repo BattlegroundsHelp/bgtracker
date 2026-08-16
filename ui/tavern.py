@@ -120,9 +120,18 @@ class TavernWindow(BaseWindow):
             # The name column clears FIVE stars (F_STARS measures 55px for
             # five - the review caught the fifth star under the name).
             star_x, name_x = (32, 92) if tiled else (44, 104)
-            if s and not r.get("graded"):
-                c.create_text(star_x, y + 10, text="★" * s, anchor="w",
-                              font=F_STARS, fill=STAR_COLOR.get(s, DIM))
+            if s:
+                # FILLED and colour graded = measured, the pool's own games
+                # said this. HOLLOW and muted = the bootstrap opinion frozen
+                # in data/minion_ratings.json while the pool is too young to
+                # measure it (it slides to filled as real games arrive). The
+                # two glyphs are never mixed on a row: a star is one thing or
+                # the other.
+                curated = bool(r.get("graded"))
+                c.create_text(star_x, y + 10,
+                              text=("☆" if curated else "★") * s, anchor="w",
+                              font=F_STARS,
+                              fill=SOFT if curated else STAR_COLOR.get(s, DIM))
             c.create_text(name_x, y + 10, text=r["name"][:16], anchor="w",
                           fill=TEXT if r.get("mine") else SOFT, font=F_SUB)
             # The right-hand label sits over the art half of the tile, so it
