@@ -74,3 +74,4 @@ manifest_signing_key.pem
 # local working doc for HUD asset generation - not repo material
 HUD_GENERATION_BRIEF.md
 assets_hud_raw/
+crash.log

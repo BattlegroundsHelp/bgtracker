@@ -53,6 +53,7 @@ import settings as settings_store
 import ui
 import ui.base
 import update
+from paths import APP_DIR
 from version import VERSION
 from sim import boards as sim_boards
 from sim import engine as sim_engine
@@ -1270,6 +1271,55 @@ def main():
     # lagging when I used it"). Below normal, Windows hands Hearthstone the
     # cores first and the overlay soaks up what is left, which is plenty.
     # Children (the msync memory reader) inherit the class.
+    # Whatever kills this process, LEAVE THE REASON ON DISK. The overlay is
+    # normally launched by bgtracker.bat through `start /min`, so its console
+    # dies with it: an overlay that fell over mid-game took its traceback with
+    # it and cost a real game to re-stage (2026-08-16). crash.log beside the
+    # exe survives that, and it is the first thing to read when someone says
+    # it stopped working.
+    try:
+        _tee_f = open(APP_DIR / "crash.log", "a", buffering=1,
+                      encoding="utf-8", errors="ignore")
+        _tee_f.write(f"\n=== started {time.strftime('%Y-%m-%d %H:%M:%S')} "
+                     f"v{VERSION} ===\n")
+
+        class _Tee:
+            """stderr goes to the console AND to the file. Never raises: a
+            failure to log must not become a second failure."""
+
+            def __init__(self, *streams):
+                self.streams = [s for s in streams if s is not None]
+
+            def write(self, data):
+                for s in self.streams:
+                    try:
+                        s.write(data)
+                    except Exception:
+                        pass
+                return len(data)
+
+            def flush(self):
+                for s in self.streams:
+                    try:
+                        s.flush()
+                    except Exception:
+                        pass
+
+        sys.stderr = _Tee(sys.stderr, _tee_f)
+
+        def _log_uncaught(exc_type, exc, tb):
+            traceback.print_exception(exc_type, exc, tb, file=sys.stderr)
+            sys.stderr.flush()
+
+        sys.excepthook = _log_uncaught
+        # Thread deaths too - the reader and the sim run on their own threads,
+        # and a thread that dies silently is exactly the class of bug that has
+        # cost this project whole evenings before.
+        threading.excepthook = lambda a: _log_uncaught(
+            a.exc_type, a.exc_value, a.exc_traceback)
+    except Exception:
+        pass            # logging is a convenience; never a reason not to start
+
     try:
         from ctypes import wintypes
         k32 = ctypes.windll.kernel32
