@@ -1282,7 +1282,19 @@ def main():
     # exe survives that, and it is the first thing to read when someone says
     # it stopped working.
     try:
-        _tee_f = open(APP_DIR / "crash.log", "a", buffering=1,
+        _crash_path = APP_DIR / "crash.log"
+        # Cap it: this file is append-only and the overlay starts many times
+        # a day. Half a meg keeps many sessions of history and cannot quietly
+        # become the biggest file in the folder (review nit).
+        try:
+            if _crash_path.stat().st_size > 512 * 1024:
+                _keep = _crash_path.read_text(encoding="utf-8",
+                                              errors="ignore")[-256 * 1024:]
+                trimmed = "...trimmed..." + chr(10) + _keep
+                _crash_path.write_text(trimmed, encoding="utf-8")
+        except Exception:
+            pass
+        _tee_f = open(_crash_path, "a", buffering=1,
                       encoding="utf-8", errors="ignore")
         _tee_f.write(f"\n=== started {time.strftime('%Y-%m-%d %H:%M:%S')} "
                      f"v{VERSION} ===\n")
