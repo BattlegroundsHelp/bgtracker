@@ -319,6 +319,15 @@ class SettingsPanel(tk.Toplevel):
         self._check(sec, "Tavern skin (generated art instead of flat panels)",
                     self.skin_var, self._on_skin)
 
+        # Whether the HUD stays up when Hearthstone is not the front window.
+        # Off is the historical behaviour and still the default; on is for
+        # anyone who wants to read the panels while doing something else -
+        # and for whom the overlay vanishing looks like it broke.
+        self.bg_var = tk.BooleanVar(
+            value=bool(self.s.get("show_in_background")))
+        self._check(sec, "Keep the overlay up while Hearthstone is in the "
+                         "background", self.bg_var, self._on_background)
+
     def _on_auto(self):
         if self.auto_var.get():
             self.s.set("ui_scale", None)
@@ -361,6 +370,15 @@ class SettingsPanel(tk.Toplevel):
         from . import skin
         skin.set_enabled(on)
         repaint_all()
+
+    def _on_background(self):
+        """Applied live: the manager's next focus poll reads the flag."""
+        on = bool(self.bg_var.get())
+        self.s.set("show_in_background", on)
+        try:
+            self.manager.show_in_background = on
+        except Exception:
+            traceback.print_exc()
 
     def _on_badge(self, _value=None):
         set_badge_scale(self.badge_var.get())

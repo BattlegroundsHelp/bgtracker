@@ -77,6 +77,15 @@ DEFAULTS = {
     # 1080p laptop and plugs in a 4K screen wants 4K sizing, not a frozen 1.0.
     "ui_scale": None,
     "badge_scale": 1.0,
+    # Keep the windows up when Hearthstone is NOT the foreground window.
+    # OFF by default, which is the behaviour this overlay has always had: it
+    # exists to sit on the game and vanish the moment you tab away. But it
+    # vanishing is ALSO what "it stopped working" looks like from the other
+    # side of the screen - open the settings panel, click a browser, and the
+    # whole HUD is gone (founder, 2026-08-16). The reference tracker offers
+    # exactly this switch ("Show gameplay overlay while Hearthstone is in the
+    # background"), and with it on the HUD stays put while you read it.
+    "show_in_background": False,
     "mmr": "100",
     "time": "last-patch",
     "duo": False,
@@ -159,7 +168,8 @@ def _clean(data: dict) -> tuple[dict, list[str]]:
                 out[k] = v
             else:
                 bad.append(f"time {v!r} is not one of {', '.join(TIME_CHOICES)}")
-        elif k in ("duo", "upload", "open_on_start"):
+        elif k in ("duo", "upload", "open_on_start", "tavern_skin",
+                   "show_in_background"):
             if isinstance(v, bool):
                 out[k] = v
             else:

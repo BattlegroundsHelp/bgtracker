@@ -2319,6 +2319,9 @@ class WindowManager:
         self.art = ArtCache(names_fn)
         self.rect = None
         self.game_front = bool(headless)   # headless: never hide on focus
+        #: Keep every window up even when the game is not in front. Set from
+        #: settings by overlay.main and flipped live by the panel.
+        self.show_in_background = False
         self.on_quit = None
         self.open_settings = None    # set by whoever owns the settings panel;
                                      # a header ⚙ appears only once it is set
@@ -2436,7 +2439,14 @@ class WindowManager:
               or u.FindWindowW(None, "Hearthstone"))
         # Clicking one of OUR windows must not read as the game losing focus,
         # or the whole overlay would vanish while you drag it.
-        self.game_front = bool((hs and fg == hs) or fg in self._our_ids())
+        self.game_front = bool(
+            (hs and fg == hs) or fg in self._our_ids()
+            # ...or the player asked for the HUD to stay up regardless. The
+            # reference tracker calls this "show the overlay while
+            # Hearthstone is in the background", and without it the whole HUD
+            # vanishing on every alt-tab is indistinguishable from the tool
+            # breaking (founder, 2026-08-16: "it stopped working").
+            or self.show_in_background)
         for w in self.windows:
             try:
                 w.tick(self.rect, self.game_front)

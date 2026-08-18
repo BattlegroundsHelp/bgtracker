@@ -1034,6 +1034,10 @@ class App:
         classes = [c for c in ui.WINDOWS
                    if c.QUIT_BUTTON or settings.window_enabled(c.KEY)]
         self.manager = WindowManager(classes, names_fn=bg.card_names)
+        # Whether the HUD stays up when the game is not in front. Read here
+        # so it applies from the first poll, and flipped live by the panel.
+        self.manager.show_in_background = bool(
+            settings.get("show_in_background"))
         self.router = Router(self.manager.windows)
         self.memory = None
         self.manager.on_quit = self._on_quit
