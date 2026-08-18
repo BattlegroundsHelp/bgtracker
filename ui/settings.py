@@ -702,50 +702,63 @@ class SettingsPanel(tk.Toplevel):
             "the cards, nothing routed to it.")
         self.win_vars = {}
         self.win_checks = {}          # KEY -> the checkbox (the test reads state)
-        for cls in WINDOWS:
-            enabled = self.s.window_enabled(cls.KEY)
-            if cls.QUIT_BUTTON and not enabled:
-                # A hand-edited settings file can say off; heal it, because off
-                # would strand the user (see the refusal below).
-                self.s.set_window_enabled(cls.KEY, True)
-                try:
-                    self.app.set_window_enabled(cls.KEY, True)
-                except Exception:
-                    traceback.print_exc()
-                enabled = True
-            var = tk.BooleanVar(value=enabled)
-            self.win_vars[cls.KEY] = var
-            chk = self._check(sec, f"{cls.TITLE or cls.KEY}  ({cls.KEY})", var,
-                              lambda k=cls.KEY: self._on_window(k))
-            self.win_checks[cls.KEY] = chk
-            # A class may name itself: the seven micro counters share one
-            # module, so its docstring would otherwise be printed seven times
-            # under seven different switches.
-            mod = sys.modules.get(cls.__module__)
-            blurb = (getattr(cls, "BLURB", "")
-                     or _first_sentence(getattr(mod, "__doc__", "")))
-            extra = []
-            if cls.QUIT_BUTTON:
-                # Refused rather than allowed-and-regretted: every other
-                # overlay surface is click-through, so the gear and the X on
-                # this window are the only clicks the overlay can ever take
-                # once this panel is closed. The panel's own Quit button is no
-                # substitute - the panel can be closed, and "open on start"
-                # can be off, which would leave a running overlay with no
-                # visible way to reach settings or quit short of killing the
-                # process.
-                chk.configure(state="disabled")
-                extra.append("always on: it carries the X that quits and the "
-                             "gear that reopens this panel, so without it "
-                             "there would be no way back in")
-            if cls.KEY == "players" and not bg.MSYNC_EXE.exists():
-                extra.append("needs the optional memory reader, which is not "
-                             "built here, so it never opens")
-            lbl = tk.Label(sec, text=blurb + ("  -  " + "; ".join(extra) if extra else ""),
-                           bg=PANEL, fg=DIM, font=self.f_tiny, anchor="w",
-                           justify="left", wraplength=BASE_W - 80)
-            lbl.pack(fill="x", padx=(22, 0), pady=(0, 3))
-            self._wrapped.append((lbl, BASE_W - 80))
+        # Grouped, not one wall of switches: 22 checkboxes in a flat list
+        # teaches a new user nothing about what any of them is for. The
+        # groups live in the registry (ui.GROUP_OF) so a new window declares
+        # its own home; anything undeclared falls under "Other" and is still
+        # shown rather than silently missing.
+        from . import GROUPS, GROUP_OF
+        for _group in list(GROUPS) + ["Other"]:
+            _members = [c for c in WINDOWS
+                        if GROUP_OF.get(c.KEY, "Other") == _group]
+            if not _members:
+                continue
+            tk.Label(sec, text=_group.upper(), bg=PANEL, fg=SOFT,
+                     font=self.f_head, anchor="w").pack(fill="x", pady=(10, 2))
+            for cls in _members:
+                enabled = self.s.window_enabled(cls.KEY)
+                if cls.QUIT_BUTTON and not enabled:
+                    # A hand-edited settings file can say off; heal it, because off
+                    # would strand the user (see the refusal below).
+                    self.s.set_window_enabled(cls.KEY, True)
+                    try:
+                        self.app.set_window_enabled(cls.KEY, True)
+                    except Exception:
+                        traceback.print_exc()
+                    enabled = True
+                var = tk.BooleanVar(value=enabled)
+                self.win_vars[cls.KEY] = var
+                chk = self._check(sec, f"{cls.TITLE or cls.KEY}  ({cls.KEY})", var,
+                                  lambda k=cls.KEY: self._on_window(k))
+                self.win_checks[cls.KEY] = chk
+                # A class may name itself: the seven micro counters share one
+                # module, so its docstring would otherwise be printed seven times
+                # under seven different switches.
+                mod = sys.modules.get(cls.__module__)
+                blurb = (getattr(cls, "BLURB", "")
+                         or _first_sentence(getattr(mod, "__doc__", "")))
+                extra = []
+                if cls.QUIT_BUTTON:
+                    # Refused rather than allowed-and-regretted: every other
+                    # overlay surface is click-through, so the gear and the X on
+                    # this window are the only clicks the overlay can ever take
+                    # once this panel is closed. The panel's own Quit button is no
+                    # substitute - the panel can be closed, and "open on start"
+                    # can be off, which would leave a running overlay with no
+                    # visible way to reach settings or quit short of killing the
+                    # process.
+                    chk.configure(state="disabled")
+                    extra.append("always on: it carries the X that quits and the "
+                                 "gear that reopens this panel, so without it "
+                                 "there would be no way back in")
+                if cls.KEY == "players" and not bg.MSYNC_EXE.exists():
+                    extra.append("needs the optional memory reader, which is not "
+                                 "built here, so it never opens")
+                lbl = tk.Label(sec, text=blurb + ("  -  " + "; ".join(extra) if extra else ""),
+                               bg=PANEL, fg=DIM, font=self.f_tiny, anchor="w",
+                               justify="left", wraplength=BASE_W - 80)
+                lbl.pack(fill="x", padx=(22, 0), pady=(0, 3))
+                self._wrapped.append((lbl, BASE_W - 80))
 
     def _on_window(self, key):
         cls = next((c for c in WINDOWS if c.KEY == key), None)

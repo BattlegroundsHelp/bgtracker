@@ -159,6 +159,26 @@ from .tavern import TavernWindow
 from .trinkets import TrinketWindow
 
 # The registry. Order is construction order only - windows are independent.
+#: Which settings group a window's switch appears under. The reference
+#: tracker's panel is grouped and sub-grouped rather than one long list, and
+#: with 22 switches ours had become exactly the wall of checkboxes that
+#: teaches a new user nothing (founder, 2026-08-18). A window with no group
+#: falls under "Other", so a new module still shows up on its own.
+GROUPS = ("The shop", "Your counters", "Picking", "The lobby", "Reference")
+GROUP_OF = {
+    "tavern": "The shop", "combat": "The shop", "curve": "The shop",
+    "counters": "Your counters", "effects": "Your counters",
+    "m_gold": "Your counters", "m_extra": "Your counters",
+    "m_tier": "Your counters", "m_upgrade": "Your counters",
+    "m_triples": "Your counters", "m_rolls": "Your counters",
+    "m_trinket": "Your counters", "m_spells": "Your counters",
+    "m_turn": "Your counters",
+    "heropick": "Picking", "heropower": "Picking", "trinkets": "Picking",
+    "discover": "Picking",
+    "players": "The lobby", "session": "The lobby",
+    "comps": "Reference", "browser": "Reference",
+}
+
 WINDOWS = (
     CountersWindow,
     # One micro window per counter - the numbers' normal home. The strip
