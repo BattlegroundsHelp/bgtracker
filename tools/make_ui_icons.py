@@ -95,6 +95,7 @@ SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">
 COUNTER_COLOUR = {
     "gold": "#e0b45c", "upgrade": "#6fbf73", "triples": "#c9a227",
     "rolls": "#6fa8dc", "trinket": "#c58fd6", "turn": "#c6b89f",
+    "spells": "#7f6fd0",
 }
 COUNTER_GLYPHS = {
     # a coin, with a rim so it does not read as a full stop
@@ -113,6 +114,10 @@ COUNTER_GLYPHS = {
     # a trinket: a stone in its setting
     "trinket": '<path d="M32 12 L46 24 L38 48 L26 48 L18 24 Z" fill="none" '
                'stroke-width="5"/><path d="M32 24 L38 30 L32 40 L26 30 Z"/>',
+    # spells cast: a star burst over a wand, blunt enough to read at 18px
+    "spells":  '<path d="M18 46 L36 28 L40 32 L22 50 Z"/>'
+               '<path d="M42 10 L46 22 L58 26 L46 30 L42 42 L38 30 L26 26 '
+               'L38 22 Z"/>',
     # the turn: a clock hand
     "turn":    '<circle cx="32" cy="32" r="18" fill="none" stroke-width="5"/>'
                '<path d="M32 20 L32 33 L41 38" fill="none" stroke-width="5" '

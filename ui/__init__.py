@@ -147,8 +147,9 @@ from .comps import CompsWindow
 from .counters import CountersWindow
 from .curve import CurveWindow
 from .effects import EffectsWindow
-from .micro import (ExtraGoldMicro, GoldMicro, RollsMicro, TierMicro,
-                    TriplesMicro, TrinketMicro, TurnMicro, UpgradeMicro)
+from .micro import (ExtraGoldMicro, GoldMicro, RollsMicro, SpellsMicro,
+                    TierMicro, TriplesMicro, TrinketMicro, TurnMicro,
+                    UpgradeMicro)
 from .discover import DiscoverWindow
 from .heropick import HeroPickWindow
 from .heropower import HeroPowerWindow
@@ -170,6 +171,7 @@ WINDOWS = (
     TriplesMicro,
     RollsMicro,
     TrinketMicro,
+    SpellsMicro,
     TurnMicro,
     EffectsWindow,
     CurveWindow,
@@ -188,7 +190,7 @@ WINDOWS = (
 __all__ = [
     "WINDOWS", "BrowserWindow", "CombatWindow", "CompsWindow", "CountersWindow",
     "DiscoverWindow", "ExtraGoldMicro", "GoldMicro", "HeroPickWindow", "HeroPowerWindow",
-    "PlayersWindow", "RollsMicro", "TierMicro", "TriplesMicro",
+    "PlayersWindow", "RollsMicro", "SpellsMicro", "TierMicro", "TriplesMicro",
     "TrinketMicro", "TurnMicro", "UpgradeMicro",
     "SessionWindow", "TavernWindow", "TrinketWindow", "classify_choice",
 ]

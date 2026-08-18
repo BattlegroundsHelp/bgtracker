@@ -153,6 +153,12 @@ PLAYER_TAGS = {
     "BACON_ELEMENTAL_BUFFHEALTHVALUE": "elem_hp",
     "BACON_BLOODGEMBUFFATKVALUE": "gem_atk",
     "BACON_BLOODGEMBUFFHEALTHVALUE": "gem_hp",
+    # Spells cast this game. The reference overlay shows this as its own
+    # little pill ("2 (2/4)"), because the Naga payoffs read it: Spellcraft
+    # minions and the "improved by every 4 spells" cards step every fourth
+    # one. Confirmed on the local player's entity in a live log 2026-08-16,
+    # counting 1..8 across a game.
+    "NUM_SPELLS_PLAYED_THIS_GAME": "spells",
 }
 # Tags read off an entity we own, i.e. one whose bracket says player=<our id>.
 # Each names the zone it is only trusted in: a hero in SETASIDE is a draft
@@ -266,6 +272,7 @@ class CounterState:
         self.free_rolls = 0
         self.upgrade = {}           # tavern tier -> what it costs right now
         self.trinket_in = {}        # "lesser"/"greater" -> turns left
+        self.spells = 0             # tavern spells cast this game
         self.elem_atk = self.elem_hp = 0
         self.gem_atk = self.gem_hp = 0
         self.shop_buffs = {}        # accumulator entity id -> {card, label,
@@ -322,6 +329,16 @@ class CounterState:
         if self.gold_base is None:
             return None
         return self.gold_base + self.gold_temp
+
+    #: Every Nth spell is what the Naga payoffs actually step on ("improved
+    #: by every 4 spells you've cast this game"). The reference pill shows
+    #: the count and the progress toward the next step.
+    SPELL_STEP = 4
+
+    @property
+    def spells_to_step(self):
+        """How many more spells until the next payoff step, 1..SPELL_STEP."""
+        return self.SPELL_STEP - (self.spells % self.SPELL_STEP)
 
     @property
     def next_tier(self):

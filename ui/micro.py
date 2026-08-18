@@ -26,7 +26,7 @@ now, and what colour that value should be. Everything else lives here.
 from __future__ import annotations
 
 from . import skin
-from .base import (AMBER, DIM, F_NAME, F_SUB, GOOD, SOFT, TEXT, BaseWindow,
+from .base import (ACCENT, AMBER, DIM, F_NAME, F_SUB, GOOD, SOFT, TEXT, BaseWindow,
                    get_scale, shadow_text)
 
 ICON_PX = 18            # base pixels; bitmaps bake at ICON_PX * get_scale()
@@ -302,6 +302,35 @@ class TrinketMicro(MicroWindow):
         return str(nxt), SOFT
 
 
+class SpellsMicro(MicroWindow):
+    """Spells cast this game, and how far to the next payoff step.
+
+    Copied off the reference overlay, which shows exactly this as its own
+    pill ("2 (2/4)"): the Naga package reads the count - Spellcraft minions
+    and every "improved by every 4 spells you've cast this game" body step
+    on the fourth. The count comes from the game's own
+    NUM_SPELLS_PLAYED_THIS_GAME tag on the local player.
+    """
+
+    KEY = "m_spells"
+    TITLE = "Spells cast"
+    BLURB = ("Tavern spells cast this game, with progress to the next "
+             "every-4-spells payoff. Hidden until you cast one.")
+    ICON = ("counter_spells",)
+    DY = 1088
+    WIDTH = 78
+
+    def value(self, s):
+        # No spells cast is the normal opening state and says nothing, so
+        # this window stays away until the first one - the same rule the
+        # triples and reroll counters follow.
+        if not s.spells:
+            return None
+        step = s.SPELL_STEP
+        done = s.spells % step or step        # 4/4 reads better than 0/4
+        return f"{s.spells} ({done}/{step})", ACCENT
+
+
 class TurnMicro(MicroWindow):
     KEY = "m_turn"
     TITLE = "Turn"
@@ -316,5 +345,5 @@ class TurnMicro(MicroWindow):
         return str(s.bg_turn), AMBER if s.in_combat else TEXT
 
 
-MICROS = (GoldMicro, ExtraGoldMicro, TierMicro, UpgradeMicro, TriplesMicro, RollsMicro,
+MICROS = (GoldMicro, ExtraGoldMicro, TierMicro, SpellsMicro, UpgradeMicro, TriplesMicro, RollsMicro,
           TrinketMicro, TurnMicro)
