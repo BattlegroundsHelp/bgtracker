@@ -13,10 +13,21 @@ from.
 Both references present the same way (measured off their pages and overlay
 screenshots, 2026-08-14):
 
-- **Flat.** One dark face, no rims, no bevels, no gradients, no rounded
-  ornament. Rows are a plain lightening of the face. Firestone: rows are
-  `white @ 8%` over `#190505`, radius 0, borders 0. HSReplay: the same
-  doctrine on `#1a0e1f`.
+- **Flat ROWS, not flat everything.** Rows are a plain lightening of the
+  face: `white @ 8%`, hover `12%`, radius 0, borders 0 - measured on both
+  references and true. What was WRONG here until 2026-08-18: this file said
+  Firestone's face is `#190505`. That is their DESKTOP app's black. Their
+  Battlegrounds overlay is plum (`#1e0116` face, `#40032e` sub-surfaces,
+  `#841063` rules) and its panels are a dark radial gradient over a
+  photographic backdrop - not flat at all. Our opt-in tavern skin is nearer
+  to what they really do than our flat default is. Keep the flat default
+  because it is OUR face and it reads; just do not cite it as theirs.
+  HSReplay's overlay is the flat one, on `#1a0e1f`.
+- **Radius means something.** Theirs is a vocabulary, not a constant: `0`
+  for anything docked (panels, rows, headers), `15` for a capsule floating
+  over the board, `25` for a full guide card, fully round for a chip or a
+  counter. We currently use one radius everywhere, which throws the
+  distinction away. See docs/REFERENCE_TEARDOWN.md.
 - **The information is the interface.** Numbers and names carry the
   meaning; chrome carries nothing.
 - **One accent.** The single loud thing is the row being pointed at - for
