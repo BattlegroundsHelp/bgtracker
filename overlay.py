@@ -445,6 +445,8 @@ class Reader(threading.Thread):
         # read T2 while they were on 3). The log states the real one per hero,
         # so it wins wherever it has been seen.
         log_tiers = {}
+        # hero cardId -> {round: tier} - when each seat reached each tavern.
+        tier_hist = {}
 
         def flush_players():
             # Ticked from the line stream rather than from the GameState copy
@@ -502,6 +504,10 @@ class Reader(threading.Thread):
                     "place": p.get("place"), "card": card, "name": named(card),
                     "health": p.get("health"), "armor": p.get("armor"),
                     "tier": tier, "you": bool(p.get("you")),
+                    "tier_hist": dict(sorted(
+                        (tier_hist.get(card)
+                         or tier_hist.get(card.split("_SKIN_")[0])
+                         or {}).items())),
                     "board": kept.get("board") or [],
                     "seen_round": kept.get("round"),
                 })
@@ -788,7 +794,17 @@ class Reader(threading.Thread):
                 if m:
                     lvl = int(m.group("lvl"))
                     if lvl > 0:
-                        log_tiers[m.group("card")] = lvl
+                        card = m.group("card")
+                        log_tiers[card] = lvl
+                        # ...and WHEN they got there. The reference overlay
+                        # shows an opponent's tier per turn as a little grid
+                        # ("Turn 1, Turn 2, Turn 3, Turn 7"), which is the
+                        # one read that tells you who is greedy and who is
+                        # tempo. Costs nothing extra: the level-ups are
+                        # already flowing past. First sighting per round
+                        # wins, because a round can restate the same tier.
+                        rnd = odds.parser.turn or 0
+                        tier_hist.setdefault(card, {}).setdefault(rnd, lvl)
             flush_players()              # leaderboard (memory reader only)
 
             blk = choice.feed(line)
@@ -828,6 +844,7 @@ class Reader(threading.Thread):
                 # claiming tier 6 until its player really levels (review
                 # find, proven against a 34-game session log).
                 log_tiers.clear()
+                tier_hist.clear()
                 last_players[0] = None
                 rolls[0] = 0
                 pending_shop[0] = False

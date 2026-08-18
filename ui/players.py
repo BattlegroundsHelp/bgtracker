@@ -41,8 +41,8 @@ from __future__ import annotations
 
 from . import skin
 from .base import (ACCENT, AMBER, BAD, DIM, F_CHIP, F_NAME, F_SUB, F_TITLE,
-                   GOOD, LINE, SOFT, TEXT, BaseWindow, art_frame, plate,
-                   shadow_text, tile_row)
+                   GOOD, LINE, SHADE, SOFT, TEXT, BaseWindow, art_frame, plate,
+                   rrect, shadow_text, tile_row)
 
 # Backstop for the shared band: if the trinket window's "picks are over" event
 # never arrives, come back on our own instead of staying hidden all game.
@@ -221,6 +221,31 @@ class PlayersWindow(BaseWindow):
             y += 16
         return y + 8
 
+    def _draw_tier_history(self, c, y, hist):
+        """When this seat reached each tavern tier: one cell per level-up.
+
+        The reference overlay draws exactly this beside an opponent's board,
+        and it is the read that tells greed from tempo at a glance - "tier 4
+        on turn 7" is a different player from "tier 2 on turn 7". Entirely
+        our own data: the log states PLAYER_TECH_LEVEL per hero and the
+        reader stamps the round it arrived (overlay.py).
+        """
+        if not hist:
+            return y
+        c.create_text(14, y + 6, text="LEVELED", anchor="w", fill=DIM,
+                      font=F_TITLE)
+        x = 74
+        for rnd, tier in list(hist.items())[:7]:
+            if x + 30 > self.WIDTH - 12:
+                break
+            rrect(c, x, y, x + 28, y + 15, 4, fill=SHADE, outline=LINE)
+            c.create_text(x + 14, y + 8, text=f"{tier}", anchor="center",
+                          fill=TEXT, font=F_CHIP)
+            c.create_text(x + 14, y + 20, text=f"t{rnd}", anchor="center",
+                          fill=DIM, font=F_CHIP)
+            x += 32
+        return y + 30
+
     def _draw_board(self, c):
         row = next((r for r in self.rows if r["card"] == self.open_card), None)
         if row is None:                     # they left the leaderboard mid-click
@@ -243,6 +268,8 @@ class PlayersWindow(BaseWindow):
         if bits:
             c.create_text(self.WIDTH - 14, y + 9, text=" · ".join(bits),
                           anchor="e", fill=SOFT, font=F_SUB)
+        y = self._draw_tier_history(c, y + 20, row.get("tier_hist") or {})
+        y -= 20
         y += 22
         c.create_line(10, y, self.WIDTH - 10, y, fill=LINE)
         y += 6
