@@ -872,3 +872,32 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+def test_no_setting_is_silently_dropped():
+    """EVERY key in DEFAULTS must survive a load. Twice now a setting was
+    saved correctly and thrown away while reading it: tavern_skin here
+    (2026-08-16) and hs_logs from the outside (issue #2) - a custom
+    Hearthstone install on another drive that the overlay then never
+    watched. Both had the same cause: the validator's if/elif chain had no
+    branch for that key and no final else, so the value fell off the end.
+    This test fails the moment a new key does the same."""
+    print("=== every DEFAULTS key survives a load")
+    import settings as store
+    dropped = []
+    for key, default in store.DEFAULTS.items():
+        got, _ = store._clean({key: default})
+        if key not in got and default is not None:
+            dropped.append(key)
+    assert not dropped, f"silently dropped on load: {dropped}"
+    print(f"  {len(store.DEFAULTS)} keys, none dropped")
+
+    # and the reported case exactly: a real path on another drive
+    got, bad = store._clean({"hs_logs": r"D:\Games\Hearthstone\Logs"})
+    assert got.get("hs_logs") == r"D:\Games\Hearthstone\Logs", got
+    assert not bad, bad
+    print("  hs_logs on D: survives, no complaint raised")
+
+    # a wrong TYPE must still be rejected and named, not silently kept
+    got, bad = store._clean({"hs_logs": 42})
+    assert "hs_logs" not in got and bad, (got, bad)
+    print(f"  a wrong type is still refused: {bad[0]}")

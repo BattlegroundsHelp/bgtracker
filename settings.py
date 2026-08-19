@@ -187,6 +187,34 @@ def _clean(data: dict) -> tuple[dict, list[str]]:
                 out[k] = {str(a): bool(b) for a, b in v.items()}
             else:
                 bad.append(f"windows {v!r} is not a list of on/off switches")
+        else:
+            # A key that IS ours but has no rule of its own above. Falling off
+            # the end used to DROP it silently, which is the worst possible
+            # failure for a settings file: the value is in the file, the panel
+            # shows it, and the run ignores it.
+            #
+            # It bit twice. hs_logs - a custom Hearthstone install on another
+            # drive - was reported from the outside (issue #2, 2026-08-17):
+            # the setting was saved correctly and thrown away on load, so the
+            # overlay watched the default C: path forever. And tavern_skin
+            # did the same thing here on 2026-08-16.
+            #
+            # So the default is now KEEP, type-checked against whatever the
+            # built-in default is, and every future key is safe by
+            # construction. bool is checked before int on purpose: in Python
+            # bool IS an int, so an int-typed setting must not accept True.
+            default = DEFAULTS[k]
+            if default is None or isinstance(default, str) and isinstance(v, str):
+                out[k] = v
+            elif isinstance(default, bool):
+                if isinstance(v, bool):
+                    out[k] = v
+                else:
+                    bad.append(f"{k} {v!r} is not true or false")
+            elif isinstance(v, type(default)) and not isinstance(v, bool):
+                out[k] = v
+            else:
+                bad.append(f"{k} {v!r} is not a {type(default).__name__}")
     return out, bad
 
 
